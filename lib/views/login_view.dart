@@ -11,6 +11,7 @@ class LoginView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bool isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     return ChangeNotifierProvider(
       create: (_) => LoginViewModel(),
       child: Builder(
@@ -18,10 +19,15 @@ class LoginView extends StatelessWidget {
           final vm = context.watch<LoginViewModel>();
           return Scaffold(
             backgroundColor: AppColors.background,
-            body: Stack(
+            body: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Stack(
               children: [
-                Container(
-                  height: 580,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 50),
+                  curve: Curves.easeOutCubic,
+                  height: isKeyboardOpen ? 380 : 580,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: AppColors.primary,
@@ -29,12 +35,14 @@ class LoginView extends StatelessWidget {
                   ),
                    
                   child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal:10, vertical: 50),
+                    child: AnimatedPadding(
+                      duration: const Duration(milliseconds: 50),
+                      curve: Curves.easeOutCubic,
+                      padding: EdgeInsets.symmetric(horizontal:10, vertical: isKeyboardOpen ? 20 : 50),
                       child: Align(
                         alignment: Alignment.topCenter,
                         child: Image.asset(
-                          height: 44,
+                          height: 34,
                           'assets/arti_capital.png',
                           color: const Color.fromARGB(255, 255, 255, 255),
                         ),
@@ -47,10 +55,15 @@ class LoginView extends StatelessWidget {
                 SafeArea(
                   
                   child: SingleChildScrollView(
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                     
                     child: Column(
                       children: [
-                        const SizedBox(height: 140),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          curve: Curves.easeOutCubic,
+                          height: isKeyboardOpen ? 40 : 140,
+                        ),
                         ClipPath(
                       clipper: _TopWaveClipper(),
                       child: Container(
@@ -63,7 +76,11 @@ class LoginView extends StatelessWidget {
                          child: Column(
                            crossAxisAlignment: CrossAxisAlignment.start,
                            children: [      
-                           SizedBox(height: 100),
+                           AnimatedContainer(
+                             duration: const Duration(milliseconds: 150),
+                             curve: Curves.easeOutCubic,
+                             height: isKeyboardOpen ? 40 : 100,
+                           ),
                            
                            _Card(
                              child: Form(
@@ -160,6 +177,7 @@ class LoginView extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
             ),
           );
         },

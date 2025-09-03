@@ -27,6 +27,12 @@ class AppTheme {
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
         elevation: 0,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppColors.primary,
