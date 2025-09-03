@@ -92,6 +92,10 @@ class LoginView extends StatelessWidget {
                                  SizedBox(height: 16),
                                    TextFormField(
                                      controller: vm.userController,
+                                     focusNode: vm.userFocusNode,
+                                     textInputAction: TextInputAction.next,
+                                     onFieldSubmitted: (_) => vm.passFocusNode.requestFocus(),
+                                     onEditingComplete: () => vm.passFocusNode.requestFocus(),
                                      decoration: const InputDecoration(
                                        hintText: 'Kullanıcı adı',
                                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
@@ -103,7 +107,67 @@ class LoginView extends StatelessWidget {
                                     const SizedBox(height: 12),
                                     TextFormField(
                                       controller: vm.passController,
+                                      focusNode: vm.passFocusNode,
                                       obscureText: vm.obscure,
+                                      textInputAction: TextInputAction.done,
+                                      onFieldSubmitted: (_) async {
+                                        if (vm.loading) return;
+                                        FocusScope.of(context).unfocus();
+                                        if (vm.formKey.currentState?.validate() ?? false) {
+                                          try {
+                                            final resp = await context.read<LoginViewModel>().submit();
+                                            if (resp.success && resp.data != null) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Giriş başarılı')),
+                                                );
+                                                Navigator.of(context).pushReplacementNamed('/home');
+                                              }
+                                            } else {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text(resp.errorMessage ?? 'Giriş başarısız')),
+                                                );
+                                              }
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Hata: $e')),
+                                              );
+                                            }
+                                          }
+                                        }
+                                      },
+                                      onEditingComplete: () async {
+                                        if (vm.loading) return;
+                                        FocusScope.of(context).unfocus();
+                                        if (vm.formKey.currentState?.validate() ?? false) {
+                                          try {
+                                            final resp = await context.read<LoginViewModel>().submit();
+                                            if (resp.success && resp.data != null) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Giriş başarılı')),
+                                                );
+                                                Navigator.of(context).pushReplacementNamed('/home');
+                                              }
+                                            } else {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text(resp.errorMessage ?? 'Giriş başarısız')),
+                                                );
+                                              }
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Hata: $e')),
+                                              );
+                                            }
+                                          }
+                                        }
+                                      },
                                       decoration: InputDecoration(
                                         hintText: 'Şifre',
                                         border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(24))),

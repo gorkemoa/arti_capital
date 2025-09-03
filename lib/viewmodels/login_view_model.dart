@@ -10,6 +10,8 @@ class LoginViewModel extends ChangeNotifier {
 
   final TextEditingController userController = TextEditingController();
   final TextEditingController passController = TextEditingController();
+  final FocusNode userFocusNode = FocusNode();
+  final FocusNode passFocusNode = FocusNode();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   bool _loading = false;
@@ -46,6 +48,8 @@ class LoginViewModel extends ChangeNotifier {
   void dispose() {
     userController.dispose();
     passController.dispose();
+    userFocusNode.dispose();
+    passFocusNode.dispose();
     super.dispose();
   }
 }
