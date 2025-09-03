@@ -13,6 +13,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  dio: ^5.5.0+1
+  provider: ^6.1.2
+  shared_preferences: ^2.2.2
+  device_info_plus: ^10.1.0
+  package_info_plus: ^8.0.0
 
 
   cupertino_icons: ^1.0.8
@@ -31,6 +36,10 @@ dev_dependencies:
 flutter:
 
 
+  assets:
+    - assets/arti_capital_logo.png
+    - assets/splash.png
+    - assets/arti_capital.png
   uses-material-design: true
 
   fonts:

@@ -1,0 +1,226 @@
+import 'package:flutter/material.dart';
+
+import 'package:provider/provider.dart';
+
+import '../viewmodels/login_view_model.dart';
+import '../theme/app_colors.dart';
+
+class LoginView extends StatelessWidget {
+  const LoginView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ChangeNotifierProvider(
+      create: (_) => LoginViewModel(),
+      child: Builder(
+        builder: (context) {
+          final vm = context.watch<LoginViewModel>();
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Stack(
+              children: [
+                Container(
+                  height: 580,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                
+                  ),
+                   
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal:10, vertical: 50),
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: Image.asset(
+                          height: 44,
+                          'assets/arti_capital.png',
+                          color: const Color.fromARGB(255, 255, 255, 255),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // İçerik kartı ve form
+
+                SafeArea(
+                  
+                  child: SingleChildScrollView(
+                    
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 140),
+                        ClipPath(
+                      clipper: _TopWaveClipper(),
+                      child: Container(
+                      decoration: BoxDecoration(
+                        
+                        color: theme.colorScheme.surface,
+                      ),      
+                      child: Padding(
+                         padding: const EdgeInsets.fromLTRB(24, 10, 24, 300),
+                         child: Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [      
+                           SizedBox(height: 100),
+                           
+                           _Card(
+                             child: Form(
+                             
+                               key: vm.formKey,
+                               child: Column(
+                                 children: [
+                                  Text('Giriş Yap', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500)),
+                                 SizedBox(height: 16),
+                                   TextFormField(
+                                     controller: vm.userController,
+                                     decoration: const InputDecoration(
+                                       hintText: 'Kullanıcı adı',
+                                       border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+                                       filled: true,
+                                       prefixIcon: Icon(Icons.person_outline),
+                                     ),
+                                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Kullanıcı adı gerekli' : null,
+                                   ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: vm.passController,
+                                      obscureText: vm.obscure,
+                                      decoration: InputDecoration(
+                                        hintText: 'Şifre',
+                                        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+                                        filled: true,
+                                        prefixIcon: const Icon(Icons.lock_outline),
+                                        suffixIcon: IconButton(
+                                          onPressed: vm.toggleObscure,
+                                          icon: Icon(vm.obscure ? Icons.visibility : Icons.visibility_off),
+                                        ),
+                                      ),
+                                      validator: (v) => (v == null || v.isEmpty) ? 'Şifre gerekli' : null,
+                                    ),
+                                    const SizedBox(height: 4),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Siyah büyük buton
+                            SizedBox(
+                              width: double.infinity,
+                              height: 54,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.onBackground,
+                                  foregroundColor: AppColors.onPrimary,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                                  elevation: 0,
+                                ),
+                                onPressed: vm.loading
+                                    ? null
+                                    : () async {
+                                        try {
+                                          final resp = await context.read<LoginViewModel>().submit();
+                                          if (resp.success && resp.data != null) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Giriş başarılı')),
+                                              );
+                                              // Ana sayfaya yönlendir
+                                              Navigator.of(context).pushReplacementNamed('/home');
+                                            }
+                                          } else {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text(resp.errorMessage ?? 'Giriş başarısız')),
+                                              );
+                                            }
+                                          }
+                                        } catch (e) {
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Hata: $e')),
+                                            );
+                                          }
+                                        }
+                                      },
+                                child: vm.loading
+                                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : const Text('Giriş Yap'),
+                              ),
+                            ),
+                           
+                          ],
+                        ),
+                      ),
+                        ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TopWaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final Path path = Path();
+    // Start from top-left
+    path.lineTo(0, 40);
+    // Create a wavy/diagonal top edge
+    final double controlPointX1 = size.width * 0.25;
+    final double controlPointY1 = 0;
+    final double endPointX1 = size.width * 0.5;
+    final double endPointY1 = 30;
+
+    final double controlPointX2 = size.width * 0.75;
+    final double controlPointY2 = 60;
+    final double endPointX2 = size.width;
+    final double endPointY2 = 20;
+
+    path.quadraticBezierTo(controlPointX1, controlPointY1, endPointX1, endPointY1);
+    path.quadraticBezierTo(controlPointX2, controlPointY2, endPointX2, endPointY2);
+
+    // Right side and bottom edges
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _Card extends StatelessWidget {
+  final Widget child;
+  const _Card({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: child,
+    );
+  }
+}

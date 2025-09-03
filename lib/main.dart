@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'theme/app_theme.dart';
+import 'views/login_view.dart';
+import 'views/home_view.dart';
+import 'package:provider/provider.dart';
+import 'viewmodels/login_view_model.dart';
+import 'services/storage_service.dart';
+import 'services/auth_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // SharedPreferences'ı başlat
+  await StorageService.init();
+  
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   GoogleFonts.config.allowRuntimeFetching = false;
   runApp(const MyApp());
 }
@@ -14,65 +29,32 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: AppTheme.light(context),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-
-    return Scaffold(
-      appBar: AppBar(
-
-        backgroundColor: Theme.of(context).colorScheme.background,
-
-        title: Text(widget.title),
-      ),
-      body: Center(
-
-        child: Column(
-
-
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    final authService = AuthService();
+    
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<LoginViewModel>(create: (_) => LoginViewModel()),
+      ],
+      child: MaterialApp(
+        title: 'Arti Capital',
+        theme: AppTheme.light(context),
+        home: _getInitialRoute(authService),
+        routes: {
+          '/login': (context) => const LoginView(),
+          '/home': (context) => const HomeView(),
+        },
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
+
+  Widget _getInitialRoute(AuthService authService) {
+    // Kullanıcı giriş yapmış mı kontrol et
+    if (authService.isLoggedIn()) {
+      return const HomeView();
+    } else {
+      return const LoginView();
+    }
+  }
 }
+
