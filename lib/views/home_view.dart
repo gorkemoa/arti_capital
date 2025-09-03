@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/home_view_model.dart';
+import '../widgets/app_bottom_nav.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
@@ -17,6 +18,10 @@ class HomeView extends StatelessWidget {
           final vm = context.watch<HomeViewModel>();
           return Scaffold(
             backgroundColor: theme.colorScheme.background,
+            bottomNavigationBar: AppBottomNav(
+              currentIndex: vm.currentIndex,
+              onTap: vm.setCurrentIndex,
+            ),
             body: vm.loading
                 ? const Center(child: CircularProgressIndicator())
                 : vm.user != null
@@ -68,6 +73,8 @@ class HomeView extends StatelessWidget {
   }
 }
 
+// Bottom navigation, ortak bileşen AppBottomNav ile sağlanıyor.
+
 class _HomeContent extends StatelessWidget {
   const _HomeContent({required this.user, required this.onLogout, required this.onRefresh});
 
@@ -105,7 +112,7 @@ class _HomeContent extends StatelessWidget {
 
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: _StatsGrid(user: user),
             ),
           ),

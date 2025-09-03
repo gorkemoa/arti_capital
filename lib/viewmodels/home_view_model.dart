@@ -12,10 +12,12 @@ class HomeViewModel extends ChangeNotifier {
   User? _user;
   bool _loading = true;
   String? _errorMessage;
+  int _currentIndex = 1; // Varsayılan ana sekme
 
   User? get user => _user;
   bool get loading => _loading;
   String? get errorMessage => _errorMessage;
+  int get currentIndex => _currentIndex;
 
   HomeViewModel() {
     _loadUserData();
@@ -63,5 +65,11 @@ class HomeViewModel extends ChangeNotifier {
 
   Future<void> refresh() async {
     await _loadUserData();
+  }
+
+  void setCurrentIndex(int index) {
+    if (_currentIndex == index) return;
+    _currentIndex = index;
+    notifyListeners();
   }
 }
