@@ -1,0 +1,228 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../models/user_model.dart';
+import '../viewmodels/profile_view_model.dart';
+
+class ProfileView extends StatelessWidget {
+  const ProfileView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ChangeNotifierProvider(
+      create: (_) => ProfileViewModel(),
+      child: Builder(
+        builder: (context) {
+          final vm = context.watch<ProfileViewModel>();
+          return Scaffold(
+            backgroundColor: theme.colorScheme.background,
+            appBar: AppBar(
+              title: const Text('Profil'),
+              centerTitle: true,
+            ),
+            body: vm.loading
+                ? const Center(child: CircularProgressIndicator())
+                : vm.user != null
+                    ? _ProfileContent(
+                        user: vm.user!,
+                        onRefresh: vm.refresh,
+                        onLogout: vm.logout,
+                      )
+                    : _buildError(context, vm.errorMessage ?? 'Profil bilgileri alınamadı'),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildError(BuildContext context, String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 64,
+            color: Colors.red.withOpacity(0.7),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Colors.red,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileContent extends StatelessWidget {
+  const _ProfileContent({required this.user, required this.onRefresh, required this.onLogout});
+
+  final User user;
+  final Future<void> Function() onRefresh;
+  final Future<void> Function() onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 44,
+                  backgroundColor: colorScheme.surface,
+                  backgroundImage: (user.profilePhoto.isNotEmpty)
+                      ? NetworkImage(user.profilePhoto) as ImageProvider
+                      : null,
+                  child: user.profilePhoto.isEmpty
+                      ? Text(
+                          _initials(user.userFullname),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  user.userFullname,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  user.userEmail,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _Section(title: 'Hesap'),
+          _Tile(label: 'Kullanıcı Adı', value: user.userName, icon: Icons.account_circle_outlined),
+          _Tile(label: 'Telefon', value: user.userPhone, icon: Icons.phone_outlined),
+          _Tile(label: 'Cinsiyet', value: user.userGender, icon: Icons.wc_outlined),
+          _Tile(label: 'Rütbe', value: user.userRank, icon: Icons.verified_user_outlined),
+          const SizedBox(height: 12),
+          _Section(title: 'Uygulama'),
+          _Tile(label: 'Platform', value: user.platform.toUpperCase(), icon: Icons.devices_other_outlined),
+          _Tile(label: 'Versiyon', value: user.userVersion, icon: Icons.system_update_alt_outlined),
+          const SizedBox(height: 12),
+          _Section(title: 'Ayarlar'),
+          _ActionTile(
+            label: 'Ayarlar',
+            icon: Icons.settings_outlined,
+            onTap: () {
+              Navigator.of(context).pushNamed('/settings');
+            },
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: () async {
+              await onLogout();
+              if (context.mounted) {
+                Navigator.of(context).pushReplacementNamed('/login');
+              }
+            },
+            icon: const Icon(Icons.logout),
+            label: const Text('Çıkış Yap'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+  }
+}
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title});
+  final String title;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+class _Tile extends StatelessWidget {
+  const _Tile({required this.label, required this.value, required this.icon});
+  final String label;
+  final String value;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: subtleBorder),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+        title: Text(label, style: theme.textTheme.bodyMedium),
+        subtitle: Text(value, style: theme.textTheme.bodySmall),
+        dense: true,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({required this.label, required this.icon, this.onTap});
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: subtleBorder),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+        title: Text(label, style: theme.textTheme.bodyMedium),
+        trailing: const Icon(Icons.chevron_right),
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+

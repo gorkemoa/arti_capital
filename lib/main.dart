@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'theme/app_theme.dart';
 import 'views/login_view.dart';
 import 'views/home_view.dart';
+import 'views/profile_view.dart';
+import 'views/settings_view.dart';
+import 'views/notifications_view.dart';
 import 'package:provider/provider.dart';
 import 'viewmodels/login_view_model.dart';
 import 'services/storage_service.dart';
@@ -42,6 +45,9 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginView(),
           '/home': (context) => const HomeView(),
+          '/profile': (context) => const ProfileView(),
+          '/settings': (context) => const SettingsView(),
+          '/notifications': (context) => const NotificationsView(),
         },
         debugShowCheckedModeBanner: false,
       ),

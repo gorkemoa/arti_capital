@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../viewmodels/home_view_model.dart';
 import '../widgets/app_bottom_nav.dart';
+import 'profile_view.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
@@ -22,58 +23,71 @@ class HomeView extends StatelessWidget {
               currentIndex: vm.currentIndex,
               onTap: vm.setCurrentIndex,
             ),
-            body: vm.loading
-                ? const Center(child: CircularProgressIndicator())
-                : vm.user != null
-                    ? _HomeContent(
-                        user: vm.user!,
-                        onLogout: () async {
-                          await vm.logout();
-                          if (context.mounted) {
-                            Navigator.of(context).pushReplacementNamed('/login');
-                          }
-                        },
-                        onRefresh: vm.refresh,
-                      )
-                    : _buildError(context, vm.errorMessage ?? 'Kullanıcı bilgileri alınamadı'),
+            body: _buildIndexedBody(context, vm),
           );
         },
       ),
     );
   }
 
-  Widget _buildError(BuildContext context, String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red.withOpacity(0.7),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.red,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pushReplacementNamed('/login');
-            },
-            child: const Text('Giriş Sayfasına Dön'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // Bottom navigation, ortak bileşen AppBottomNav ile sağlanıyor.
+
+Widget _buildIndexedBody(BuildContext context, HomeViewModel vm) {
+  if (vm.currentIndex == 2) {
+    return const ProfileView();
+  }
+
+  if (vm.loading) {
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  if (vm.user != null) {
+    return _HomeContent(
+      user: vm.user!,
+      onLogout: () async {
+        await vm.logout();
+        if (context.mounted) {
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      },
+      onRefresh: vm.refresh,
+    );
+  }
+
+  return _buildError(context, vm.errorMessage ?? 'Kullanıcı bilgileri alınamadı');
+}
+
+Widget _buildError(BuildContext context, String message) {
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.error_outline,
+          size: 64,
+          color: Colors.red.withOpacity(0.7),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          message,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: Colors.red,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).pushReplacementNamed('/login');
+          },
+          child: const Text('Giriş Sayfasına Dön'),
+        ),
+      ],
+    ),
+  );
+}
 
 class _HomeContent extends StatelessWidget {
   const _HomeContent({required this.user, required this.onLogout, required this.onRefresh});
@@ -95,7 +109,12 @@ class _HomeContent extends StatelessWidget {
             expandedHeight: 210,
             backgroundColor: colorScheme.primary,
             foregroundColor: colorScheme.onPrimary,
-            leading: IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none)),
+            leading: IconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/notifications');
+              },
+              icon: const Icon(Icons.notifications_none),
+            ),
             actions: [
               IconButton(onPressed: () {}, icon: const Icon(Icons.chat_bubble_outline)),
               IconButton(onPressed: onLogout, icon: const Icon(Icons.logout)),
