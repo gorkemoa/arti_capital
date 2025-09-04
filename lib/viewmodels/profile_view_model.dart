@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
+import '../models/user_request_models.dart';
 
 class ProfileViewModel extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -47,6 +48,40 @@ class ProfileViewModel extends ChangeNotifier {
 
   Future<void> logout() async {
     await _authService.logout();
+  }
+
+  Future<UpdateUserResponse> updateUserProfile({
+    required String userFullname,
+    required String userEmail,
+    required String userBirthday,
+    required String userAddress,
+    required String userPhone,
+    required String userGender,
+    String profilePhoto = '',
+  }) async {
+    if (_user == null) {
+      return UpdateUserResponse(error: true, success: false, errorMessage: 'Kullanıcı bulunamadı');
+    }
+
+    final req = UpdateUserRequest(
+      userToken: _user!.userToken,
+      userFullname: userFullname,
+      userEmail: userEmail,
+      userBirthday: userBirthday,
+      userAddress: userAddress,
+      userPhone: userPhone,
+      userGender: userGender,
+      profilePhoto: profilePhoto,
+    );
+
+    final resp = await _userService.updateUser(req);
+    if (resp.success) {
+      await _load();
+    } else if (resp.errorMessage != null) {
+      _errorMessage = resp.errorMessage;
+      notifyListeners();
+    }
+    return resp;
   }
 }
 

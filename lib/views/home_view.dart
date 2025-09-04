@@ -262,7 +262,7 @@ class _CollapsingTitle extends StatelessWidget {
         // 56 px civarı çökük durum, 200+ px genişlemiş durum varsayımıyla normalize edelim.
         final t = (1 - ((maxExtent - 56) / (210 - 90))).clamp(0.0, 1.0);
         // Tam beyaz için ara saydamlıklar yerine ikili görünürlük kullan.
-        final opacity = t > 0.5 ? 1.0 : 0.0;
+        final opacity = t > 0.6 ? 1.0 : 0.0;
         return Opacity(
           opacity: opacity,
           child: Text(

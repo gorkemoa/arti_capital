@@ -47,4 +47,60 @@ class GetUserResponse {
 }
 
 
+class UpdateUserRequest {
+  final String userToken;
+  final String userFullname;
+  final String userEmail;
+  final String userBirthday;
+  final String userAddress;
+  final String userPhone;
+  final String userGender;
+  final String profilePhoto;
+
+  UpdateUserRequest({
+    required this.userToken,
+    required this.userFullname,
+    required this.userEmail,
+    required this.userBirthday,
+    required this.userAddress,
+    required this.userPhone,
+    required this.userGender,
+    required this.profilePhoto,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+        'userFullname': userFullname,
+        'userEmail': userEmail,
+        'userBirthday': userBirthday,
+        'userAddress': userAddress,
+        'userPhone': userPhone,
+        'userGender': userGender,
+        'profilePhoto': profilePhoto,
+      };
+}
+
+class UpdateUserResponse {
+  final bool error;
+  final bool success;
+  final String? errorMessage;
+  final int? statusCode;
+
+  UpdateUserResponse({
+    required this.error,
+    required this.success,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory UpdateUserResponse.fromJson(Map<String, dynamic> json, int? code) {
+    return UpdateUserResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
 

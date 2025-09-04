@@ -8,6 +8,7 @@ class AppConstants {
   static const String login = '/service/auth/login';
   static const String getUser = '/service/user/id';
   static const String getNotifications = '/service/user/account/3/natifications';
+  static const String updateUser = '/service/user/update/3';
 
   // Basic Auth credentials
   static const String basicUsername = 'Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM';
@@ -16,6 +17,7 @@ class AppConstants {
   static String get loginUrl => baseUrl + login;
   static String get getUserUrl => baseUrl + getUser;
   static String get getNotificationsUrl => baseUrl + getNotifications;
+  static String get updateUserUrl => baseUrl + updateUser;
 }
 
 

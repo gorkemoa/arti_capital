@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/user_model.dart';
 import '../viewmodels/profile_view_model.dart';
+import 'profile_edit_view.dart';
 
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
@@ -18,8 +19,27 @@ class ProfileView extends StatelessWidget {
           return Scaffold(
             backgroundColor: theme.colorScheme.background,
             appBar: AppBar(
+              backgroundColor: theme.colorScheme.primary,
               title: const Text('Profil'),
               centerTitle: true,
+              actions: [
+                if (!vm.loading && vm.user != null)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    color: theme.colorScheme.surface,
+                    tooltip: 'Düzenle',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ChangeNotifierProvider.value(
+                            value: vm,
+                            child: const ProfileEditView(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+              ],
             ),
             body: vm.loading
                 ? const Center(child: CircularProgressIndicator())
@@ -59,6 +79,8 @@ class ProfileView extends StatelessWidget {
     );
   }
 }
+
+// Düzenleme alt sayfası ayrı bir ekrana taşındı: see `ProfileEditView`
 
 class _ProfileContent extends StatelessWidget {
   const _ProfileContent({required this.user, required this.onRefresh, required this.onLogout});

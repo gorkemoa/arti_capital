@@ -5,6 +5,7 @@ import 'theme/app_theme.dart';
 import 'views/login_view.dart';
 import 'views/home_view.dart';
 import 'views/profile_view.dart';
+import 'views/profile_edit_view.dart';
 import 'views/settings_view.dart';
 import 'views/notifications_view.dart';
 import 'package:provider/provider.dart';
@@ -46,6 +47,7 @@ class MyApp extends StatelessWidget {
           '/login': (context) => const LoginView(),
           '/home': (context) => const HomeView(),
           '/profile': (context) => const ProfileView(),
+          '/profile/edit': (context) => const ProfileEditView(),
           '/settings': (context) => const SettingsView(),
           '/notifications': (context) => const NotificationsView(),
         },
