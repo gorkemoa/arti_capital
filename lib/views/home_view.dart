@@ -117,8 +117,7 @@ class _HomeContent extends StatelessWidget {
             ),
             actions: [
               IconButton(onPressed: () {}, icon: const Icon(Icons.chat_bubble_outline)),
-              IconButton(onPressed: onLogout, icon: const Icon(Icons.logout)),
-
+ 
             ],
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsetsDirectional.only(bottom: 20),

@@ -21,7 +21,9 @@ class SettingsView extends StatelessWidget {
             icon: Icons.notifications_outlined,
             label: 'Bildirimler',
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushNamed(context, '/notifications');
+            },
           ),
           _Divider(subtleBorder: subtleBorder),
           _NavTile(
@@ -59,6 +61,7 @@ class SettingsView extends StatelessWidget {
             ),
             onTap: () {},
           ),
+          _Divider(subtleBorder: subtleBorder),
         ],
       ),
     );

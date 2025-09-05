@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 
 import 'logger.dart';
-
 import 'app_constants.dart';
+import 'storage_service.dart';
 
 class ApiClient {
   ApiClient._();
@@ -41,6 +42,12 @@ class ApiClient {
           },
           onError: (DioException e, handler) {
             AppLogger.e('${e.response?.statusCode} ${e.requestOptions.uri}', tag: 'ERR');
+            
+            // 403 hatası durumunda kullanıcıyı login sayfasına yönlendir
+            if (e.response?.statusCode == 403) {
+              _handle403Error();
+            }
+            
             handler.next(e);
           },
         ),
@@ -53,6 +60,28 @@ class ApiClient {
     final encoded = base64Encode(utf8.encode(raw));
     return 'Basic $encoded';
   }
+
+  static void _handle403Error() async {
+    try {
+      AppLogger.i('403 hatası tespit edildi - kullanıcı başka yerde oturum açmış', tag: 'AUTH');
+      
+      // Kullanıcı verilerini temizle
+      await StorageService.clearUserData();
+      
+      // Login sayfasına yönlendir
+      final context = _navigatorKey.currentContext;
+      if (context != null) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    } catch (e) {
+      AppLogger.e('403 hata yönetimi sırasında hata: $e', tag: 'AUTH');
+    }
+  }
+
+  // Global navigator key - main.dart'ta tanımlanacak
+  static final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  
+  static GlobalKey<NavigatorState> get navigatorKey => _navigatorKey;
 
   static Future<Response<T>> postJson<T>(
     String path, {
@@ -97,6 +126,36 @@ class ApiClient {
         path,
         queryParameters: query,
         data: data,
+      );
+      return resp;
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final status = e.response?.statusCode;
+        final body = e.response?.data;
+        String? msg;
+        if (status == 417 && body is Map<String, dynamic>) {
+          // Backend'in gönderdiği error_message'ı çıkar
+          msg = body['error_message'] as String?;
+        }
+        throw ApiException(
+          statusCode: status,
+          data: body,
+          message: msg ?? e.message,
+        );
+      }
+      throw ApiException(message: e.message);
+    }
+  }
+
+  static Future<Response<T>> getJson<T>(
+    String path, {
+    Map<String, dynamic>? query,
+  }) async {
+    try {
+      initInterceptors();
+      final resp = await _dio.get<T>(
+        path,
+        queryParameters: query,
       );
       return resp;
     } on DioException catch (e) {

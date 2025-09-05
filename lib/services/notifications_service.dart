@@ -1,4 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../models/notification_models.dart';
 import 'api_client.dart';
@@ -7,6 +11,182 @@ import 'logger.dart';
 import 'storage_service.dart';
 
 class NotificationsService {
+  static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static String? _fcmToken;
+
+
+  // FCM Token'ı al
+  static Future<String?> getFCMToken() async {
+    try {
+      _fcmToken = await _firebaseMessaging.getToken();
+      return _fcmToken;
+    } catch (e) {
+      AppLogger.e('FCM Token alınamadı: $e', tag: 'FCM_TOKEN');
+      return null;
+    }
+  }
+
+  // Push bildirim izinlerini iste
+  static Future<bool> requestPermission() async {
+    try {
+      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      AppLogger.i('Bildirim izni durumu: ${settings.authorizationStatus}', tag: 'FCM_PERMISSION');
+      
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+             settings.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (e) {
+      AppLogger.e('Bildirim izni alınamadı: $e', tag: 'FCM_PERMISSION');
+      return false;
+    }
+  }
+
+  // FCM token'ı sunucuya gönder
+  static Future<bool> sendTokenToServer() async {
+    try {
+      final token = await getFCMToken();
+      if (token == null) {
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Foreground mesajlarını dinle
+  static void setupForegroundMessageHandler() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      // Custom bildirim göster
+      _showLocalNotification(message);
+    });
+  }
+
+  // Background mesajlarını dinle
+  static Future<void> setupBackgroundMessageHandler() async {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  // Background mesaj handler'ı
+  static Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+    // Background mesaj işleme
+  }
+
+  // Local notifications'ı başlat
+  static Future<void> _initializeLocalNotifications() async {
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+    
+    await _localNotifications.initialize(initSettings);
+    
+    // Android için bildirim kanalı oluştur
+    if (Platform.isAndroid) {
+      const androidChannel = AndroidNotificationChannel(
+        'high_importance_channel',
+        'High Importance Notifications',
+        description: 'This channel is used for important notifications.',
+        importance: Importance.high,
+      );
+      
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(androidChannel);
+    }
+  }
+
+  // Local bildirim göster
+  static Future<void> _showLocalNotification(RemoteMessage message) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'high_importance_channel',
+        'High Importance Notifications',
+        channelDescription: 'This channel is used for important notifications.',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      );
+      
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      
+      const notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+      
+      await _localNotifications.show(
+        message.hashCode,
+        message.notification?.title ?? 'Bildirim',
+        message.notification?.body ?? 'Yeni mesaj',
+        notificationDetails,
+      );
+    } catch (e) {
+      // Sessizce hata yönetimi
+    }
+  }
+
+  // Token yenileme dinleyicisi
+  static void setupTokenRefreshListener() {
+    _firebaseMessaging.onTokenRefresh.listen((String token) {
+      _fcmToken = token;
+      sendTokenToServer();
+    });
+  }
+
+  // Bildirim tıklama dinleyicisi
+  static void setupNotificationTapHandler() {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      // Bildirime tıklandığında yapılacak işlemler
+    });
+  }
+
+  // Tüm FCM servislerini başlat
+  static Future<void> initialize() async {
+    try {
+      // Local notifications'ı başlat
+      await _initializeLocalNotifications();
+      
+      // İzinleri iste
+      await requestPermission();
+      
+      // Token'ı al
+      await getFCMToken();
+      
+      // Token'ı sunucuya gönder
+      await sendTokenToServer();
+      
+      // Dinleyicileri kur
+      setupForegroundMessageHandler();
+      setupBackgroundMessageHandler();
+      setupTokenRefreshListener();
+      setupNotificationTapHandler();
+    } catch (e) {
+      // Sessizce hata yönetimi
+    }
+  }
+
   Future<GetNotificationsResponse> getNotifications() async {
     try {
       final token = StorageService.getToken();
@@ -79,5 +259,3 @@ class NotificationsService {
     }
   }
 }
-
-

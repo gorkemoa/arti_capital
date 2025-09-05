@@ -45,7 +45,22 @@
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
-		<key>UIStatusBarHidden</key>
-		<false/>
-	</dict>
+			<key>UIStatusBarHidden</key>
+	<false/>
+	
+	<!-- Push Notifications için gerekli izinler -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>background-processing</string>
+	</array>
+	
+	<!-- Firebase Cloud Messaging için gerekli ayarlar -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	
+	<!-- Bildirim izinleri -->
+	<key>NSUserNotificationAlertStyle</key>
+	<string>alert</string>
+</dict>
 </plist>

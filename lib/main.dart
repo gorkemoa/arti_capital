@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'theme/app_theme.dart';
 import 'views/login_view.dart';
@@ -12,12 +13,23 @@ import 'package:provider/provider.dart';
 import 'viewmodels/login_view_model.dart';
 import 'services/storage_service.dart';
 import 'services/auth_service.dart';
+import 'services/notifications_service.dart';
+import 'services/api_client.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // SharedPreferences'ı başlat
   await StorageService.init();
+  
+  // Firebase'i başlat
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // FCM servislerini başlat
+  await NotificationsService.initialize();
   
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -42,6 +54,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Arti Capital',
         theme: AppTheme.light(context),
+        navigatorKey: ApiClient.navigatorKey,
         home: _getInitialRoute(authService),
         routes: {
           '/login': (context) => const LoginView(),
