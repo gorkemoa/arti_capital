@@ -7,8 +7,12 @@ class AppConstants {
   // Endpoints
   static const String login = '/service/auth/login';
   static const String getUser = '/service/user/id';
-  static const String getNotifications = '/service/user/account/3/natifications';
-  static const String updateUser = '/service/user/update/3';
+  static const String getNotificationsBase = '/service/user/account';
+  static const String updateUserBase = '/service/user/update';
+  
+  // Dinamik endpoint oluşturucular (userId tabanlı)
+  static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/natifications';
+  static String updateUserFor(int userId) => '$updateUserBase/$userId';
   
 
   // Basic Auth credentials
@@ -17,8 +21,8 @@ class AppConstants {
 
   static String get loginUrl => baseUrl + login;
   static String get getUserUrl => baseUrl + getUser;
-  static String get getNotificationsUrl => baseUrl + getNotifications;
-  static String get updateUserUrl => baseUrl + updateUser;
+  static String get getNotificationsUrl => baseUrl + getNotificationsBase;
+  static String get updateUserUrl => baseUrl + updateUserBase;
 }
 
 

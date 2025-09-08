@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'profile_view.dart';
+import 'panel_view.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
@@ -35,6 +36,12 @@ class HomeView extends StatelessWidget {
 // Bottom navigation, ortak bileşen AppBottomNav ile sağlanıyor.
 
 Widget _buildIndexedBody(BuildContext context, HomeViewModel vm) {
+  if (vm.currentIndex == 0) {
+    final userName = vm.user?.userFullname.isNotEmpty == true
+        ? vm.user!.userFullname
+        : (vm.user?.userName.isNotEmpty == true ? vm.user!.userName : 'Kullanıcı');
+    return PanelView(userName: userName);
+  }
   if (vm.currentIndex == 2) {
     return const ProfileView();
   }

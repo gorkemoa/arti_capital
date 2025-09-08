@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/notification_models.dart';
 import 'api_client.dart';
@@ -20,6 +21,9 @@ class NotificationsService {
   static Future<String?> getFCMToken() async {
     try {
       _fcmToken = await _firebaseMessaging.getToken();
+      if (kDebugMode && _fcmToken != null) {
+        AppLogger.i('FCM Token: $_fcmToken', tag: 'FCM_TOKEN');
+      }
       return _fcmToken;
     } catch (e) {
       AppLogger.e('FCM Token alınamadı: $e', tag: 'FCM_TOKEN');
@@ -151,6 +155,9 @@ class NotificationsService {
   static void setupTokenRefreshListener() {
     _firebaseMessaging.onTokenRefresh.listen((String token) {
       _fcmToken = token;
+      if (kDebugMode) {
+        AppLogger.i('FCM Token yenilendi: $token', tag: 'FCM_TOKEN');
+      }
       sendTokenToServer();
     });
   }
@@ -201,11 +208,23 @@ class NotificationsService {
 
       final req = { 'userToken': token };
 
-      AppLogger.i('PUT ${AppConstants.getNotifications}', tag: 'GET_NOTIFS');
+      final userId = StorageService.getUserId();
+      if (userId == null) {
+        return GetNotificationsResponse(
+          error: true,
+          success: false,
+          notifications: const [],
+          errorMessage: 'Kullanıcı ID bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.getNotificationsFor(userId);
+
+      AppLogger.i('PUT $endpoint', tag: 'GET_NOTIFS');
       AppLogger.i(req.toString(), tag: 'GET_NOTIFS_REQ');
 
       final resp = await ApiClient.putJson(
-        AppConstants.getNotifications,
+        endpoint,
         data: req,
       );
 

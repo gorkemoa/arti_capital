@@ -118,11 +118,22 @@ class UserService {
 
   Future<UpdateUserResponse> updateUser(UpdateUserRequest request) async {
     try {
-      AppLogger.i('PUT ${AppConstants.updateUser}', tag: 'UPDATE_USER');
+      final userId = StorageService.getUserId();
+      if (userId == null) {
+        return UpdateUserResponse(
+          error: true,
+          success: false,
+          errorMessage: 'Kullanıcı ID bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.updateUserFor(userId);
+
+      AppLogger.i('PUT $endpoint', tag: 'UPDATE_USER');
       AppLogger.i(request.toJson().toString(), tag: 'UPDATE_USER_REQ');
 
       final resp = await ApiClient.putJson(
-        AppConstants.updateUser,
+        endpoint,
         data: request.toJson(),
       );
 
