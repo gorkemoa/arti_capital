@@ -48,11 +48,22 @@
 			<key>UIStatusBarHidden</key>
 	<false/>
 	
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ShareMedia-$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			</array>
+		</dict>
+	</array>
+	
 	<!-- Push Notifications için gerekli izinler -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-		<string>background-processing</string>
 	</array>
 	
 	<!-- Firebase Cloud Messaging için gerekli ayarlar -->
@@ -62,5 +73,11 @@
 	<!-- Bildirim izinleri -->
 	<key>NSUserNotificationAlertStyle</key>
 	<string>alert</string>
+
+	<!-- Fotoğraf kitaplığı izin açıklamaları -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Medya paylaşımı için fotoğraflarınıza erişime ihtiyaç duyuyoruz.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Paylaşılan medya dosyalarını fotoğraf arşivinize kaydedebilmek için gerekli.</string>
 </dict>
 </plist>

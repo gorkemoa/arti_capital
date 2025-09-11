@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import Firebase
 import FirebaseMessaging
+import Foundation
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -44,7 +45,36 @@ import FirebaseMessaging
     }
     
     GeneratedPluginRegistrant.register(with: self)
+    // MethodChannel: App Group UserDefaults yazma
+    if let controller = window?.rootViewController as? FlutterViewController {
+      let channel = FlutterMethodChannel(name: "app_group_prefs", binaryMessenger: controller.binaryMessenger)
+      channel.setMethodCallHandler { call, result in
+        if call.method == "setString" {
+          guard let args = call.arguments as? [String: Any],
+                let group = args["group"] as? String,
+                let key = args["key"] as? String,
+                let value = args["value"] as? String,
+                let ud = UserDefaults(suiteName: group) else {
+            result(FlutterError(code: "ARG_ERROR", message: "Eksik argüman", details: nil))
+            return
+          }
+          ud.set(value, forKey: key)
+          ud.synchronize()
+          result(true)
+        } else {
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+}
+
+// MARK: - MethodChannel for App Group writes
+extension AppDelegate {
+  override func application(_ application: UIApplication,
+                            didRegister notificationSettings: UIUserNotificationSettings) {
+    // no-op
   }
 }
 

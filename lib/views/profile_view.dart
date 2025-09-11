@@ -23,6 +23,14 @@ class ProfileView extends StatelessWidget {
               title: const Text('Profil'),
               centerTitle: true,
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined),
+                  color: theme.colorScheme.surface,
+                  tooltip: 'Ayarlar',
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/settings');
+                  },
+                ),
                 if (!vm.loading && vm.user != null)
                   IconButton(
                     icon: const Icon(Icons.edit_outlined),
@@ -144,14 +152,6 @@ class _ProfileContent extends StatelessWidget {
           _Tile(label: 'Platform', value: user.platform.toUpperCase(), icon: Icons.devices_other_outlined),
           _Tile(label: 'Versiyon', value: user.userVersion, icon: Icons.system_update_alt_outlined),
           const SizedBox(height: 12),
-          _Section(title: 'Ayarlar'),
-          _ActionTile(
-            label: 'Ayarlar',
-            icon: Icons.settings_outlined,
-            onTap: () {
-              Navigator.of(context).pushNamed('/settings');
-            },
-          ),
           const SizedBox(height: 24),
           OutlinedButton.icon(
             onPressed: () async {
@@ -219,32 +219,6 @@ class _Tile extends StatelessWidget {
   }
 }
 
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({required this.label, required this.icon, this.onTap});
-  final String label;
-  final IconData icon;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: subtleBorder),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.7)),
-        title: Text(label, style: theme.textTheme.bodyMedium),
-        trailing: const Icon(Icons.chevron_right),
-        dense: true,
-        visualDensity: VisualDensity.compact,
-        onTap: onTap,
-      ),
-    );
-  }
-}
+ 
 
 

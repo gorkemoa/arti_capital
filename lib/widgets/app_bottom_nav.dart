@@ -13,12 +13,14 @@ class AppBottomNav extends StatelessWidget {
     return CircleNavBar(
       activeIcons: const [
         Icon(Icons.dashboard, color: Colors.white),
-        Icon(Icons.home, color: Colors.white),
+        Icon(Icons.assignment, color: Colors.white),
+        Icon(Icons.assessment, color: Colors.white),
         Icon(Icons.person, color: Colors.white),
       ],
       inactiveIcons: const [
         _NavLabel(icon: Icons.dashboard_outlined, label: 'Panel'),
-        _NavLabel(icon: Icons.home_outlined, label: 'Ana Sayfa'),
+        _NavLabel(icon: Icons.assignment_outlined, label: 'Talepler'),
+        _NavLabel(icon: Icons.assessment, label: 'Destekler'),
         _NavLabel(icon: Icons.person_outline, label: 'Profil'),
       ],
       height: 76,

@@ -43,8 +43,8 @@ class ApiClient {
           onError: (DioException e, handler) {
             AppLogger.e('${e.response?.statusCode} ${e.requestOptions.uri}', tag: 'ERR');
             
-            // 403 hatası durumunda kullanıcıyı login sayfasına yönlendir
-            if (e.response?.statusCode == 403) {
+            // 401/403 hatası durumunda kullanıcıyı login sayfasına yönlendir
+            if (e.response?.statusCode == 403 || e.response?.statusCode == 401) {
               _handle403Error();
             }
             
@@ -61,19 +61,48 @@ class ApiClient {
     return 'Basic $encoded';
   }
 
+  static bool _isHandling403 = false;
+
   static void _handle403Error() async {
+    if (_isHandling403) return;
+    _isHandling403 = true;
     try {
       AppLogger.i('403 hatası tespit edildi - kullanıcı başka yerde oturum açmış', tag: 'AUTH');
-      
+
       // Kullanıcı verilerini temizle
       await StorageService.clearUserData();
-      
-      // Login sayfasına yönlendir
-      final context = _navigatorKey.currentContext;
-      if (context != null) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+
+      // Login sayfasına güvenli yönlendirme (currentState ile ve frame sonrasında)
+      final navState = _navigatorKey.currentState;
+      if (navState != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            navState.pushNamedAndRemoveUntil('/login', (route) => false);
+          } catch (e) {
+            AppLogger.e('403 yönlendirme hatası: $e', tag: 'AUTH');
+          } finally {
+            _isHandling403 = false;
+          }
+        });
+      } else {
+        // Yine de dene (ör. app henüz init aşamasında değilse kısa gecikmeyle tekrar dene)
+        Future.delayed(const Duration(milliseconds: 100), () {
+          final retryState = _navigatorKey.currentState;
+          if (retryState != null) {
+            try {
+              retryState.pushNamedAndRemoveUntil('/login', (route) => false);
+            } catch (e) {
+              AppLogger.e('403 yönlendirme (retry) hatası: $e', tag: 'AUTH');
+            } finally {
+              _isHandling403 = false;
+            }
+          } else {
+            _isHandling403 = false;
+          }
+        });
       }
     } catch (e) {
+      _isHandling403 = false;
       AppLogger.e('403 hata yönetimi sırasında hata: $e', tag: 'AUTH');
     }
   }
@@ -85,7 +114,7 @@ class ApiClient {
 
   static Future<Response<T>> postJson<T>(
     String path, {
-    Map<String, dynamic>? data,
+    dynamic data,
     Map<String, dynamic>? query,
   }) async {
     try {

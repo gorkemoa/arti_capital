@@ -12,7 +12,7 @@ class HomeViewModel extends ChangeNotifier {
   User? _user;
   bool _loading = true;
   String? _errorMessage;
-  int _currentIndex = 1; // Varsayılan ana sekme
+  int _currentIndex = 0; // Varsayılan: Panel
 
   User? get user => _user;
   bool get loading => _loading;

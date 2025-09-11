@@ -100,6 +100,16 @@ class UserService {
       return getUserResponse;
     } on ApiException catch (e) {
       AppLogger.e('Get user error ${e.statusCode} ${e.message}', tag: 'GET_USER');
+      // Yedek güvenlik: 401/403 geldiğinde oturumu temizleyip login'e yönlendir
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await StorageService.clearUserData();
+        final nav = ApiClient.navigatorKey.currentState;
+        if (nav != null) {
+          try {
+            nav.pushNamedAndRemoveUntil('/login', (route) => false);
+          } catch (_) {}
+        }
+      }
       return GetUserResponse(
         error: true,
         success: false,

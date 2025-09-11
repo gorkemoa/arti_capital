@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'contact_view.dart';
 
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
@@ -12,6 +13,9 @@ class SettingsView extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Ayarlar'),
         centerTitle: true,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        iconTheme: IconThemeData(color: theme.colorScheme.onPrimary),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -31,6 +35,17 @@ class SettingsView extends StatelessWidget {
             label: 'Dil',
             trailing: const Icon(Icons.chevron_right),
             onTap: () {},
+          ),
+          _Divider(subtleBorder: subtleBorder),
+          _NavTile(
+            icon: Icons.support_agent_outlined,
+            label: 'Bize Ulaşın',
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ContactView()),
+              );
+            },
           ),
           const SizedBox(height: 16),
           _Section(title: 'Gizlilik ve Güvenlik'),

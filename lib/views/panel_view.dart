@@ -1,4 +1,7 @@
+import 'package:arti_capital/views/support_view.dart';
 import 'package:flutter/material.dart';
+import 'package:arti_capital/views/requests_view.dart';
+import 'package:arti_capital/views/messages_view.dart';
 
 class PanelView extends StatelessWidget {
   const PanelView({super.key, required this.userName});
@@ -31,17 +34,7 @@ class PanelView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ProfileStatusCard(
-              message: 'Profilinizde eksik bilgiler var. Lütfen tamamlayın.',
-              onComplete: () {
-                Navigator.of(context).pushNamed('/profile');
-              },
-            ),
-            const SizedBox(height: 12),
-            _AnnouncementCard(
-              title: 'Güncelleme yayınlandı',
-              description: 'Uygulamanın yeni sürümü şimdi App Store/Play Store’da!',
-            ),
+           
             const SizedBox(height: 16),
             Text('Hızlı İstatistikler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
@@ -56,9 +49,24 @@ class PanelView extends StatelessWidget {
             const SizedBox(height: 12),
             _QuickActions(
               actions: [
-                _QuickAction(icon: Icons.add_circle_outline, label: 'Yeni Oluştur', routeTitle: 'Yeni Kayıt'),
-                _QuickAction(icon: Icons.assignment_outlined, label: 'Taleplerim', routeTitle: 'Taleplerim'),
-                _QuickAction(icon: Icons.chat_bubble_outline, label: 'Mesajlar', routeTitle: 'Mesajlar'),
+                _QuickAction(
+                  icon: Icons.add_circle_outline,
+                  label: 'Yeni Oluştur',
+                  routeTitle: 'Yeni Kayıt',
+                  builder: (context) => const SupportView(),
+                ),
+                _QuickAction(
+                  icon: Icons.assignment_outlined,
+                  label: 'Taleplerim',
+                  routeTitle: 'Taleplerim',
+                  builder: (context) => const RequestsView(),
+                ),
+                _QuickAction(
+                  icon: Icons.chat_bubble_outline,
+                  label: 'Mesajlar',
+                  routeTitle: 'Mesajlar',
+                  builder: (context) => const MessagesView(),
+                ),
                 _QuickAction(icon: Icons.insights_outlined, label: 'Raporlar', routeTitle: 'Raporlar'),
               ],
             ),
@@ -127,10 +135,16 @@ class _PanelAppBarTitle extends StatelessWidget {
   }
 
   String _initials(String name) {
-    final parts = name.trim().split(' ');
+    final cleaned = name.trim();
+    if (cleaned.isEmpty) return '?';
+    final parts = cleaned.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts.first.substring(0, 1) + parts.last.substring(0, 1)).toUpperCase();
+
+    String pick(String s) => s.isNotEmpty ? s.substring(0, 1) : '';
+    final first = pick(parts.first);
+    final last = parts.length > 1 ? pick(parts.last) : '';
+    final initials = (first + last).toUpperCase();
+    return initials.isNotEmpty ? initials : '?';
   }
 }
 
@@ -142,83 +156,7 @@ String _greetingForNow() {
   return 'İyi akşamlar';
 }
 
-class _ProfileStatusCard extends StatelessWidget {
-  const _ProfileStatusCard({required this.message, required this.onComplete});
-  final String message;
-  final VoidCallback onComplete;
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: subtleBorder),
-        boxShadow: [
-          BoxShadow(color: theme.shadowColor.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(message, style: theme.textTheme.bodyMedium),
-          ),
-          const SizedBox(width: 12),
-          OutlinedButton(
-            onPressed: onComplete,
-            child: const Text('Tamamla'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AnnouncementCard extends StatelessWidget {
-  const _AnnouncementCard({required this.title, required this.description});
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: subtleBorder),
-        boxShadow: [
-          BoxShadow(color: theme.shadowColor.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.campaign_outlined, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Text(description, style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid({required this.cards});
@@ -322,7 +260,11 @@ class _QuickActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => _EmptyPage(title: action.routeTitle)),
+            MaterialPageRoute(
+              builder: (_) => action.builder != null
+                  ? action.builder!(context)
+                  : _EmptyPage(title: action.routeTitle),
+            ),
           );
         },
         child: Padding(
@@ -355,10 +297,11 @@ class _QuickActionButton extends StatelessWidget {
 }
 
 class _QuickAction {
-  const _QuickAction({required this.icon, required this.label, required this.routeTitle});
+  const _QuickAction({required this.icon, required this.label, required this.routeTitle, this.builder});
   final IconData icon;
   final String label;
   final String routeTitle;
+  final WidgetBuilder? builder;
 }
 
 class _RecentActivities extends StatelessWidget {
