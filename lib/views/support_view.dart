@@ -1,6 +1,9 @@
 import 'package:arti_capital/views/support_detail_view.dart';
 import 'package:flutter/material.dart';
 
+// Uygulama genelinde erişilebilir destek kategorileri
+const List<String> kSupportCategories = ['Tümü', 'Ar-Ge', 'Ür-Ge', 'İstihdam', 'İhracat'];
+
 class SupportView extends StatefulWidget {
   const SupportView({super.key});
 
@@ -11,7 +14,7 @@ class SupportView extends StatefulWidget {
 class _SupportViewState extends State<SupportView> with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _tabs = const ['Tümü', 'Ar-Ge', 'Ür-Ge', 'İstihdam', 'İhracat'];
+  final List<String> _tabs = kSupportCategories;
 
   late final List<_GrantItem> _grants = <_GrantItem>[
     const _GrantItem(

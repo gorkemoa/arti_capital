@@ -7,6 +7,7 @@ import 'api_client.dart';
 import 'app_constants.dart';
 import 'logger.dart';
 import 'storage_service.dart';
+import 'app_group_service.dart';
 
 class UserService {
   Future<GetUserResponse> getUser() async {
@@ -95,6 +96,22 @@ class UserService {
       // Kullanıcı bilgileri başarılı ise kaydet
       if (getUserResponse.success && getUserResponse.user != null) {
         await StorageService.saveUserData(getUserResponse.user!.toJson().toString());
+        
+        // App Group'a kullanıcı bilgilerini kaydet
+        await AppGroupService.setLoggedInUserName(getUserResponse.user!.userFullname);
+        await AppGroupService.setUserRank(getUserResponse.user!.userRank);
+        
+        // Rank 50 ise mock firma listesi kaydet
+        if (getUserResponse.user!.userRank == '50') {
+          final mockCompanies = [
+            'Office701 A.Ş.',
+            'Öztürk Holding',
+            'GÖRKEM YAZILIM',
+            'Arti Capital A.Ş.',
+            'Demo Teknoloji'
+          ];
+          await AppGroupService.setCompanies(mockCompanies);
+        }
       }
       
       return getUserResponse;

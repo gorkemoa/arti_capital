@@ -11,6 +11,7 @@ import 'views/settings_view.dart';
 import 'views/notifications_view.dart';
 import 'views/requests_view.dart';
 import 'views/support_view.dart';
+import 'views/support_detail_view.dart';
 import 'widgets/app_bottom_nav.dart';
 import 'package:provider/provider.dart';
 import 'viewmodels/login_view_model.dart';
@@ -103,16 +104,47 @@ class _ShareIntentGate extends StatefulWidget {
 class _ShareIntentGateState extends State<_ShareIntentGate> {
   StreamSubscription<List<SharedMediaFile>>? _mediaStreamSub;
   bool _checkedInitial = false;
+  bool _handledShare = false;
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        _checkedInitial = true;
-      });
+      _maybeHandleSharePayload();
     });
+  }
+  Future<void> _maybeHandleSharePayload() async {
+    if (_handledShare) {
+      setState(() { _checkedInitial = true; });
+      return;
+    }
+    final payload = await AppGroupService.readSharePayload();
+    setState(() { _checkedInitial = true; });
+    if (!mounted) return;
+    if (payload == null) return;
+
+    final String? mode = payload['mode'] as String?; // 'project' | 'message'
+    final String? folder = payload['folder'] as String?; // Proje türü
+    final String? text = payload['text'] as String?; // not (ileride gösterim için saklı)
+
+    // Proje modundaysa SupportDetailView'a yönlendir
+    if (mode == 'project') {
+      // Support kategorileri içinden eşleştir; yoksa 'Tümü'
+      final String category = (folder != null && kSupportCategories.contains(folder)) ? folder : 'Tümü';
+      _handledShare = true;
+      await AppGroupService.clearSharePayload();
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SupportDetailView(title: category),
+          settings: const RouteSettings(name: '/support/detail-from-share'),
+        ),
+      );
+
+      // İsteğe bağlı: notu clipboard'a al veya snack olarak gösterilebilir
+      return;
+    }
   }
 
 

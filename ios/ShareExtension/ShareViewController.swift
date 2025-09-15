@@ -9,16 +9,56 @@ import UIKit
 import Social
 import MobileCoreServices
 import UniformTypeIdentifiers
+import ObjectiveC
 
 final class ShareViewController: UIViewController {
     
     private let appGroupId = "group.com.office701.articapital" // App Group
     private let userDefaultsKey = "ShareMedia" // receive_sharing_intent key
+    private let mockAccounts: [String] = [
+        "Office701 A.Ş.",
+        "Öztürk Holding",
+        "GÖRKEM YAZILIM",
+        "Arti Capital A.Ş.",
+        "Demo Teknoloji",
+        "Anadolu Yazılım",
+        "Mavi Deniz Lojistik",
+        "Kuzey Enerji",
+        "Ege Gıda Sanayi",
+        "Beta Finans"
+    ]
+    private let mockProjects: [String] = [
+        "Tümü",
+        "Ar-Ge",
+        "Ür-Ge",
+        "İstihdam",
+        "İhracat"
+    ]
+    private let mockDocumentTypes: [String] = [
+        "Vergi Levhası",
+        "Faaliyet Belgesi",
+        "İmza Sirküleri",
+        "Ticaret Sicil Gazetesi",
+        "Banka Dekontu",
+        "Sözleşme",
+        "Fatura",
+        "İrsaliye",
+        "Teklif/Form",
+        "Proje Başvuru Formu",
+        "Destek Karar Yazısı",
+        "Taahhütname",
+        "Kimlik Fotokopisi",
+        "Yetki Belgesi"
+    ]
+    private static var actionKey: UInt8 = 0
     
     private var accountName: String = ""
-    private var selectedFolder: String = "Proje1"
-    private var shareWith: String = "Kişi ve grup ekle"
+    private var selectedFolder: String = ""
+    private var shareWith: String = ""
     private var noteText: String = ""
+    private var userRank: String = ""
+    private var isAdmin: Bool = false
+    private var companies: [String] = []
     
     // UI Elements
     private let containerView = UIView()
@@ -29,9 +69,13 @@ final class ShareViewController: UIViewController {
     private let shareButton = UIButton()
     private let scrollView = UIScrollView()
     private let contentView = UIView()
+    private let optionsTitleLabel = UILabel()
     private let noteTextView = UITextView()
+    private let noteTitleLabel = UILabel()
     private let optionsStackView = UIStackView()
     private let buttonsContainerView = UIView()
+    private let footerBlurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
+    private let footerSeparatorView = UIView()
     private let buttonsStackView = UIStackView()
     private let sendProjectButton = UIButton(type: .system)
     private let sendMessageButton = UIButton(type: .system)
@@ -40,6 +84,27 @@ final class ShareViewController: UIViewController {
         super.viewDidLoad()
         let ud = UserDefaults(suiteName: appGroupId)
         accountName = ud?.string(forKey: "LoggedInUserName") ?? ""
+        userRank = ud?.string(forKey: "UserRank") ?? ""
+        
+        // Rank 50 ise yönetici, firma listesini App Group'tan al
+        isAdmin = (userRank == "50")
+        if isAdmin {
+            if let companiesString = ud?.string(forKey: "Companies") {
+                companies = companiesString.components(separatedBy: "|").filter { !$0.isEmpty }
+            }
+            if companies.isEmpty {
+                companies = mockAccounts
+            }
+            if accountName.isEmpty, let first = companies.first { accountName = first }
+            
+            // Yönetici için dosya adından otomatik parse et
+            parseFileNameForAdmin()
+        } else {
+            if accountName.isEmpty, let first = mockAccounts.first { accountName = first }
+        }
+        
+        if selectedFolder.isEmpty { selectedFolder = mockProjects.first ?? "" }
+        if shareWith.isEmpty { shareWith = mockDocumentTypes.first ?? "" }
         
         setupUI()
         setupConstraints()
@@ -104,6 +169,12 @@ final class ShareViewController: UIViewController {
         // Content View
         scrollView.addSubview(contentView)
         
+        // Section Title: Seçimler
+        optionsTitleLabel.text = "Seçimler"
+        optionsTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        optionsTitleLabel.textColor = .secondaryLabel
+        contentView.addSubview(optionsTitleLabel)
+
         // Note Text View (İsteğe bağlı not ekleme)
         noteTextView.layer.borderColor = UIColor.systemGray4.cgColor
         noteTextView.layer.borderWidth = 1
@@ -116,6 +187,12 @@ final class ShareViewController: UIViewController {
         noteTextView.delegate = self
         contentView.addSubview(noteTextView)
         
+        // Section Title: Not
+        noteTitleLabel.text = "Not (opsiyonel)"
+        noteTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        noteTitleLabel.textColor = .secondaryLabel
+        contentView.addSubview(noteTitleLabel)
+        
         // Options Stack View
         optionsStackView.axis = .vertical
         optionsStackView.spacing = 8
@@ -125,31 +202,50 @@ final class ShareViewController: UIViewController {
         // Buttons Container
         buttonsContainerView.backgroundColor = .systemBackground
         containerView.addSubview(buttonsContainerView)
+        
+        // Footer Blur & Separator
+        buttonsContainerView.addSubview(footerBlurView)
+        footerSeparatorView.backgroundColor = UIColor.separator.withAlphaComponent(0.35)
+        buttonsContainerView.addSubview(footerSeparatorView)
 
         // Buttons Stack
         buttonsStackView.axis = .vertical
         buttonsStackView.spacing = 10
         buttonsContainerView.addSubview(buttonsStackView)
 
-        // Send Project Button (üstte)
-        var configPrimary = UIButton.Configuration.filled()
-        configPrimary.cornerStyle = .large
-        configPrimary.baseBackgroundColor = .systemBlue
-        configPrimary.baseForegroundColor = .white
-        configPrimary.title = "Proje olarak gönder"
-        sendProjectButton.configuration = configPrimary
-        sendProjectButton.addTarget(self, action: #selector(shareAsProjectTapped), for: .touchUpInside)
-        buttonsStackView.addArrangedSubview(sendProjectButton)
+        // Yönetici ise sadece "Mesaj olarak gönder" butonu
+        if isAdmin {
+            // Send Message Button (tek buton)
+            var configPrimary = UIButton.Configuration.filled()
+            configPrimary.cornerStyle = .large
+            configPrimary.baseBackgroundColor = .systemBlue
+            configPrimary.baseForegroundColor = .white
+            configPrimary.title = "Mesaj olarak gönder"
+            sendMessageButton.configuration = configPrimary
+            sendMessageButton.addTarget(self, action: #selector(shareAsMessageTapped), for: .touchUpInside)
+            buttonsStackView.addArrangedSubview(sendMessageButton)
+        } else {
+            // Normal kullanıcı için her iki buton
+            // Send Project Button (üstte)
+            var configPrimary = UIButton.Configuration.filled()
+            configPrimary.cornerStyle = .large
+            configPrimary.baseBackgroundColor = .systemBlue
+            configPrimary.baseForegroundColor = .white
+            configPrimary.title = "Projeye Kaydet"
+            sendProjectButton.configuration = configPrimary
+            sendProjectButton.addTarget(self, action: #selector(shareAsProjectTapped), for: .touchUpInside)
+            buttonsStackView.addArrangedSubview(sendProjectButton)
 
-        // Send Message Button (altta)
-        var configSecondary = UIButton.Configuration.gray()
-        configSecondary.cornerStyle = .large
-        configSecondary.baseBackgroundColor = .secondarySystemBackground
-        configSecondary.baseForegroundColor = .label
-        configSecondary.title = "Mesaj olarak gönder"
-        sendMessageButton.configuration = configSecondary
-        sendMessageButton.addTarget(self, action: #selector(shareAsMessageTapped), for: .touchUpInside)
-        buttonsStackView.addArrangedSubview(sendMessageButton)
+            // Send Message Button (altta)
+            var configSecondary = UIButton.Configuration.gray()
+            configSecondary.cornerStyle = .large
+            configSecondary.baseBackgroundColor = .secondarySystemBackground
+            configSecondary.baseForegroundColor = .label
+            configSecondary.title = "Mesaj olarak gönder"
+            sendMessageButton.configuration = configSecondary
+            sendMessageButton.addTarget(self, action: #selector(shareAsMessageTapped), for: .touchUpInside)
+            buttonsStackView.addArrangedSubview(sendMessageButton)
+        }
 
         setupOptions()
     }
@@ -158,8 +254,9 @@ final class ShareViewController: UIViewController {
         optionsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
         // Hesap seçeneği
+        let firmaTitleText = "Firma"
         let accountOption = createOptionRow(
-            title: "Firma",
+            title: firmaTitleText,
             value: accountName.isEmpty ? "Giriş yapılmadı" : accountName,
             icon: "person.circle"
         ) { [weak self] in
@@ -275,20 +372,20 @@ final class ShareViewController: UIViewController {
         ])
 
         // Store action in button tag or associated object
-        objc_setAssociatedObject(button, "action", action, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(button, &ShareViewController.actionKey, action, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
 
         return container
     }
     
     @objc private func optionTapped(_ sender: UIButton) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        if let action = objc_getAssociatedObject(sender, "action") as? () -> Void {
+        if let action = objc_getAssociatedObject(sender, &ShareViewController.actionKey) as? () -> Void {
             action()
         }
     }
     
     private func setupConstraints() {
-        [containerView, headerView, headerBlurView, titleLabel, cancelButton, shareButton, scrollView, contentView, noteTextView, optionsStackView, buttonsContainerView, buttonsStackView].forEach {
+        [containerView, headerView, headerBlurView, titleLabel, cancelButton, shareButton, scrollView, contentView, optionsTitleLabel, noteTextView, noteTitleLabel, optionsStackView, buttonsContainerView, footerBlurView, footerSeparatorView, buttonsStackView].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
         }
         
@@ -328,6 +425,18 @@ final class ShareViewController: UIViewController {
             buttonsContainerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             buttonsContainerView.bottomAnchor.constraint(equalTo: containerView.safeAreaLayoutGuide.bottomAnchor),
 
+            // Footer blur fills buttons container
+            footerBlurView.topAnchor.constraint(equalTo: buttonsContainerView.topAnchor),
+            footerBlurView.leadingAnchor.constraint(equalTo: buttonsContainerView.leadingAnchor),
+            footerBlurView.trailingAnchor.constraint(equalTo: buttonsContainerView.trailingAnchor),
+            footerBlurView.bottomAnchor.constraint(equalTo: buttonsContainerView.bottomAnchor),
+
+            // Footer top separator
+            footerSeparatorView.topAnchor.constraint(equalTo: buttonsContainerView.topAnchor),
+            footerSeparatorView.leadingAnchor.constraint(equalTo: buttonsContainerView.leadingAnchor),
+            footerSeparatorView.trailingAnchor.constraint(equalTo: buttonsContainerView.trailingAnchor),
+            footerSeparatorView.heightAnchor.constraint(equalToConstant: 0.5),
+
             buttonsStackView.topAnchor.constraint(equalTo: buttonsContainerView.topAnchor, constant: 10),
             buttonsStackView.leadingAnchor.constraint(equalTo: buttonsContainerView.leadingAnchor, constant: 16),
             buttonsStackView.trailingAnchor.constraint(equalTo: buttonsContainerView.trailingAnchor, constant: -16),
@@ -346,13 +455,23 @@ final class ShareViewController: UIViewController {
             contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
+            // Options Title
+            optionsTitleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            optionsTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            optionsTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
+
             // Options Stack View
-            optionsStackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
+            optionsStackView.topAnchor.constraint(equalTo: optionsTitleLabel.bottomAnchor, constant: 8),
             optionsStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             optionsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
+            // Note Title
+            noteTitleLabel.topAnchor.constraint(equalTo: optionsStackView.bottomAnchor, constant: 16),
+            noteTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            noteTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
+
             // Note Text View (alta, butonların üstünde)
-            noteTextView.topAnchor.constraint(equalTo: optionsStackView.bottomAnchor, constant: 16),
+            noteTextView.topAnchor.constraint(equalTo: noteTitleLabel.bottomAnchor, constant: 8),
             noteTextView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             noteTextView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             noteTextView.heightAnchor.constraint(equalToConstant: 96),
@@ -386,6 +505,10 @@ final class ShareViewController: UIViewController {
             
             let ud = UserDefaults(suiteName: self.appGroupId)
             ud?.set(payload, forKey: self.userDefaultsKey)
+            if let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                ud?.set(jsonString, forKey: "ShareMediaJSON")
+            }
             ud?.synchronize()
             
             self.extensionContext?.completeRequest(returningItems: [], completionHandler: { _ in
@@ -422,6 +545,10 @@ final class ShareViewController: UIViewController {
             payload["shareWith"] = self.shareWith
             let ud = UserDefaults(suiteName: self.appGroupId)
             ud?.set(payload, forKey: self.userDefaultsKey)
+            if let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                ud?.set(jsonString, forKey: "ShareMediaJSON")
+            }
             ud?.synchronize()
             self.extensionContext?.completeRequest(returningItems: [], completionHandler: { _ in
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -434,32 +561,61 @@ final class ShareViewController: UIViewController {
     // MARK: - Option Methods
     private func showAccountOptions() {
         let accounts = buildAccounts()
-        showActionSheet(title: "Hesap Seç", options: accounts) { [weak self] selectedAccount in
+        showBottomSheetSelection(title: "Firma Seç", options: accounts, currentSelection: accountName) { [weak self] selectedAccount in
             if let account = selectedAccount {
                 self?.accountName = account
                 self?.setupOptions()
+                // Firma seçildikten sonra otomatik olarak Proje seçimine geç
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    self?.showFolderOptions()
+                }
             }
         }
     }
     
     private func showFolderOptions() {
-        let folders = ["Drive'ım", "Belgeler", "İndirilenler"]
-        showActionSheet(title: "Klasör Seç", options: folders) { [weak self] selectedFolder in
+        let folders = mockProjects
+        showBottomSheetSelection(title: "Proje Seç", options: folders, currentSelection: selectedFolder) { [weak self] selectedFolder in
             if let folder = selectedFolder {
                 self?.selectedFolder = folder
                 self?.setupOptions()
+                // Proje seçildikten sonra otomatik olarak Belge Türü seçimine geç
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    self?.showShareOptions()
+                }
             }
         }
     }
     
     private func showShareOptions() {
-        let shareOptions = ["Kişi ve grup ekle", "Sadece ben", "Ekip"]
-        showActionSheet(title: "Paylaşım Türü", options: shareOptions) { [weak self] selectedOption in
+        let shareOptions = mockDocumentTypes
+        showBottomSheetSelection(title: "Belge Türü Seç", options: shareOptions, currentSelection: shareWith) { [weak self] selectedOption in
             if let option = selectedOption {
                 self?.shareWith = option
                 self?.setupOptions()
+                // Belge türü seçildikten sonra Not alanına odaklan
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    self?.noteTextView.becomeFirstResponder()
+                }
             }
         }
+    }
+    
+    private func showBottomSheetSelection(title: String, options: [String], currentSelection: String, completion: @escaping (String?) -> Void) {
+        let selectionVC = BottomSheetSelectionViewController(title: title, options: options, currentSelection: currentSelection, completion: completion)
+        
+        if let sheet = selectionVC.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.selectedDetentIdentifier = .medium
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 16
+            if #available(iOS 16.0, *) {
+                // İçeride scroll yapılırken sheet büyümesin; sadece grabber ile büyüsün
+                sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+            }
+        }
+        
+        present(selectionVC, animated: true)
     }
     
     private func showActionSheet(title: String, options: [String], completion: @escaping (String?) -> Void) {
@@ -488,14 +644,63 @@ final class ShareViewController: UIViewController {
     
     // Basit hesap listesi üretir. İleride gerçek hesaplar buradan beslenebilir.
     private func buildAccounts() -> [String] {
-        var accounts: [String] = []
-        if !accountName.isEmpty { accounts.append(accountName) }
-        // Örnek seçenekler
-        accounts.append(contentsOf: [
-            "gorkemoa35@gmail.com",
-            "info@articapital.app"
-        ])
-        return Array(Set(accounts))
+        var accounts: [String] = isAdmin ? companies : mockAccounts
+        if !accountName.isEmpty, !accounts.contains(accountName) {
+            accounts.insert(accountName, at: 0)
+        }
+        return accounts
+    }
+    
+    private func parseFileNameForAdmin() {
+        guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { return }
+        
+        for item in items {
+            guard let attachments = item.attachments else { continue }
+            for provider in attachments {
+                if #available(iOS 14.0, *) {
+                    if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { [weak self] data, _ in
+                            guard let self = self, let url = data as? URL else { return }
+                            
+                            DispatchQueue.main.async {
+                                self.parseFileName(from: url)
+                            }
+                        }
+                        return // İlk dosyayı parse et ve çık
+                    }
+                }
+            }
+        }
+    }
+    
+    private func parseFileName(from url: URL) {
+        let fileName = url.deletingPathExtension().lastPathComponent
+        let components = fileName.components(separatedBy: "_")
+        
+        // Format: Firma_Proje_BelgeTürü
+        if components.count >= 3 {
+            let parsedCompany = components[0].trimmingCharacters(in: .whitespaces)
+            let parsedProject = components[1].trimmingCharacters(in: .whitespaces)
+            let parsedDocType = components[2].trimmingCharacters(in: .whitespaces)
+            
+            // Firma listesinde varsa seç
+            if companies.contains(parsedCompany) {
+                accountName = parsedCompany
+            }
+            
+            // Proje listesinde varsa seç
+            if mockProjects.contains(parsedProject) {
+                selectedFolder = parsedProject
+            }
+            
+            // Belge türü listesinde varsa seç
+            if mockDocumentTypes.contains(parsedDocType) {
+                shareWith = parsedDocType
+            }
+            
+            // UI'ı güncelle
+            setupOptions()
+        }
     }
 
     private func collectItems(completion: @escaping ([[String: Any]]) -> Void) {
@@ -565,6 +770,149 @@ final class ShareViewController: UIViewController {
             }
             responder = responder?.next
         }
+    }
+}
+
+// MARK: - BottomSheetSelectionViewController
+class BottomSheetSelectionViewController: UIViewController {
+    private let titleText: String
+    private let options: [String]
+    private let currentSelection: String
+    private let completion: (String?) -> Void
+    private var filteredOptions: [String] = []
+    
+    private let headerView = UIView()
+    private let titleLabel = UILabel()
+    private let searchTextField = UITextField()
+    private let tableView = UITableView()
+    
+    init(title: String, options: [String], currentSelection: String, completion: @escaping (String?) -> Void) {
+        self.titleText = title
+        self.options = options
+        self.currentSelection = currentSelection
+        self.completion = completion
+        self.filteredOptions = options
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupUI()
+        setupConstraints()
+    }
+    
+    private func setupUI() {
+        view.backgroundColor = .systemBackground
+        
+        // Header
+        headerView.backgroundColor = .systemBackground
+        view.addSubview(headerView)
+        
+        // Title
+        titleLabel.text = titleText
+        titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleLabel.textAlignment = .center
+        headerView.addSubview(titleLabel)
+        
+        // Search TextField
+        searchTextField.placeholder = "Ara..."
+        searchTextField.borderStyle = .roundedRect
+        searchTextField.backgroundColor = .secondarySystemBackground
+        searchTextField.addTarget(self, action: #selector(searchTextChanged), for: .editingChanged)
+        headerView.addSubview(searchTextField)
+        
+        // TableView
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
+        tableView.backgroundColor = .systemBackground
+        tableView.separatorStyle = .singleLine
+        view.addSubview(tableView)
+    }
+    
+    private func setupConstraints() {
+        [headerView, titleLabel, searchTextField, tableView].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+        
+        NSLayoutConstraint.activate([
+            // Header
+            headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            headerView.heightAnchor.constraint(equalToConstant: 100),
+            
+            // Title
+            titleLabel.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 16),
+            titleLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            
+            // Search
+            searchTextField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
+            searchTextField.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            searchTextField.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            searchTextField.heightAnchor.constraint(equalToConstant: 36),
+            
+            // TableView
+            tableView.topAnchor.constraint(equalTo: headerView.bottomAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
+    
+    @objc private func searchTextChanged() {
+        let searchText = searchTextField.text?.lowercased() ?? ""
+        if searchText.isEmpty {
+            filteredOptions = options
+        } else {
+            filteredOptions = options.filter { $0.lowercased().contains(searchText) }
+        }
+        tableView.reloadData()
+    }
+}
+
+// MARK: - TableView DataSource & Delegate
+extension BottomSheetSelectionViewController: UITableViewDataSource, UITableViewDelegate {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return filteredOptions.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
+        let option = filteredOptions[indexPath.row]
+        
+        cell.textLabel?.text = option
+        cell.textLabel?.font = .systemFont(ofSize: 16)
+        
+        // Mevcut seçimi işaretle
+        if option == currentSelection {
+            cell.accessoryType = .checkmark
+            cell.tintColor = .systemBlue
+        } else {
+            cell.accessoryType = .none
+        }
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let selectedOption = filteredOptions[indexPath.row]
+        
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        
+        dismiss(animated: true) { [weak self] in
+            self?.completion(selectedOption)
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 50
     }
 }
 
