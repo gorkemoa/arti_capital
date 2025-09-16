@@ -8,6 +8,7 @@ import 'views/login_view.dart';
 import 'views/profile_view.dart';
 import 'views/profile_edit_view.dart';
 import 'views/settings_view.dart';
+import 'views/change_password_view.dart';
 import 'views/notifications_view.dart';
 import 'views/requests_view.dart';
 import 'views/support_view.dart';
@@ -76,6 +77,7 @@ class MyApp extends StatelessWidget {
           '/profile': (context) => const ProfileView(),
           '/profile/edit': (context) => const ProfileEditView(),
           '/settings': (context) => const SettingsView(),
+          '/settings/change-password': (context) => const ChangePasswordView(),
           '/notifications': (context) => const NotificationsView(),
         },
         debugShowCheckedModeBanner: false,
@@ -126,7 +128,7 @@ class _ShareIntentGateState extends State<_ShareIntentGate> {
 
     final String? mode = payload['mode'] as String?; // 'project' | 'message'
     final String? folder = payload['folder'] as String?; // Proje türü
-    final String? text = payload['text'] as String?; // not (ileride gösterim için saklı)
+    // final String? text = payload['text'] as String?; // not (ileride gösterim için saklı)
 
     // Proje modundaysa SupportDetailView'a yönlendir
     if (mode == 'project') {

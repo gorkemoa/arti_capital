@@ -220,7 +220,7 @@ final class ShareViewController: UIViewController {
             configPrimary.cornerStyle = .large
             configPrimary.baseBackgroundColor = .systemBlue
             configPrimary.baseForegroundColor = .white
-            configPrimary.title = "Mesaj olarak gönder"
+            configPrimary.title = "Mesaj Olarak Gönder"
             sendMessageButton.configuration = configPrimary
             sendMessageButton.addTarget(self, action: #selector(shareAsMessageTapped), for: .touchUpInside)
             buttonsStackView.addArrangedSubview(sendMessageButton)

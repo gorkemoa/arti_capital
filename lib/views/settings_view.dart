@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'contact_view.dart';
+import 'change_password_view.dart';
 
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
@@ -53,7 +54,11 @@ class SettingsView extends StatelessWidget {
             icon: Icons.lock_outline,
             label: 'Şifreyi değiştir',
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChangePasswordView()),
+              );
+            },
           ),
           _Divider(subtleBorder: subtleBorder),
           _NavTile(

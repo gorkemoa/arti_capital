@@ -63,9 +63,16 @@ class ProfileViewModel extends ChangeNotifier {
       return UpdateUserResponse(error: true, success: false, errorMessage: 'Kullanıcı bulunamadı');
     }
 
+    // userFullname'i ad ve soyada ayır
+    final parts = userFullname.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final extractedLastname = parts.isNotEmpty ? parts.removeLast() : '';
+    final extractedFirstname = parts.join(' ');
+
     final req = UpdateUserRequest(
       userToken: _user!.userToken,
       userFullname: userFullname,
+      userFirstname: extractedFirstname,
+      userLastname: extractedLastname,
       userEmail: userEmail,
       userBirthday: userBirthday,
       userAddress: userAddress,

@@ -143,7 +143,7 @@ class _ProfileContent extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _Section(title: 'Hesap'),
-          _Tile(label: 'Kullanıcı Adı', value: user.userName, icon: Icons.account_circle_outlined),
+          _Tile(label: 'Adı Soyadı', value: user.userFullname, icon: Icons.account_circle_outlined),
           _Tile(label: 'Telefon', value: user.userPhone, icon: Icons.phone_outlined),
           _Tile(label: 'Cinsiyet', value: user.userGender, icon: Icons.wc_outlined),
           _Tile(label: 'Rütbe', value: user.userRank, icon: Icons.verified_user_outlined),

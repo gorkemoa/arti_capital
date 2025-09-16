@@ -2,6 +2,7 @@ import 'package:arti_capital/views/support_view.dart';
 import 'package:flutter/material.dart';
 import 'package:arti_capital/views/requests_view.dart';
 import 'package:arti_capital/views/messages_view.dart';
+import 'package:arti_capital/views/reports_view.dart';
 
 class PanelView extends StatelessWidget {
   const PanelView({super.key, required this.userName});
@@ -67,7 +68,12 @@ class PanelView extends StatelessWidget {
                   routeTitle: 'Mesajlar',
                   builder: (context) => const MessagesView(),
                 ),
-                _QuickAction(icon: Icons.insights_outlined, label: 'Raporlar', routeTitle: 'Raporlar'),
+                _QuickAction(
+                  icon: Icons.insights_outlined, 
+                  label: 'Raporlar', 
+                  routeTitle: 'Raporlar',
+                  builder: (context) => const ReportsView(),
+                ),
               ],
             ),
             const SizedBox(height: 20),
