@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
 
 import '../viewmodels/companies_view_model.dart';
 import 'company_detail_view.dart';
@@ -38,10 +39,7 @@ class CompaniesView extends StatelessWidget {
                             border: Border.all(color: subtleBorder),
                           ),
                           child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: theme.colorScheme.surface,
-                              child: const Icon(Icons.apartment_outlined),
-                            ),
+                            leading: _logoWidget(c.compLogo, theme),
                             title: Text(c.compName, style: theme.textTheme.bodyMedium),
                             subtitle: Text(
                               '${c.compDistrict} / ${c.compCity}\n${c.compAddress}',
@@ -66,6 +64,45 @@ class CompaniesView extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _logoWidget(String logo, ThemeData theme) {
+  final bg = theme.colorScheme.surface;
+  final border = theme.colorScheme.outline.withOpacity(0.12);
+  Widget child;
+  if (logo.isEmpty) {
+    child = const Icon(Icons.apartment_outlined);
+  } else if (logo.startsWith('data:image/')) {
+    try {
+      final parts = logo.split(',');
+      if (parts.length == 2) {
+        final bytes = base64Decode(parts[1]);
+        child = Image.memory(bytes, fit: BoxFit.contain);
+      } else {
+        child = const Icon(Icons.apartment_outlined);
+      }
+    } catch (_) {
+      child = const Icon(Icons.apartment_outlined);
+    }
+  } else if (logo.startsWith('http://') || logo.startsWith('https://')) {
+    child = Image.network(logo, fit: BoxFit.contain);
+  } else {
+    child = const Icon(Icons.apartment_outlined);
+  }
+  return Container(
+    width: 48,
+    height: 48,
+    padding: const EdgeInsets.all(6),
+    decoration: BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: border),
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: FittedBox(fit: BoxFit.contain, child: child),
+    ),
+  );
 }
 
 

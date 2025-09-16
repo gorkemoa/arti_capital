@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 import '../models/company_models.dart';
 import '../services/user_service.dart';
@@ -49,11 +50,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     Center(
-                      child: CircleAvatar(
-                        radius: 44,
-                        backgroundColor: theme.colorScheme.surface,
-                        child: const Icon(Icons.apartment_outlined, size: 44),
-                      ),
+                      child: _detailLogoWidget(_company!.compLogo, theme),
                     ),
                     const SizedBox(height: 16),
                     _Section(title: 'Firma Bilgileri'),
@@ -70,6 +67,44 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                 ),
     );
   }
+}
+
+Widget _detailLogoWidget(String logo, ThemeData theme) {
+  final bg = theme.colorScheme.surface;
+  final border = theme.colorScheme.outline.withOpacity(0.12);
+  Widget child;
+  if (logo.isEmpty) {
+    child = const Icon(Icons.apartment_outlined, size: 64);
+  } else if (logo.startsWith('data:image/')) {
+    try {
+      final parts = logo.split(',');
+      if (parts.length == 2) {
+        final bytes = base64Decode(parts[1]);
+        child = Image.memory(bytes, fit: BoxFit.contain);
+      } else {
+        child = const Icon(Icons.apartment_outlined, size: 64);
+      }
+    } catch (_) {
+      child = const Icon(Icons.apartment_outlined, size: 64);
+    }
+  } else if (logo.startsWith('http://') || logo.startsWith('https://')) {
+    child = Image.network(logo, fit: BoxFit.contain);
+  } else {
+    child = const Icon(Icons.apartment_outlined, size: 64);
+  }
+  return Container(
+    width: 96,
+    height: 96,
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: bg,
+      shape: BoxShape.circle,
+      border: Border.all(color: border),
+    ),
+    child: ClipOval(
+      child: FittedBox(fit: BoxFit.contain, child: child),
+    ),
+  );
 }
 
 class _Section extends StatelessWidget {
