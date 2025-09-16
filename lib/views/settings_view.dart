@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'contact_view.dart';
 import 'change_password_view.dart';
+import '../services/user_service.dart';
+import '../models/user_request_models.dart';
+import '../services/storage_service.dart';
+import '../services/auth_service.dart';
 
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
@@ -69,6 +73,43 @@ class SettingsView extends StatelessWidget {
               onChanged: (_) {},
             ),
             onTap: () {},
+          ),
+          _Divider(subtleBorder: subtleBorder),
+          _NavTile(
+            icon: Icons.delete_forever_outlined,
+            label: 'Hesabı Sil',
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Hesabı Sil'),
+                  content: const Text('Hesabınızı kalıcı olarak silmek istediğinize emin misiniz?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                  ],
+                ),
+              );
+              if (confirmed != true) return;
+
+              final token = StorageService.getToken();
+              // Silme isteğini arka planda gönder (varsa)
+              if (token != null) {
+                // fire-and-forget: sonucu beklemiyoruz
+                // kullanıcı hemen login ekranına yönlenecek
+                // hata olursa yine de oturum kapatılacak
+                // ve kullanıcı login ekranına düşecek
+                // arka planda çalışma
+                // ignore: unawaited_futures
+                UserService().deleteUser(DeleteUserRequest(userToken: token));
+              }
+
+              // Oturumu hemen kapat ve login'e yönlendir
+              await AuthService().logout();
+              if (!context.mounted) return;
+              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+            },
           ),
           const SizedBox(height: 16),
           _Section(title: 'Hakkında'),

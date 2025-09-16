@@ -157,3 +157,37 @@ class UpdatePasswordResponse {
   }
 }
 
+class DeleteUserRequest {
+  final String userToken;
+  DeleteUserRequest({required this.userToken});
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+      };
+}
+
+class DeleteUserResponse {
+  final bool error;
+  final bool success;
+  final String? message;
+  final String? errorMessage;
+  final int? statusCode;
+
+  DeleteUserResponse({
+    required this.error,
+    required this.success,
+    this.message,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory DeleteUserResponse.fromJson(Map<String, dynamic> json, int? code) {
+    return DeleteUserResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String?,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+

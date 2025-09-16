@@ -10,6 +10,7 @@ class AppConstants {
   static const String getNotificationsBase = '/service/user/account';
   static const String updateUserBase = '/service/user/update';
   static const String updatePassword = '/service/user/update/password';
+  static const String deleteUser = '/service/user/account/delete';
   
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/natifications';
@@ -25,6 +26,7 @@ class AppConstants {
   static String get getNotificationsUrl => baseUrl + getNotificationsBase;
   static String get updateUserUrl => baseUrl + updateUserBase;
   static String get updatePasswordUrl => baseUrl + updatePassword;
+  static String get deleteUserUrl => baseUrl + deleteUser;
 }
 
 

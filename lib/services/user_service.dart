@@ -274,4 +274,65 @@ class UserService {
       );
     }
   }
+
+  Future<DeleteUserResponse> deleteUser(DeleteUserRequest request) async {
+    try {
+      final endpoint = AppConstants.deleteUser;
+
+      AppLogger.i('PUT $endpoint', tag: 'DELETE_USER');
+      AppLogger.i(request.toJson().toString(), tag: 'DELETE_USER_REQ');
+
+      final resp = await ApiClient.deleteJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'DELETE_USER');
+          return DeleteUserResponse(
+            error: true,
+            success: false,
+            errorMessage: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'DELETE_USER');
+        return DeleteUserResponse(
+          error: true,
+          success: false,
+          errorMessage: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DELETE_USER');
+      AppLogger.i(body.toString(), tag: 'DELETE_USER_RES');
+
+      final delResp = DeleteUserResponse.fromJson(body, resp.statusCode);
+      return delResp;
+    } on ApiException catch (e) {
+      AppLogger.e('Delete user error ${e.statusCode} ${e.message}', tag: 'DELETE_USER');
+      return DeleteUserResponse(
+        error: true,
+        success: false,
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in deleteUser: $e', tag: 'DELETE_USER');
+      return DeleteUserResponse(
+        error: true,
+        success: false,
+        errorMessage: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
 }
