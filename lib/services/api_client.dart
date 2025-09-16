@@ -205,7 +205,39 @@ class ApiClient {
       throw ApiException(message: e.message);
     }
   }
+
+  static Future<Response<T>> deleteJson<T>(
+    String path, {
+    Map<String, dynamic>? data,
+    Map<String, dynamic>? query,
+  }) async {
+    try {
+      initInterceptors();
+      final resp = await _dio.delete<T>(
+        path,
+        queryParameters: query,
+        data: data,
+      );
+      return resp;
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final status = e.response?.statusCode;
+        final body = e.response?.data;
+        String? msg;
+        if (status == 417 && body is Map<String, dynamic>) {
+          msg = body['error_message'] as String?;
+        }
+        throw ApiException(
+          statusCode: status,
+          data: body,
+          message: msg ?? e.message,
+        );
+      }
+      throw ApiException(message: e.message);
+    }
+  }
 }
+
 
 class ApiException implements Exception {
   final int? statusCode;
