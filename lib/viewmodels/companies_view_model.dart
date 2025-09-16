@@ -1,0 +1,47 @@
+import 'package:flutter/foundation.dart';
+
+import '../models/company_models.dart';
+import '../services/user_service.dart';
+
+class CompaniesViewModel extends ChangeNotifier {
+  final UserService _userService = UserService();
+
+  List<CompanyItem> _companies = [];
+  bool _loading = true;
+  String? _errorMessage;
+
+  List<CompanyItem> get companies => _companies;
+  bool get loading => _loading;
+  String? get errorMessage => _errorMessage;
+
+  CompaniesViewModel() {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      _loading = true;
+      notifyListeners();
+      final resp = await _userService.getCompanies();
+      if (resp.success) {
+        _companies = resp.companies;
+        _errorMessage = null;
+      } else {
+        _companies = [];
+        _errorMessage = resp.errorMessage ?? 'Firmalar alınamadı';
+      }
+    } catch (e) {
+      _companies = [];
+      _errorMessage = 'Bir hata oluştu: $e';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refresh() async {
+    await _load();
+  }
+}
+
+

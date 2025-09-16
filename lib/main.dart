@@ -12,6 +12,7 @@ import 'views/change_password_view.dart';
 import 'views/two_factor_view.dart';
 import 'views/notifications_view.dart';
 import 'views/requests_view.dart';
+import 'views/companies_view.dart';
 import 'views/support_view.dart';
 import 'views/support_detail_view.dart';
 import 'widgets/app_bottom_nav.dart';
@@ -81,6 +82,7 @@ class MyApp extends StatelessWidget {
           '/settings': (context) => const SettingsView(),
           '/settings/change-password': (context) => const ChangePasswordView(),
           '/notifications': (context) => const NotificationsView(),
+          '/companies': (context) => const CompaniesView(),
         },
         debugShowCheckedModeBanner: false,
       ),

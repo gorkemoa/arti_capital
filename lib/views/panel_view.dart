@@ -1,3 +1,4 @@
+import 'package:arti_capital/views/companies_view.dart';
 import 'package:arti_capital/views/support_view.dart';
 import 'package:flutter/material.dart';
 import 'package:arti_capital/views/requests_view.dart';
@@ -73,6 +74,29 @@ class PanelView extends StatelessWidget {
                   label: 'Raporlar', 
                   routeTitle: 'Raporlar',
                   builder: (context) => const ReportsView(),
+                ),
+                _QuickAction(
+                  icon: Icons.business_outlined,
+                  label: 'Firmalarım',
+                  routeTitle: 'Firmalarım',
+                  builder: (context) => const CompaniesView(),
+                  
+                ),
+                _QuickAction(
+                  icon: Icons.description_outlined,
+                  label: 'Belgelerim',
+                  routeTitle: 'Belgelerim',
+      
+                ),
+                _QuickAction(
+                  icon: Icons.folder_outlined,
+                  label: 'Projeler',
+                  routeTitle: 'Projeler',
+                ),
+                _QuickAction(
+                  icon: Icons.warning_outlined,
+                  label: 'Eksik Evraklar',
+                  routeTitle: 'Eksik Evraklar',
                 ),
               ],
             ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:typed_data';
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 
 import '../viewmodels/profile_view_model.dart';
 
@@ -17,6 +20,8 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   late final TextEditingController addressCtrl;
   late final TextEditingController phoneCtrl;
   String? _genderValue;
+  String? _profilePhotoDataUrl; // data:image/...;base64,xxxx
+  Uint8List? _pickedImageBytes;
 
   final _formKey = GlobalKey<FormState>();
   bool _submitting = false;
@@ -32,6 +37,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     addressCtrl = TextEditingController();
     phoneCtrl = TextEditingController(text: user.userPhone);
     _genderValue = (user.userGender == '2') ? '2' : '1';
+    // Başlangıçta mevcut profil fotoğrafı varsa (URL veya data URL), gönderimde boş bırakılabilir
   }
 
   @override
@@ -56,7 +62,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
       userAddress: addressCtrl.text.trim(),
       userPhone: phoneCtrl.text.trim(),
       userGender: _genderValue ?? '1',
-      profilePhoto: '',
+      profilePhoto: _profilePhotoDataUrl ?? '',
     );
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -70,6 +76,31 @@ class _ProfileEditViewState extends State<ProfileEditView> {
         SnackBar(content: Text(resp.errorMessage ?? 'Güncelleme başarısız')),
       );
     }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.first;
+      final bytes = file.bytes;
+      if (bytes == null) return;
+      // MIME türünü uzantıdan tahmin et
+      final name = (file.name).toLowerCase();
+      String mime = 'image/jpeg';
+      if (name.endsWith('.png')) mime = 'image/png';
+      if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mime = 'image/jpeg';
+      if (name.endsWith('.gif')) mime = 'image/gif';
+      final b64 = base64Encode(bytes);
+      setState(() {
+        _pickedImageBytes = bytes;
+        _profilePhotoDataUrl = 'data:$mime;base64,$b64';
+      });
+    } catch (_) {}
   }
 
   @override
@@ -93,10 +124,34 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             Center(
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 44,
-                    backgroundColor: colorScheme.surface,
-                    child: const Icon(Icons.person, size: 44),
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      CircleAvatar(
+                        radius: 44,
+                        backgroundColor: colorScheme.surface,
+                        backgroundImage: (_pickedImageBytes != null)
+                            ? MemoryImage(_pickedImageBytes!)
+                            : null,
+                        child: (_pickedImageBytes == null)
+                            ? const Icon(Icons.person, size: 44)
+                            : null,
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: IconButton(
+                          onPressed: _pickImage,
+                          style: IconButton.styleFrom(
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
+                            padding: const EdgeInsets.all(6),
+                          ),
+                          icon: const Icon(Icons.edit, size: 18),
+                          tooltip: 'Profil Fotoğrafını Değiştir',
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Text('Profil Bilgileri', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),

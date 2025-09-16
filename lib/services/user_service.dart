@@ -8,6 +8,7 @@ import 'app_constants.dart';
 import 'logger.dart';
 import 'storage_service.dart';
 import 'app_group_service.dart';
+import '../models/company_models.dart';
 
 class UserService {
   Future<GetUserResponse> getUser() async {
@@ -416,4 +417,41 @@ class UserService {
     }
   }
 
+  Future<GetCompaniesResponse> getCompanies() async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: 'Token bulunamadı');
+      }
+      final endpoint = AppConstants.getCompanies;
+      AppLogger.i('GET $endpoint', tag: 'GET_COMPANIES');
+      final resp = await ApiClient.getJson(endpoint, query: {
+        'userToken': token,
+      });
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_COMPANIES');
+          return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: 'Geçersiz yanıt');
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: 'Beklenmeyen yanıt');
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_COMPANIES');
+      AppLogger.i(body.toString(), tag: 'GET_COMPANIES_RES');
+      return GetCompaniesResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: e.message, statusCode: e.statusCode);
+    } catch (e) {
+      return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: 'Beklenmeyen hata');
+    }
+  }
 }
