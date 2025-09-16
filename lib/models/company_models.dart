@@ -6,6 +6,10 @@ class CompanyItem {
   final int compCityID;
   final int compDistrictID;
   final String compAddress;
+  final String? compTaxNo;
+  final String? compTaxPalace;
+  final String? compMersisNo;
+  final String? compType;
   final String compLogo; // data url veya http url
   final String createdate;
 
@@ -17,6 +21,10 @@ class CompanyItem {
     required this.compCityID,
     required this.compDistrictID,
     required this.compAddress,
+    this.compTaxNo,
+    this.compTaxPalace,
+    this.compMersisNo,
+    this.compType,
     required this.compLogo,
     required this.createdate,
   });
@@ -29,6 +37,10 @@ class CompanyItem {
         compCityID: (json['compCityID'] as num?)?.toInt() ?? 0,
         compDistrictID: (json['compDistrictID'] as num?)?.toInt() ?? 0,
         compAddress: json['compAddress'] as String? ?? '',
+        compTaxNo: json['compTaxNo'] as String?,
+        compTaxPalace: json['compTaxPalace'] as String?,
+        compMersisNo: json['compMersisNo'] as String?,
+        compType: json['compType'] as String?,
         compLogo: json['compLogo'] as String? ?? '',
         createdate: json['createdate'] as String? ?? '',
       );

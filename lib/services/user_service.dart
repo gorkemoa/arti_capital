@@ -454,4 +454,30 @@ class UserService {
       return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: 'Beklenmeyen hata');
     }
   }
+
+  Future<CompanyItem?> getCompanyDetail(int compId) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) return null;
+      final endpoint = AppConstants.getCompanyFor(compId);
+      AppLogger.i('GET $endpoint', tag: 'GET_COMPANY');
+      final resp = await ApiClient.getJson(endpoint, query: {'userToken': token});
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        final jsonData = jsonDecode(responseData);
+        body = Map<String, dynamic>.from(jsonData);
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return null;
+      }
+      final data = body['data'] as Map<String, dynamic>?;
+      final comp = data != null ? data['company'] as Map<String, dynamic>? : null;
+      if (comp == null) return null;
+      return CompanyItem.fromJson(comp);
+    } catch (_) {
+      return null;
+    }
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/companies_view_model.dart';
+import 'company_detail_view.dart';
 
 class CompaniesView extends StatelessWidget {
   const CompaniesView({super.key});
@@ -48,6 +49,11 @@ class CompaniesView extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => CompanyDetailView(compId: c.compID)),
+                              );
+                            },
                           ),
                         );
                       },

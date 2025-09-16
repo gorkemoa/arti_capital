@@ -19,11 +19,13 @@ class AppConstants {
   static const String authCodeSend = '/service/auth/code/authSendCode';
   static const String checkCode = '/service/auth/code/checkCode';
   static const String getCompanies = '/service/user/account/companies';
+  // Company detail uses same base with ID path
   
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/notifications';
   static String updateUserFor(int userId) => '$updateUserBase/$userId/account';
   static String updateAuthFor(int userId) => '$updateUserBase/$userId/auth';
+  static String getCompanyFor(int compId) => '$getNotificationsBase/$compId/company';
   
 
   // Basic Auth credentials
