@@ -191,3 +191,88 @@ class DeleteUserResponse {
   }
 }
 
+class SendContactMessageRequest {
+  final String userToken;
+  final int subject;
+  final String message;
+
+  SendContactMessageRequest({
+    required this.userToken,
+    required this.subject,
+    required this.message,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+        'subject': subject,
+        'message': message,
+      };
+}
+
+class SendContactMessageResponse {
+  final bool error;
+  final bool success;
+  final String? successMessage; // data.success_message
+  final int? messageId; // data.message_id
+  final String? errorMessage; // 417 durumunda
+  final int? statusCode;
+
+  SendContactMessageResponse({
+    required this.error,
+    required this.success,
+    this.successMessage,
+    this.messageId,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory SendContactMessageResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return SendContactMessageResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      successMessage: data != null ? data['success_message'] as String? : null,
+      messageId: data != null ? (data['message_id'] as num?)?.toInt() : null,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+class ContactSubjectItem {
+  final int subjectID;
+  final String subjectTitle;
+
+  ContactSubjectItem({required this.subjectID, required this.subjectTitle});
+
+  factory ContactSubjectItem.fromJson(Map<String, dynamic> json) => ContactSubjectItem(
+        subjectID: (json['subjectID'] as num).toInt(),
+        subjectTitle: json['subjectTitle'] as String? ?? '',
+      );
+}
+
+class GetContactSubjectsResponse {
+  final bool error;
+  final bool success;
+  final List<ContactSubjectItem> subjects;
+  final int? statusCode;
+
+  GetContactSubjectsResponse({
+    required this.error,
+    required this.success,
+    required this.subjects,
+    this.statusCode,
+  });
+
+  factory GetContactSubjectsResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final list = (data != null ? data['subjects'] as List<dynamic>? : null) ?? [];
+    return GetContactSubjectsResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      subjects: list.map((e) => ContactSubjectItem.fromJson(e as Map<String, dynamic>)).toList(),
+      statusCode: code,
+    );
+  }
+}
+

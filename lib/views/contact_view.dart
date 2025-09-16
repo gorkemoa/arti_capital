@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 // Toolbar ayrı pakette değil; 11.x ile ana pakette. Ayrı importu kaldırıyoruz.
 import 'package:file_picker/file_picker.dart';
+import '../services/storage_service.dart';
+import '../services/contact_service.dart';
+import '../models/user_request_models.dart';
 
 class ContactView extends StatefulWidget {
   const ContactView({super.key});
@@ -20,6 +23,7 @@ class _ContactViewState extends State<ContactView> {
   late quill.QuillController _quillController;
   final FocusNode _editorFocusNode = FocusNode();
   String? _selectedRequestType;
+  List<ContactSubjectItem> _subjectItems = [];
   List<PlatformFile> _attachments = [];
 
   @override
@@ -37,6 +41,7 @@ class _ContactViewState extends State<ContactView> {
   void initState() {
     super.initState();
     _quillController = quill.QuillController.basic();
+    _loadSubjects();
   }
 
   @override
@@ -69,19 +74,19 @@ class _ContactViewState extends State<ContactView> {
             key: _formKey,
             child: Column(
               children: [
-                _InputField(controller: _nameCtrl, hint: 'Adınız', keyboardType: TextInputType.name),
-                const SizedBox(height: 10),
-                _InputField(controller: _surnameCtrl, hint: 'Soyadınız', keyboardType: TextInputType.name),
-                const SizedBox(height: 10),
-                _InputField(controller: _emailCtrl, hint: 'E-posta adresiniz', keyboardType: TextInputType.emailAddress),
-                const SizedBox(height: 10),
-                _InputField(controller: _phoneCtrl, hint: 'Telefon numaranız', keyboardType: TextInputType.phone),
-                const SizedBox(height: 10),
+               
                 // Talep türü seçimi
-                _RequestTypeField(
-                  value: _selectedRequestType,
-                  onChanged: (v) => setState(() => _selectedRequestType = v),
-                ),
+                if (_subjectItems.isNotEmpty)
+                  _RequestTypeField(
+                    items: _subjectItems,
+                    value: _selectedRequestType,
+                    onChanged: (v) => setState(() => _selectedRequestType = v),
+                  )
+                else
+                  const Center(child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )),
                 const SizedBox(height: 10),
                 // Konu alanı
                 _InputField(controller: _subjectCtrl, hint: 'Konu'),
@@ -143,31 +148,54 @@ class _ContactViewState extends State<ContactView> {
   }
 
   void _submit() {
-    if (_formKey.currentState?.validate() != true) return;
-    if (_selectedRequestType == null || _selectedRequestType!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen talep türünü seçin.')));
-      return;
-    }
-    if (_subjectCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen konu alanını doldurun.')));
-      return;
-    }
     final plain = _quillController.document.toPlainText().trim();
-    if (plain.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen mesaj içeriğini girin.')));
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Talebiniz alındı. Size en kısa sürede dönüş yapacağız.')));
-    _nameCtrl.clear();
-    _surnameCtrl.clear();
-    _emailCtrl.clear();
-    _phoneCtrl.clear();
-    _subjectCtrl.clear();
-    setState(() {
-      _quillController = quill.QuillController.basic();
-      _selectedRequestType = null;
-      _attachments = [];
+    final token = StorageService.getToken();
+    final selectedId = (_subjectItems.isNotEmpty && _selectedRequestType != null)
+        ? _subjectItems
+            .firstWhere((e) => e.subjectTitle == _selectedRequestType, orElse: () => ContactSubjectItem(subjectID: 0, subjectTitle: ''))
+            .subjectID
+        : 0;
+    final req = SendContactMessageRequest(
+      userToken: token ?? '',
+      subject: selectedId,
+      message: plain,
+    );
+
+    ContactService().sendContactMessage(req).then((resp) {
+      if (resp.success) {
+        final msg = resp.successMessage ?? 'Mesajınız başarıyla gönderildi.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        _nameCtrl.clear();
+        _surnameCtrl.clear();
+        _emailCtrl.clear();
+        _phoneCtrl.clear();
+        _subjectCtrl.clear();
+        setState(() {
+          _quillController = quill.QuillController.basic();
+          _selectedRequestType = null;
+          _attachments = [];
+        });
+      } else {
+        final msg = resp.errorMessage ?? 'Mesaj gönderilemedi.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    }).catchError((_) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bir hata oluştu. Lütfen tekrar deneyin.')));
     });
+  }
+
+  Future<void> _loadSubjects() async {
+    try {
+      final resp = await ContactService().getContactSubjects();
+      if (resp.success && resp.subjects.isNotEmpty) {
+        setState(() {
+          _subjectItems = resp.subjects;
+          _selectedRequestType = resp.subjects.first.subjectTitle;
+        });
+      }
+    } finally {
+      // no-op
+    }
   }
 
 
@@ -182,11 +210,9 @@ class _ContactViewState extends State<ContactView> {
 }
 
 class _InputField extends StatelessWidget {
-  const _InputField({required this.controller, required this.hint, this.maxLines = 1, this.keyboardType});
+  const _InputField({required this.controller, required this.hint});
   final TextEditingController controller;
   final String hint;
-  final int maxLines;
-  final TextInputType? keyboardType;
 
   @override
   Widget build(BuildContext context) {
@@ -194,8 +220,7 @@ class _InputField extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     return TextFormField(
       controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
+      maxLines: 1,
       minLines: 1,
       style: theme.textTheme.bodyMedium,
       validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
@@ -214,7 +239,8 @@ class _InputField extends StatelessWidget {
 }
 
 class _RequestTypeField extends StatelessWidget {
-  const _RequestTypeField({required this.value, required this.onChanged});
+  const _RequestTypeField({required this.items, required this.value, required this.onChanged});
+  final List<ContactSubjectItem> items;
   final String? value;
   final ValueChanged<String?> onChanged;
 
@@ -223,17 +249,10 @@ class _RequestTypeField extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final subtle = colorScheme.onSurface.withOpacity(0.12);
-    const items = <String>[
-      'Genel Bilgi Talebi',
-      'Teknik Destek',
-      'Proje/Teşvik Danışmanlığı',
-      'Geri Bildirim',
-      'Diğer',
-    ];
     return DropdownButtonFormField<String>(
       value: value,
       items: items
-          .map((e) => DropdownMenuItem<String>(value: e, child: Text(e, style: theme.textTheme.bodyMedium)))
+          .map((e) => DropdownMenuItem<String>(value: e.subjectTitle, child: Text(e.subjectTitle, style: theme.textTheme.bodyMedium)))
           .toList(),
       onChanged: onChanged,
       decoration: InputDecoration(

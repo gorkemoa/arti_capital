@@ -1,7 +1,6 @@
 class AppConstants {
   AppConstants._();
 
-  // Base URL (gerekirse debug/release farklılaştırılabilir)
   static const String baseUrl = 'https://api.office701.com/arti-capital';
 
   // Endpoints
@@ -11,6 +10,8 @@ class AppConstants {
   static const String updateUserBase = '/service/user/update';
   static const String updatePassword = '/service/user/update/password';
   static const String deleteUser = '/service/user/account/delete';
+  static const String sendContactMessage = '/service/general/contact/sendMessage';
+  static const String getContactSubjects = '/service/general/contact/subjects';
   
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/natifications';
@@ -27,6 +28,8 @@ class AppConstants {
   static String get updateUserUrl => baseUrl + updateUserBase;
   static String get updatePasswordUrl => baseUrl + updatePassword;
   static String get deleteUserUrl => baseUrl + deleteUser;
+  static String get sendContactMessageUrl => baseUrl + sendContactMessage;
+  static String get getContactSubjectsUrl => baseUrl + getContactSubjects;
 }
 
 

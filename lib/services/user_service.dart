@@ -55,7 +55,7 @@ class UserService {
       AppLogger.i('PUT $endpoint', tag: 'GET_USER');
       AppLogger.i(request.toJson().toString(), tag: 'GET_USER_REQ');
       
-      final resp = await ApiClient.deleteJson(
+      final resp = await ApiClient.putJson(
         endpoint,
         data: request.toJson(),
       );
@@ -335,4 +335,5 @@ class UserService {
       );
     }
   }
+
 }
