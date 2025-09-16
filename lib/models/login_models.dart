@@ -13,13 +13,17 @@ class LoginRequest {
 class LoginSuccessData {
   final int userId;
   final String token;
+  final int? authType; // 1 - SMS, 2 - E-Posta
+  final bool? isAuth; // 2FA aktif mi
 
-  LoginSuccessData({required this.userId, required this.token});
+  LoginSuccessData({required this.userId, required this.token, this.authType, this.isAuth});
 
   factory LoginSuccessData.fromJson(Map<String, dynamic> json) =>
       LoginSuccessData(
         userId: json['userID'] as int,
         token: json['token'] as String,
+        authType: (json['authType'] as num?)?.toInt(),
+        isAuth: json['isAuth'] as bool?,
       );
 }
 

@@ -65,15 +65,7 @@ class SettingsView extends StatelessWidget {
             },
           ),
           _Divider(subtleBorder: subtleBorder),
-          _NavTile(
-            icon: Icons.shield_outlined,
-            label: 'İki Aşamalı Doğrulama',
-            trailing: Switch(
-              value: false,
-              onChanged: (_) {},
-            ),
-            onTap: () {},
-          ),
+          _TwoFactorTile(),
           _Divider(subtleBorder: subtleBorder),
           _NavTile(
             icon: Icons.delete_forever_outlined,
@@ -184,4 +176,190 @@ class _Divider extends StatelessWidget {
   }
 }
 
+
+
+class _TwoFactorTile extends StatefulWidget {
+  @override
+  State<_TwoFactorTile> createState() => _TwoFactorTileState();
+}
+
+class _TwoFactorTileState extends State<_TwoFactorTile> {
+  bool _enabled = false;
+  int _sendType = 1; // 1 - SMS, 2 - E-Posta
+  String? _lastCodeToken;
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _enabled = StorageService.isTwoFactorEnabled();
+    _sendType = StorageService.getTwoFactorSendType();
+  }
+
+  Future<void> _toggle(bool value) async {
+    if (value) {
+      await _startEnableFlow();
+    } else {
+      final token = StorageService.getToken();
+      if (token == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('İki Aşamalı Doğrulamayı Kapat'),
+          content: const Text('2FA kapatılacak. Devam etmek istiyor musunuz?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Kapat')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+
+      final resp = await UserService().updateAuth(UpdateAuthRequest(userToken: token));
+      if (!mounted) return;
+      if (resp.success) {
+        await StorageService.saveTwoFactorEnabled(false);
+        setState(() { _enabled = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(resp.message ?? 'İki Aşamalı Doğrulama kapatıldı.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(resp.errorMessage ?? 'İşlem başarısız')),
+        );
+      }
+    }
+  }
+
+  Future<void> _startEnableFlow() async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      builder: (ctx) {
+        int temp = _sendType;
+        return SafeArea(
+          child: StatefulBuilder(builder: (ctx, setSheet) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Doğrulama kodu gönderim yöntemi'),
+                  const SizedBox(height: 12),
+                  RadioListTile<int>(
+                    title: const Text('SMS'),
+                    value: 1,
+                    groupValue: temp,
+                    onChanged: (v) => setSheet(() => temp = v ?? 1),
+                  ),
+                  RadioListTile<int>(
+                    title: const Text('E-Posta'),
+                    value: 2,
+                    groupValue: temp,
+                    onChanged: (v) => setSheet(() => temp = v ?? 2),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('İptal')),
+                      const Spacer(),
+                      FilledButton(onPressed: () => Navigator.pop(ctx, temp), child: const Text('Devam')),
+                    ],
+                  )
+                ],
+              ),
+            );
+          }),
+        );
+      },
+    );
+
+    if (selected == null) return;
+    setState(() {
+      _sendType = selected;
+    });
+    await StorageService.saveTwoFactorSendType(selected);
+
+    await _sendCode();
+  }
+
+  Future<void> _sendCode() async {
+    setState(() => _sending = true);
+    try {
+      final resp = await AuthService().sendAuthCode(sendType: _sendType);
+      if (!mounted) return;
+      if (resp.success && resp.data != null) {
+        _lastCodeToken = resp.data!.codeToken;
+        await _askCodeAndVerify();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(resp.message ?? resp.errorMessage ?? 'Kod gönderilemedi')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _askCodeAndVerify() async {
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Doğrulama Kodu'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(hintText: '6 haneli kodu giriniz'),
+          maxLength: 6,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          TextButton(onPressed: () async { await _sendCode(); }, child: const Text('Kodu tekrar gönder')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Doğrula')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final code = controller.text.trim();
+    if (code.isEmpty || _lastCodeToken == null) return;
+
+    final resp = await AuthService().checkAuthCode(code: code, codeToken: _lastCodeToken!);
+    if (!mounted) return;
+    if (resp.success) {
+      await StorageService.saveTwoFactorEnabled(true);
+      setState(() {
+        _enabled = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İki Aşamalı Doğrulama etkinleştirildi.')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(resp.message ?? resp.errorMessage ?? 'Kod doğrulanamadı')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _NavTile(
+      icon: Icons.shield_outlined,
+      label: 'İki Aşamalı Doğrulama',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_sending) const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+          Switch(
+            value: _enabled,
+            onChanged: (v) => _toggle(v),
+          ),
+        ],
+      ),
+      onTap: () {},
+    );
+  }
+}
 

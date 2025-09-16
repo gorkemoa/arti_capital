@@ -4,6 +4,8 @@ class StorageService {
   static const String _tokenKey = 'user_token';
   static const String _userIdKey = 'user_id';
   static const String _userDataKey = 'user_data';
+  static const String _twoFactorEnabledKey = 'two_factor_enabled';
+  static const String _twoFactorSendTypeKey = 'two_factor_send_type';
 
   static SharedPreferences? _prefs;
 
@@ -60,6 +62,23 @@ class StorageService {
   // Kullanıcı giriş yapmış mı kontrol et
   static bool isLoggedIn() {
     return getToken() != null && getUserId() != null;
+  }
+
+  // 2FA Ayarları
+  static Future<void> saveTwoFactorEnabled(bool enabled) async {
+    await _prefs?.setBool(_twoFactorEnabledKey, enabled);
+  }
+
+  static bool isTwoFactorEnabled() {
+    return _prefs?.getBool(_twoFactorEnabledKey) ?? false;
+  }
+
+  static Future<void> saveTwoFactorSendType(int sendType) async {
+    await _prefs?.setInt(_twoFactorSendTypeKey, sendType);
+  }
+
+  static int getTwoFactorSendType() {
+    return _prefs?.getInt(_twoFactorSendTypeKey) ?? 1;
   }
 }
 

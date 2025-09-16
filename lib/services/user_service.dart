@@ -112,6 +112,16 @@ class UserService {
           ];
           await AppGroupService.setCompanies(mockCompanies);
         }
+
+        // 2FA durumunu ve gönderim tipini backend'den senkronize et
+        final user = getUserResponse.user!;
+        final isTwoFactorOn = user.isAuth == true;
+        await StorageService.saveTwoFactorEnabled(isTwoFactorOn);
+        // authTypeID: "1"=SMS, "2"=E-Posta varsayımı
+        final typeId = (user.authTypeID != null) ? int.tryParse(user.authTypeID!) : null;
+        if (typeId != null && (typeId == 1 || typeId == 2)) {
+          await StorageService.saveTwoFactorSendType(typeId);
+        }
       }
       
       return getUserResponse;
@@ -268,6 +278,76 @@ class UserService {
     } catch (e) {
       AppLogger.e('Unexpected error in updatePassword: $e', tag: 'UPDATE_PASSWORD');
       return UpdatePasswordResponse(
+        error: true,
+        success: false,
+        errorMessage: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  Future<UpdateAuthResponse> updateAuth(UpdateAuthRequest request) async {
+    try {
+      final userId = StorageService.getUserId();
+      if (userId == null) {
+        return UpdateAuthResponse(
+          error: true,
+          success: false,
+          errorMessage: 'Kullanıcı ID bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.updateAuthFor(userId);
+
+      AppLogger.i('PUT $endpoint', tag: 'UPDATE_AUTH');
+      AppLogger.i(request.toJson().toString(), tag: 'UPDATE_AUTH_REQ');
+
+      final resp = await ApiClient.putJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_AUTH');
+          return UpdateAuthResponse(
+            error: true,
+            success: false,
+            errorMessage: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'UPDATE_AUTH');
+        return UpdateAuthResponse(
+          error: true,
+          success: false,
+          errorMessage: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_AUTH');
+      AppLogger.i(body.toString(), tag: 'UPDATE_AUTH_RES');
+
+      final updateResp = UpdateAuthResponse.fromJson(body, resp.statusCode);
+      return updateResp;
+    } on ApiException catch (e) {
+      AppLogger.e('Update auth error ${e.statusCode} ${e.message}', tag: 'UPDATE_AUTH');
+      return UpdateAuthResponse(
+        error: true,
+        success: false,
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in updateAuth: $e', tag: 'UPDATE_AUTH');
+      return UpdateAuthResponse(
         error: true,
         success: false,
         errorMessage: 'Beklenmeyen bir hata oluştu',

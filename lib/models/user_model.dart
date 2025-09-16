@@ -14,6 +14,9 @@ class User {
   final String iOSVersion;
   final String androidVersion;
   final String profilePhoto;
+  final String? authTypeID;
+  final String? authType;
+  final bool? isAuth;
 
   User({
     required this.userID,
@@ -31,6 +34,9 @@ class User {
     required this.iOSVersion,
     required this.androidVersion,
     required this.profilePhoto,
+    this.authTypeID,
+    this.authType,
+    this.isAuth,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -49,6 +55,9 @@ class User {
         iOSVersion: json['iOSVersion'] as String,
         androidVersion: json['androidVersion'] as String,
         profilePhoto: json['profilePhoto'] as String? ?? '',
+        authTypeID: json['authTypeID'] as String?,
+        authType: json['authType'] as String?,
+        isAuth: json['isAuth'] as bool?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -67,6 +76,9 @@ class User {
         'iOSVersion': iOSVersion,
         'androidVersion': androidVersion,
         'profilePhoto': profilePhoto,
+        'authTypeID': authTypeID,
+        'authType': authType,
+        'isAuth': isAuth,
       };
 }
 

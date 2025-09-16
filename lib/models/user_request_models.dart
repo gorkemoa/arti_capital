@@ -157,6 +157,40 @@ class UpdatePasswordResponse {
   }
 }
 
+class UpdateAuthRequest {
+  final String userToken;
+  UpdateAuthRequest({required this.userToken});
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+      };
+}
+
+class UpdateAuthResponse {
+  final bool error;
+  final bool success;
+  final String? message;
+  final String? errorMessage;
+  final int? statusCode;
+
+  UpdateAuthResponse({
+    required this.error,
+    required this.success,
+    this.message,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory UpdateAuthResponse.fromJson(Map<String, dynamic> json, int? code) {
+    return UpdateAuthResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String?,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
 class DeleteUserRequest {
   final String userToken;
   DeleteUserRequest({required this.userToken});
@@ -272,7 +306,7 @@ class GetContactSubjectsResponse {
       success: json['success'] as bool? ?? false,
       subjects: list.map((e) => ContactSubjectItem.fromJson(e as Map<String, dynamic>)).toList(),
       statusCode: code,
-    );
+    ); 
   }
 }
 

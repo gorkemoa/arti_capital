@@ -9,6 +9,7 @@ import 'views/profile_view.dart';
 import 'views/profile_edit_view.dart';
 import 'views/settings_view.dart';
 import 'views/change_password_view.dart';
+import 'views/two_factor_view.dart';
 import 'views/notifications_view.dart';
 import 'views/requests_view.dart';
 import 'views/support_view.dart';
@@ -73,6 +74,7 @@ class MyApp extends StatelessWidget {
         home: _ShareIntentGate(initial: _getInitialRoute(authService)),
         routes: {
           '/login': (context) => const LoginView(),
+          '/2fa': (context) => const TwoFactorView(),
           '/home': (context) => const _MainNavigation(),
           '/profile': (context) => const ProfileView(),
           '/profile/edit': (context) => const ProfileEditView(),

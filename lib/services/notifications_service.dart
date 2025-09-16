@@ -206,7 +206,6 @@ class NotificationsService {
         );
       }
 
-      final req = { 'userToken': token };
 
       final userId = StorageService.getUserId();
       if (userId == null) {
@@ -220,12 +219,10 @@ class NotificationsService {
 
       final endpoint = AppConstants.getNotificationsFor(userId);
 
-      AppLogger.i('PUT $endpoint', tag: 'GET_NOTIFS');
-      AppLogger.i(req.toString(), tag: 'GET_NOTIFS_REQ');
+      AppLogger.i('GET $endpoint', tag: 'GET_NOTIFS');
 
-      final resp = await ApiClient.putJson(
+      final resp = await ApiClient.getJson(
         endpoint,
-        data: req,
       );
 
       dynamic responseData = resp.data;
@@ -277,4 +274,172 @@ class NotificationsService {
       );
     }
   }
-}
+
+  Future<BaseSimpleResponse> allReadNotifications() async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return BaseSimpleResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.allReadNotifications;
+
+      AppLogger.i('PUT $endpoint', tag: 'ALL_READ_NOTIFS');
+
+      final resp = await ApiClient.putJson(endpoint, data: {
+        'userToken': token,
+      });
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ALL_READ_NOTIFS');
+          return BaseSimpleResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'ALL_READ_NOTIFS');
+        return BaseSimpleResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ALL_READ_NOTIFS');
+      AppLogger.i(body.toString(), tag: 'ALL_READ_NOTIFS_RES');
+
+      return BaseSimpleResponse(
+        error: body['error'] as bool? ?? false,
+        success: body['success'] as bool? ?? false,
+        message: (body['success_message'] as String?) ?? (body['error_message'] as String?),
+        statusCode: resp.statusCode,
+      );
+    } on ApiException catch (e) {
+      AppLogger.e('All read notifs error ${e.statusCode} ${e.message}', tag: 'ALL_READ_NOTIFS');
+      return BaseSimpleResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in allReadNotifications: $e', tag: 'ALL_READ_NOTIFS');
+      return BaseSimpleResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  Future<BaseSimpleResponse> deleteNotification({required int notID}) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return BaseSimpleResponse(error: true, success: false, message: 'Token bulunamadı');
+      }
+
+      final endpoint = AppConstants.deleteNotification;
+      AppLogger.i('DELETE $endpoint', tag: 'DEL_NOTIF');
+
+      final resp = await ApiClient.deleteJson(endpoint, data: {
+        'userToken': token,
+        'notID': notID,
+      });
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'DEL_NOTIF');
+          return BaseSimpleResponse(error: true, success: false, message: 'Sunucudan geçersiz yanıt alındı');
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'DEL_NOTIF');
+        return BaseSimpleResponse(error: true, success: false, message: 'Sunucudan beklenmeyen yanıt türü alındı');
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DEL_NOTIF');
+      AppLogger.i(body.toString(), tag: 'DEL_NOTIF_RES');
+
+      return BaseSimpleResponse(
+        error: body['error'] as bool? ?? false,
+        success: body['success'] as bool? ?? false,
+        message: (body['success_message'] as String?) ?? (body['error_message'] as String?),
+        statusCode: resp.statusCode,
+      );
+    } on ApiException catch (e) {
+      AppLogger.e('Delete notif error ${e.statusCode} ${e.message}', tag: 'DEL_NOTIF');
+      return BaseSimpleResponse(error: true, success: false, message: e.message, statusCode: e.statusCode);
+    } catch (e) {
+      AppLogger.e('Unexpected error in deleteNotification: $e', tag: 'DEL_NOTIF');
+      return BaseSimpleResponse(error: true, success: false, message: 'Beklenmeyen bir hata oluştu');
+    }
+  }
+
+  Future<BaseSimpleResponse> deleteAllNotifications() async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return BaseSimpleResponse(error: true, success: false, message: 'Token bulunamadı');
+      }
+
+      final endpoint = AppConstants.deleteAllNotifications;
+      AppLogger.i('PUT $endpoint', tag: 'DEL_ALL_NOTIF');
+
+      final resp = await ApiClient.deleteJson(endpoint, data: {
+        'userToken': token,
+      });
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'DEL_ALL_NOTIF');
+          return BaseSimpleResponse(error: true, success: false, message: 'Sunucudan geçersiz yanıt alındı');
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'DEL_ALL_NOTIF');
+        return BaseSimpleResponse(error: true, success: false, message: 'Sunucudan beklenmeyen yanıt türü alındı');
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DEL_ALL_NOTIF');
+      AppLogger.i(body.toString(), tag: 'DEL_ALL_NOTIF_RES');
+
+      return BaseSimpleResponse(
+        error: body['error'] as bool? ?? false,
+        success: body['success'] as bool? ?? false,
+        message: (body['success_message'] as String?) ?? (body['error_message'] as String?),
+        statusCode: resp.statusCode,
+      );
+    } on ApiException catch (e) {
+      AppLogger.e('Delete all notifs error ${e.statusCode} ${e.message}', tag: 'DEL_ALL_NOTIF');
+      return BaseSimpleResponse(error: true, success: false, message: e.message, statusCode: e.statusCode);
+    } catch (e) {
+      AppLogger.e('Unexpected error in deleteAllNotifications: $e', tag: 'DEL_ALL_NOTIF');
+      return BaseSimpleResponse(error: true, success: false, message: 'Beklenmeyen bir hata oluştu');
+    }
+  }
+ } 
+

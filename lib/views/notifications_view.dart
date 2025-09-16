@@ -20,6 +20,30 @@ class NotificationsView extends StatelessWidget {
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               title: const Text('Bildirimler'),
+              actions: [
+                IconButton(
+                  tooltip: 'Tümünü okundu işaretle',
+                  icon: const Icon(Icons.done_all),
+                  onPressed: () async {
+                    final res = await context.read<NotificationsViewModel>().markAllRead();
+                    final msg = res ?? 'İşlem tamamlandı';
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+                    }
+                  },
+                ),
+                IconButton(
+                  tooltip: 'Tüm bildirimleri sil',
+                  icon: const Icon(Icons.delete_forever),
+                  onPressed: () async {
+                    final res = await context.read<NotificationsViewModel>().deleteAll();
+                    final msg = res ?? 'İşlem tamamlandı';
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+                    }
+                  },
+                ),
+              ],
             ),
             body: Builder(
               builder: (_) {
@@ -79,7 +103,12 @@ class NotificationsView extends StatelessWidget {
                           n.createDate,
                           style: theme.textTheme.bodySmall,
                         ),
-                        onTap: () {},
+                        onLongPress: () async {
+                          final res = await context.read<NotificationsViewModel>().deleteOne(n.id);
+                          if (context.mounted && res != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res)));
+                          }
+                        },
                       );
                     },
                   ),

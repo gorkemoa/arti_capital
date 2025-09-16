@@ -63,6 +63,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Şifreyi Değiştir'),
@@ -79,7 +80,8 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 520),
                   child: Card(
-                    elevation: 1.5,
+                    elevation: 0,
+                    color: theme.colorScheme.surface,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -88,10 +90,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              'Şifrenizi Güncelleyin',
-                              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                            ),
+                            Text('Şifrenizi Güncelleyin', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
                             Text(
                               'Yeni şifre en az 8 karakter olmalı ve harf ile rakam içermelidir.',
@@ -104,6 +103,15 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                               decoration: InputDecoration(
                                 labelText: 'Mevcut Şifre',
                                 prefixIcon: const Icon(Icons.lock_outline),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: subtleBorder),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+                                ),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 suffixIcon: IconButton(
                                   onPressed: () => setState(() => _obscure = !_obscure),
                                   icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
@@ -118,6 +126,15 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                               decoration: InputDecoration(
                                 labelText: 'Yeni Şifre',
                                 prefixIcon: const Icon(Icons.password_outlined),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: subtleBorder),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+                                ),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 suffixIcon: IconButton(
                                   onPressed: () => setState(() => _obscure = !_obscure),
                                   icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
@@ -132,6 +149,15 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                               decoration: InputDecoration(
                                 labelText: 'Yeni Şifre (Tekrar)',
                                 prefixIcon: const Icon(Icons.repeat),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: subtleBorder),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+                                ),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 suffixIcon: IconButton(
                                   onPressed: () => setState(() => _obscure = !_obscure),
                                   icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
@@ -146,9 +172,10 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                             const SizedBox(height: 20),
                             SizedBox(
                               height: 48,
-                              child: FilledButton(
+                              child: FilledButton.icon(
+                                icon: const Icon(Icons.save_outlined, size: 18),
                                 onPressed: _submitting ? null : _submit,
-                                child: _submitting
+                                label: _submitting
                                     ? const SizedBox(
                                         height: 20,
                                         width: 20,

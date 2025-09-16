@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../viewmodels/login_view_model.dart';
 import '../theme/app_colors.dart';
+import '../viewmodels/home_view_model.dart';
+import '../services/storage_service.dart';
 
 class LoginView extends StatelessWidget {
   const LoginView({super.key});
@@ -117,11 +119,26 @@ class LoginView extends StatelessWidget {
                                           try {
                                             final resp = await context.read<LoginViewModel>().submit();
                                             if (resp.success && resp.data != null) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Giriş başarılı')),
-                                                );
-                                                Navigator.of(context).pushReplacementNamed('/home');
+                                              // 2FA kontrolü
+                                              final isAuth = resp.data!.isAuth == true;
+                                              final authType = resp.data!.authType ?? 1;
+                                              await StorageService.saveTwoFactorEnabled(isAuth);
+                                              await StorageService.saveTwoFactorSendType(authType);
+
+                                              if (isAuth) {
+                                                if (context.mounted) {
+                                                  Navigator.of(context).pushReplacementNamed('/2fa', arguments: authType);
+                                                }
+                                              } else {
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(content: Text('Giriş başarılı')),
+                                                  );
+                                                  try {
+                                                    context.read<HomeViewModel>().setCurrentIndex(0);
+                                                  } catch (_) {}
+                                                  Navigator.of(context).pushReplacementNamed('/home');
+                                                }
                                               }
                                             } else {
                                               if (context.mounted) {
@@ -146,11 +163,25 @@ class LoginView extends StatelessWidget {
                                           try {
                                             final resp = await context.read<LoginViewModel>().submit();
                                             if (resp.success && resp.data != null) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(content: Text('Giriş başarılı')),
-                                                );
-                                                Navigator.of(context).pushReplacementNamed('/home');
+                                              final isAuth = resp.data!.isAuth == true;
+                                              final authType = resp.data!.authType ?? 1;
+                                              await StorageService.saveTwoFactorEnabled(isAuth);
+                                              await StorageService.saveTwoFactorSendType(authType);
+
+                                              if (isAuth) {
+                                                if (context.mounted) {
+                                                  Navigator.of(context).pushReplacementNamed('/2fa', arguments: authType);
+                                                }
+                                              } else {
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(content: Text('Giriş başarılı')),
+                                                  );
+                                                  try {
+                                                    context.read<HomeViewModel>().setCurrentIndex(0);
+                                                  } catch (_) {}
+                                                  Navigator.of(context).pushReplacementNamed('/home');
+                                                }
                                               }
                                             } else {
                                               if (context.mounted) {
@@ -203,12 +234,25 @@ class LoginView extends StatelessWidget {
                                         try {
                                           final resp = await context.read<LoginViewModel>().submit();
                                           if (resp.success && resp.data != null) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('Giriş başarılı')),
-                                              );
-                                              // Ana sayfaya yönlendir
-                                              Navigator.of(context).pushReplacementNamed('/home');
+                                            final isAuth = resp.data!.isAuth == true;
+                                            final authType = resp.data!.authType ?? 1;
+                                            await StorageService.saveTwoFactorEnabled(isAuth);
+                                            await StorageService.saveTwoFactorSendType(authType);
+
+                                            if (isAuth) {
+                                              if (context.mounted) {
+                                                Navigator.of(context).pushReplacementNamed('/2fa', arguments: authType);
+                                              }
+                                            } else {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('Giriş başarılı')),
+                                                );
+                                                try {
+                                                  context.read<HomeViewModel>().setCurrentIndex(0);
+                                                } catch (_) {}
+                                                Navigator.of(context).pushReplacementNamed('/home');
+                                              }
                                             }
                                           } else {
                                             if (context.mounted) {
@@ -306,3 +350,5 @@ class _Card extends StatelessWidget {
     );
   }
 }
+
+// eski popup tabanlı 2FA akışı kaldırıldı; yerine ayrı sayfa kullanılmaktadır

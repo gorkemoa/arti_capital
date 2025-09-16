@@ -62,4 +62,18 @@ class GetNotificationsResponse {
   }
 }
 
+class BaseSimpleResponse {
+  final bool error;
+  final bool success;
+  final String? message;
+  final int? statusCode;
+
+  BaseSimpleResponse({
+    required this.error,
+    required this.success,
+    this.message,
+    this.statusCode,
+  });
+}
+
 
