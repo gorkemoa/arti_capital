@@ -143,7 +143,7 @@ class _ShareIntentGateState extends State<_ShareIntentGate> {
 
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => SupportDetailView(title: category),
+          builder: (_) => SupportDetailView(title: category, description: ''),
           settings: const RouteSettings(name: '/support/detail-from-share'),
         ),
       );
@@ -231,7 +231,7 @@ class _MainNavigationState extends State<_MainNavigation> {
         Widget getCurrentPage() {
           switch (currentIndex) {
             case 0:
-              return PanelView(userName: _userName);
+              return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '');
             case 1:
               return const RequestsView();
             case 2:
@@ -239,7 +239,7 @@ class _MainNavigationState extends State<_MainNavigation> {
             case 3:
               return const ProfileView();
             default:
-              return PanelView(userName: _userName);
+              return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '');
           }
         }
 

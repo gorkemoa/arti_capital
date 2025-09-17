@@ -23,8 +23,8 @@ class AppBottomNav extends StatelessWidget {
         _NavLabel(icon: Icons.assessment, label: 'Destekler'),
         _NavLabel(icon: Icons.person_outline, label: 'Profil'),
       ],
-      height: 76,
-      circleWidth: 60,
+      height: 75,
+      circleWidth: 68,
       activeIndex: currentIndex,
       onTap: onTap,
       color: theme.colorScheme.surface,
@@ -62,7 +62,7 @@ class _NavLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+        padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -91,7 +91,7 @@ class _ActiveIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -103,8 +103,10 @@ class _ActiveIcon extends StatelessWidget {
             style: theme.textTheme.labelSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w600,
+              fontSize: 11,
             ),
-            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            overflow: TextOverflow.clip,
           ),
         ],
       ),

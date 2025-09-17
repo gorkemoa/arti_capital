@@ -1,5 +1,7 @@
 import 'package:arti_capital/views/support_detail_view.dart';
 import 'package:flutter/material.dart';
+import '../models/support_models.dart';
+import '../services/general_service.dart';
 
 // Uygulama genelinde erişilebilir destek kategorileri
 const List<String> kSupportCategories = ['Tümü', 'Ar-Ge', 'Ür-Ge', 'İstihdam', 'İhracat'];
@@ -15,38 +17,16 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final List<String> _tabs = kSupportCategories;
-
-  late final List<_GrantItem> _grants = <_GrantItem>[
-    const _GrantItem(
-      title: 'Ar-Ge Teşvikleri',
-      description: 'Teknoloji geliştirme projelerinizi destekliyoruz.',
-      category: 'Ar-Ge',
-      icon: Icons.biotech_outlined,
-    ),
-    const _GrantItem(
-      title: 'Ür-Ge Teşvikleri',
-      description: 'Yeni ürün geliştirme süreçlerinizi destekliyoruz.',
-      category: 'Ür-Ge',
-      icon: Icons.lightbulb_outline,
-    ),
-    const _GrantItem(
-      title: 'İstihdam Teşvikleri',
-      description: 'Yeni personel alımlarınızı destekliyoruz.',
-      category: 'İstihdam',
-      icon: Icons.badge_outlined,
-    ),
-    const _GrantItem(
-      title: 'İhracat Teşvikleri',
-      description: 'Yurt dışı pazarlara açılmanızı destekliyoruz.',
-      category: 'İhracat',
-      icon: Icons.public_outlined,
-    ),
-  ];
+  final GeneralService _generalService = GeneralService();
+  List<ServiceItem> _services = <ServiceItem>[];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _fetchServices();
   }
 
   @override
@@ -132,41 +112,49 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
           
           // Destek kartları
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: _tabs.map((tab) {
-                final filtered = _filteredGrants(tab);
-                return _buildGrantList(filtered);
-              }).toList(),
-            ),
+            child: _buildBodyContent(),
           ),
         ],
       ),
     );
   }
 
-  List<_GrantItem> _filteredGrants(String tab) {
-    final query = _searchController.text.trim().toLowerCase();
-    Iterable<_GrantItem> items = _grants;
-    if (tab != 'Tümü') {
-      items = items.where((g) => g.category == tab);
+  Widget _buildBodyContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
+    if (_errorMessage != null) {
+      return Center(child: Text(_errorMessage!));
+    }
+    return TabBarView(
+      controller: _tabController,
+      children: _tabs.map((tab) {
+        final filtered = _filteredServices(tab);
+        return _buildServiceList(filtered);
+      }).toList(),
+    );
+  }
+
+  List<ServiceItem> _filteredServices(String tab) {
+    final query = _searchController.text.trim().toLowerCase();
+    Iterable<ServiceItem> items = _services;
+    // Kategori şu an API’de yok; taslak olarak tümünde gösteriyoruz.
     if (query.isNotEmpty) {
       items = items.where(
-        (g) => g.title.toLowerCase().contains(query) || g.description.toLowerCase().contains(query),
+        (g) => g.serviceName.toLowerCase().contains(query) || g.serviceDesc.toLowerCase().contains(query),
       );
     }
     return items.toList();
   }
 
-  Widget _buildGrantList(List<_GrantItem> items) {
+  Widget _buildServiceList(List<ServiceItem> items) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       itemCount: items.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final g = items[index];
-        return _buildSupportCard(g.title, g.description, g.icon, null);
+        final s = items[index];
+        return _buildSupportCard(s.serviceName, s.serviceDesc, Icons.info_outline, null);
       },
     );
   }
@@ -174,6 +162,7 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
   Widget _buildSupportCard(String title, String description, IconData icon, Color? backgroundColor) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final String shortDesc = description.length > 100 ? description.substring(0, 100) + '...' : description;
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -193,13 +182,13 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
                 children: [
                   Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
-                  Text(description, style: theme.textTheme.bodySmall),
+                  Text(shortDesc, style: theme.textTheme.bodySmall),
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => SupportDetailView(title: title),
+                          builder: (_) => SupportDetailView(title: title, description: description),
                         ),
                       );
                     },
@@ -229,12 +218,22 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
       ),
     );
   }
-}
-
-class _GrantItem {
-  const _GrantItem({required this.title, required this.description, required this.category, required this.icon});
-  final String title;
-  final String description;
-  final String category; // Ar-Ge, Ür-Ge, İstihdam, İhracat
-  final IconData icon;
+  Future<void> _fetchServices() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final list = await _generalService.getAllServices();
+      setState(() {
+        _services = list;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Destekler yüklenirken bir hata oluştu';
+      });
+    }
+  }
 }

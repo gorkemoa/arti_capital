@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 class SupportDetailView extends StatelessWidget {
-  const SupportDetailView({super.key, required this.title});
+  const SupportDetailView({super.key, required this.title, required this.description});
 
   final String title;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
@@ -25,22 +26,15 @@ class SupportDetailView extends StatelessWidget {
                 _SectionTitle(text: 'Teşviki Tanıyalım'),
                 const SizedBox(height: 8),
                 Text(
-                  _aboutText,
+                  description,
                   style: theme.textTheme.bodyMedium?.copyWith(
+                    // ignore: deprecated_member_use
                     color: colorScheme.onSurface.withOpacity(0.9),
                     height: 1.5,
                   ),
                 ),
 
-                const SizedBox(height: 24),
-                _SectionTitle(text: 'Başvuru Koşulları'),
-                const SizedBox(height: 12),
-                const _Checklist(items: [
-                  'Şirketinizin Türkiye\'de kayıtlı olması',
-                  'Projenizin yenilikçi ve teknolojik gelişime katkı sağlaması',
-                  'Ar-Ge harcamalarınızın belirli bir eşiği aşması',
-                ]),
-
+           
                 const SizedBox(height: 24),
                 _SectionTitle(text: 'Gerekli Belgeler'),
                 const SizedBox(height: 12),
@@ -51,15 +45,7 @@ class SupportDetailView extends StatelessWidget {
                   _DocItem(icon: Icons.business_center_outlined, label: 'Şirket Kayıtları'),
                 ]),
 
-                const SizedBox(height: 24),
-                _SectionTitle(text: 'Başvuru Süreci'),
-                const SizedBox(height: 12),
-                const _Timeline(steps: [
-                  _StepItem(icon: Icons.note_alt_outlined, label: 'Proje Hazırlığı'),
-                  _StepItem(icon: Icons.folder_copy_outlined, label: 'Belge Toplama'),
-                  _StepItem(icon: Icons.send_outlined, label: 'Başvuru Gönderme'),
-                  _StepItem(icon: Icons.search_outlined, label: 'Değerlendirme'),
-                ]),
+               
               ],
             ),
           ),
@@ -172,6 +158,7 @@ class _DocumentsGrid extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _Timeline extends StatelessWidget {
   const _Timeline({required this.steps});
   final List<_StepItem> steps;
@@ -226,8 +213,4 @@ class _StepItem {
   final IconData icon;
   final String label;
 }
-
-const String _aboutText =
-    'Ar-Ge Teşviki, yenilikçi projeler geliştiren şirketlere yönelik bir destek programıdır. Bu teşvik, Ar-Ge harcamalarınızın bir kısmını karşılayarak, projelerinizi daha hızlı ve etkin bir şekilde hayata geçirmenize yardımcı olur.';
-
 

@@ -15,14 +15,9 @@ final class ShareViewController: UIViewController {
     
     private let appGroupId = "group.com.office701.articapital" // App Group
     private let userDefaultsKey = "ShareMedia" // receive_sharing_intent key
-    // Statik/mock firma listesi kaldırıldı; firmalar App Group üzerinden gelir
-    private let mockProjects: [String] = [
-        "Tümü",
-        "Ar-Ge",
-        "Ür-Ge",
-        "İstihdam",
-        "İhracat"
-    ]
+    // Projeler (API'den yüklenecek); boşsa geçici fallback olarak mock kullanılabilir
+    private var projects: [String] = []
+    private let fallbackProjects: [String] = ["Seçiniz"]
     private let mockDocumentTypes: [String] = [
         "Vergi Levhası",
         "Faaliyet Belgesi",
@@ -92,11 +87,13 @@ final class ShareViewController: UIViewController {
             parseFileNameForAdmin()
         }
         
-        if selectedFolder.isEmpty { selectedFolder = mockProjects.first ?? "" }
+        if selectedFolder.isEmpty { selectedFolder = projects.first ?? fallbackProjects.first ?? "" }
         if shareWith.isEmpty { shareWith = mockDocumentTypes.first ?? "" }
         
         setupUI()
         setupConstraints()
+        // Projeleri API'den çek
+        fetchProjects()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -256,7 +253,7 @@ final class ShareViewController: UIViewController {
         // Projeler seçeneği
         let folderOption = createOptionRow(
             title: "Projeler",
-            value: selectedFolder,
+            value: selectedFolder.isEmpty ? "Yükleniyor..." : selectedFolder,
             icon: "folder"
         ) { [weak self] in
             self?.showFolderOptions()
@@ -563,7 +560,7 @@ final class ShareViewController: UIViewController {
     }
     
     private func showFolderOptions() {
-        let folders = mockProjects
+        let folders = projects.isEmpty ? fallbackProjects : projects
         showBottomSheetSelection(title: "Proje Seç", options: folders, currentSelection: selectedFolder) { [weak self] selectedFolder in
             if let folder = selectedFolder {
                 self?.selectedFolder = folder
@@ -680,7 +677,7 @@ final class ShareViewController: UIViewController {
             }
             
             // Proje listesinde varsa seç
-            if mockProjects.contains(parsedProject) {
+            if projects.contains(parsedProject) {
                 selectedFolder = parsedProject
             }
             
@@ -761,6 +758,51 @@ final class ShareViewController: UIViewController {
             }
             responder = responder?.next
         }
+    }
+}
+
+// MARK: - Networking (Projects)
+extension ShareViewController {
+    private func fetchProjects() {
+        // API: https://api.office701.com/arti-capital/service/general/general/services/all
+        guard let url = URL(string: "https://api.office701.com/arti-capital/service/general/general/services/all") else { return }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.httpMethod = "GET"
+        // Basic Auth (App ile aynı kimlik)
+        let username = "Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM"
+        let password = "vRParTCAqTjtmkI17I1EVpPH57Edl0"
+        let authString = "\(username):\(password)"
+        if let authData = authString.data(using: .utf8) {
+            let authHeader = authData.base64EncodedString()
+            request.setValue("Basic \(authHeader)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            if let error = error {
+                // Sessizce fallback ile devam et
+                print("[ShareExtension] fetchProjects error: \(error)")
+                return
+            }
+            guard let data = data else { return }
+            do {
+                // Beklenen JSON şeması: { data: { services: [ { serviceName: String } ] } }
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                   let dataObj = json["data"] as? [String: Any],
+                   let services = dataObj["services"] as? [[String: Any]] {
+                    let names = services.compactMap { ($0["serviceName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                    DispatchQueue.main.async {
+                        self.projects = names.isEmpty ? self.fallbackProjects : names
+                        if self.selectedFolder.isEmpty { self.selectedFolder = self.projects.first ?? self.fallbackProjects.first ?? "" }
+                        self.setupOptions()
+                    }
+                }
+            } catch {
+                print("[ShareExtension] parse error: \(error)")
+            }
+        }
+        task.resume()
     }
 }
 

@@ -6,9 +6,9 @@ import 'package:arti_capital/views/messages_view.dart';
 import 'package:arti_capital/views/reports_view.dart';
 
 class PanelView extends StatelessWidget {
-  const PanelView({super.key, required this.userName});
+  const PanelView({super.key, required this.userName, required this.userVersion});
   final String userName;
-
+  final String userVersion;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -53,7 +53,7 @@ class PanelView extends StatelessWidget {
               actions: [
                 _QuickAction(
                   icon: Icons.add_circle_outline,
-                  label: 'Yeni Oluştur',
+                  label: 'Yeni Proje Oluştur',
                   routeTitle: 'Yeni Kayıt',
                   builder: (context) => const SupportView(),
                 ),
@@ -115,7 +115,7 @@ class PanelView extends StatelessWidget {
             const SizedBox(height: 8),
             Center(
               child: Text(
-                'Son giriş: 10:22  •  Versiyon: 1.0.0',
+                'Son giriş: 10:22  • Versiyon: $userVersion',
                 style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),
               ),
             ),
@@ -263,9 +263,9 @@ class _QuickActions extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.8,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 1,
+        childAspectRatio: 0.85,
       ),
       itemBuilder: (context, index) {
         final action = actions[index];
@@ -311,12 +311,16 @@ class _QuickActionButton extends StatelessWidget {
                 child: Icon(action.icon, color: colorScheme.primary),
               ),
               const SizedBox(height: 8),
-              Text(
-                action.label,
-                style: theme.textTheme.labelSmall,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: Text(
+                  action.label,
+                  style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, height: 1.4, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                ),
               ),
             ],
           ),

@@ -19,6 +19,8 @@ class AppConstants {
   static const String authCodeSend = '/service/auth/code/authSendCode';
   static const String checkCode = '/service/auth/code/checkCode';
   static const String getCompanies = '/service/user/account/companies';
+
+  static const String getAllServices = '/service/general/general/services/all';
   // Company detail uses same base with ID path
   
   // Dinamik endpoint oluşturucular (userId tabanlı)
