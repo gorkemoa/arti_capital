@@ -102,17 +102,20 @@ class UserService {
         await AppGroupService.setLoggedInUserName(getUserResponse.user!.userFullname);
         await AppGroupService.setUserRank(getUserResponse.user!.userRank);
         
-        // Rank 50 ise mock firma listesi kaydet
-        if (getUserResponse.user!.userRank == '50') {
-          final mockCompanies = [
-            'Office701 A.Ş.',
-            'Öztürk Holding',
-            'GÖRKEM YAZILIM',
-            'Arti Capital A.Ş.',
-            'Demo Teknoloji'
-          ];
-          await AppGroupService.setCompanies(mockCompanies);
-        }
+        // Başarılı girişten hemen sonra firmaları da çekip App Group'a yaz
+        try {
+          final companiesResp = await getCompanies();
+          if (companiesResp.success && companiesResp.companies.isNotEmpty) {
+            final names = companiesResp.companies
+                .map((e) => e.compName)
+                .where((e) => e.trim().isNotEmpty)
+                .toList();
+            if (names.isNotEmpty) {
+              await AppGroupService.setCompanies(names);
+            }
+          }
+        } catch (_) {}
+        
 
         // 2FA durumunu ve gönderim tipini backend'den senkronize et
         final user = getUserResponse.user!;

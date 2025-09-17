@@ -12,7 +12,7 @@ class AppGroupService {
 
   // Share Extension -> Host app JSON payload okuma
   static Future<Map<String, dynamic>?> readSharePayload() async {
-    if (!Platform.isIOS) return null;
+    if (!(Platform.isIOS || Platform.isAndroid)) return null;
     try {
       final String? raw = await _channel.invokeMethod('getString', {
         'group': _groupId,
@@ -27,7 +27,7 @@ class AppGroupService {
 
   // Paylaşım payload'ını temizle (işlendikten sonra)
   static Future<void> clearSharePayload() async {
-    if (!Platform.isIOS) return;
+    if (!(Platform.isIOS || Platform.isAndroid)) return;
     try {
       await _channel.invokeMethod('remove', {
         'group': _groupId,
@@ -37,7 +37,7 @@ class AppGroupService {
   }
 
   static Future<bool> setLoggedInUserName(String userName) async {
-    if (!Platform.isIOS) return false;
+    if (!(Platform.isIOS || Platform.isAndroid)) return false;
     if (userName.trim().isEmpty) return false;
     try {
       final bool result = await _channel.invokeMethod('setString', {
@@ -52,7 +52,7 @@ class AppGroupService {
   }
 
   static Future<bool> setUserRank(String rank) async {
-    if (!Platform.isIOS) return false;
+    if (!(Platform.isIOS || Platform.isAndroid)) return false;
     try {
       final bool result = await _channel.invokeMethod('setString', {
         'group': _groupId,
@@ -66,7 +66,7 @@ class AppGroupService {
   }
 
   static Future<bool> setCompanies(List<String> companies) async {
-    if (!Platform.isIOS) return false;
+    if (!(Platform.isIOS || Platform.isAndroid)) return false;
     try {
       final bool result = await _channel.invokeMethod('setString', {
         'group': _groupId,

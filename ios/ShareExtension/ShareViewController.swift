@@ -15,18 +15,7 @@ final class ShareViewController: UIViewController {
     
     private let appGroupId = "group.com.office701.articapital" // App Group
     private let userDefaultsKey = "ShareMedia" // receive_sharing_intent key
-    private let mockAccounts: [String] = [
-        "Office701 A.Ş.",
-        "Öztürk Holding",
-        "GÖRKEM YAZILIM",
-        "Arti Capital A.Ş.",
-        "Demo Teknoloji",
-        "Anadolu Yazılım",
-        "Mavi Deniz Lojistik",
-        "Kuzey Enerji",
-        "Ege Gıda Sanayi",
-        "Beta Finans"
-    ]
+    // Statik/mock firma listesi kaldırıldı; firmalar App Group üzerinden gelir
     private let mockProjects: [String] = [
         "Tümü",
         "Ar-Ge",
@@ -86,21 +75,21 @@ final class ShareViewController: UIViewController {
         accountName = ud?.string(forKey: "LoggedInUserName") ?? ""
         userRank = ud?.string(forKey: "UserRank") ?? ""
         
-        // Rank 50 ise yönetici, firma listesini App Group'tan al
+        // App Group'tan firma listelerini al (tüm kullanıcılar için)
+        if let companiesString = ud?.string(forKey: "Companies") {
+            companies = companiesString.components(separatedBy: "|").filter { !$0.isEmpty }
+        }
+        // Rank 50 ise yönetici flag'i
         isAdmin = (userRank == "50")
+        // Yönetici olmayanlarda isim-soyisim kullanma; firma listesinin ilkini seç
+        if !isAdmin {
+            if let first = companies.first { accountName = first }
+        } else if accountName.isEmpty, let first = companies.first {
+            accountName = first
+        }
         if isAdmin {
-            if let companiesString = ud?.string(forKey: "Companies") {
-                companies = companiesString.components(separatedBy: "|").filter { !$0.isEmpty }
-            }
-            if companies.isEmpty {
-                companies = mockAccounts
-            }
-            if accountName.isEmpty, let first = companies.first { accountName = first }
-            
             // Yönetici için dosya adından otomatik parse et
             parseFileNameForAdmin()
-        } else {
-            if accountName.isEmpty, let first = mockAccounts.first { accountName = first }
         }
         
         if selectedFolder.isEmpty { selectedFolder = mockProjects.first ?? "" }
@@ -644,8 +633,10 @@ final class ShareViewController: UIViewController {
     
     // Basit hesap listesi üretir. İleride gerçek hesaplar buradan beslenebilir.
     private func buildAccounts() -> [String] {
-        var accounts: [String] = isAdmin ? companies : mockAccounts
-        if !accountName.isEmpty, !accounts.contains(accountName) {
+        // Tüm kullanıcılar: sadece firma adları listelenir
+        // Yönetici ise ve accountName listede yoksa en üste eklenebilir (opsiyonel)
+        var accounts: [String] = companies
+        if isAdmin, !accountName.isEmpty, !accounts.contains(accountName) {
             accounts.insert(accountName, at: 0)
         }
         return accounts

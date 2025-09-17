@@ -48,7 +48,7 @@ class PanelView extends StatelessWidget {
             ]),
             const SizedBox(height: 20),
             Text('Hızlı İşlemler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             _QuickActions(
               actions: [
                 _QuickAction(

@@ -40,11 +40,11 @@ class CompaniesView extends StatelessWidget {
                           ),
                           child: ListTile(
                             leading: _logoWidget(c.compLogo, theme),
-                            title: Text(c.compName, style: theme.textTheme.bodyMedium),
+                            title: Text(c.compName, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
                             subtitle: Text(
                               '${c.compDistrict} / ${c.compCity}\n${c.compAddress}',
                               style: theme.textTheme.bodySmall,
-                              maxLines: 2,
+                              maxLines: 6,
                               overflow: TextOverflow.ellipsis,
                             ),
                             onTap: () {

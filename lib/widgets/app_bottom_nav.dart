@@ -12,10 +12,10 @@ class AppBottomNav extends StatelessWidget {
     final theme = Theme.of(context);
     return CircleNavBar(
       activeIcons: const [
-        Icon(Icons.dashboard, color: Colors.white),
-        Icon(Icons.assignment, color: Colors.white),
-        Icon(Icons.assessment, color: Colors.white),
-        Icon(Icons.person, color: Colors.white),
+        _ActiveIcon(icon: Icons.dashboard, label: 'Panel'),
+        _ActiveIcon(icon: Icons.assignment, label: 'Talepler'),
+        _ActiveIcon(icon: Icons.assessment, label: 'Destekler'),
+        _ActiveIcon(icon: Icons.person, label: 'Profil'),
       ],
       inactiveIcons: const [
         _NavLabel(icon: Icons.dashboard_outlined, label: 'Panel'),
@@ -75,6 +75,36 @@ class _NavLabel extends StatelessWidget {
               color: theme.colorScheme.onSurface.withOpacity(0.7),
               fontWeight: FontWeight.w600,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActiveIcon extends StatelessWidget {
+  const _ActiveIcon({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
