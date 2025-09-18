@@ -42,7 +42,7 @@ class CompaniesView extends StatelessWidget {
                             leading: _logoWidget(c.compLogo, theme),
                             title: Text(c.compName, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
                             subtitle: Text(
-                              '${c.compDistrict} / ${c.compCity}\n${c.compAddress}',
+                              '${c.compDistrict} / ${c.compCity}\n${c.compTaxNo}',
                               style: theme.textTheme.bodySmall,
                               maxLines: 6,
                               overflow: TextOverflow.ellipsis,

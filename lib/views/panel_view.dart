@@ -6,9 +6,10 @@ import 'package:arti_capital/views/messages_view.dart';
 import 'package:arti_capital/views/reports_view.dart';
 
 class PanelView extends StatelessWidget {
-  const PanelView({super.key, required this.userName, required this.userVersion});
+  const PanelView({super.key, required this.userName, required this.userVersion , required this.profilePhoto});
   final String userName;
   final String userVersion;
+  final String profilePhoto;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -20,6 +21,7 @@ class PanelView extends StatelessWidget {
         title: _PanelAppBarTitle(
           userName: userName,
           greeting: _greetingForNow(),
+          profilePhoto: profilePhoto,
         ),
         actions: [
           IconButton(
@@ -127,9 +129,10 @@ class PanelView extends StatelessWidget {
 }
 
 class _PanelAppBarTitle extends StatelessWidget {
-  const _PanelAppBarTitle({required this.userName, required this.greeting});
+  const _PanelAppBarTitle({required this.userName, required this.greeting, required this.profilePhoto});
   final String userName;
   final String greeting;
+  final String profilePhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -140,10 +143,13 @@ class _PanelAppBarTitle extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
-          child: Text(
-            _initials(userName),
-            style: theme.textTheme.labelLarge?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
-          ),
+          backgroundImage: profilePhoto.startsWith('http') ? NetworkImage(profilePhoto) : null,
+          child: profilePhoto.startsWith('http')
+              ? null
+              : Text(
+                  (userName.isNotEmpty ? userName.trim().characters.first : '?'),
+                  style: theme.textTheme.labelLarge?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
+                ),
         ),
         const SizedBox(width: 12),
         Column(
@@ -164,18 +170,7 @@ class _PanelAppBarTitle extends StatelessWidget {
     );
   }
 
-  String _initials(String name) {
-    final cleaned = name.trim();
-    if (cleaned.isEmpty) return '?';
-    final parts = cleaned.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return '?';
-
-    String pick(String s) => s.isNotEmpty ? s.substring(0, 1) : '';
-    final first = pick(parts.first);
-    final last = parts.length > 1 ? pick(parts.last) : '';
-    final initials = (first + last).toUpperCase();
-    return initials.isNotEmpty ? initials : '?';
-  }
+  
 }
 
 String _greetingForNow() {

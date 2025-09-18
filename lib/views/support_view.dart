@@ -154,12 +154,12 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final s = items[index];
-        return _buildSupportCard(s.serviceName, s.serviceDesc, Icons.info_outline, null);
+        return _buildSupportCardWithId(s.serviceID, s.serviceName, s.serviceDesc, Icons.info_outline, null);
       },
     );
   }
 
-  Widget _buildSupportCard(String title, String description, IconData icon, Color? backgroundColor) {
+  Widget _buildSupportCardWithId(int id, String title, String description, IconData icon, Color? backgroundColor) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final String shortDesc = description.length > 100 ? description.substring(0, 100) + '...' : description;
@@ -188,7 +188,7 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => SupportDetailView(title: title, description: description),
+                          builder: (_) => SupportDetailView(id: id),
                         ),
                       );
                     },

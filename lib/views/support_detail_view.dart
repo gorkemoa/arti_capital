@@ -1,15 +1,52 @@
 import 'package:flutter/material.dart';
+import '../models/support_models.dart';
+import '../services/general_service.dart';
+class SupportDetailView extends StatefulWidget {
+  const SupportDetailView({super.key, required this.id});
 
-class SupportDetailView extends StatelessWidget {
-  const SupportDetailView({super.key, required this.title, required this.description});
+  final int id;
 
-  final String title;
-  final String description;
+  @override
+  State<SupportDetailView> createState() => _SupportDetailViewState();
+}
+
+class _SupportDetailViewState extends State<SupportDetailView> {
+  final GeneralService _service = GeneralService();
+  ServiceItem? _detail;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final d = await _service.getServiceDetail(widget.id);
+      setState(() {
+        _detail = d;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = 'Detay yüklenemedi';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final title = _detail?.serviceName ?? 'Destek Detayı';
+    final description = _detail?.serviceDesc ?? '';
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
@@ -17,59 +54,60 @@ class SupportDetailView extends StatelessWidget {
         foregroundColor: colorScheme.onPrimary,
         title: Text(title, style: theme.appBarTheme.titleTextStyle?.copyWith(color: colorScheme.onPrimary)),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              children: [
-                _SectionTitle(text: 'Teşviki Tanıyalım'),
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    // ignore: deprecated_member_use
-                    color: colorScheme.onSurface.withOpacity(0.9),
-                    height: 1.5,
-                  ),
-                ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text(_error!))
+              : Column(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                        children: [
+                          _SectionTitle(text: 'Teşviki Tanıyalım'),
+                          const SizedBox(height: 8),
+                          Text(
+                            description,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              // ignore: deprecated_member_use
+                              color: colorScheme.onSurface.withOpacity(0.9),
+                              height: 1.5,
+                            ),
+                          ),
 
-           
-                const SizedBox(height: 24),
-                _SectionTitle(text: 'Gerekli Belgeler'),
-                const SizedBox(height: 12),
-                _DocumentsGrid(items: const [
-                  _DocItem(icon: Icons.description_outlined, label: 'Proje Önerisi'),
-                  _DocItem(icon: Icons.science_outlined, label: 'Teknik Rapor'),
-                  _DocItem(icon: Icons.attach_money_outlined, label: 'Bütçe Planı'),
-                  _DocItem(icon: Icons.business_center_outlined, label: 'Şirket Kayıtları'),
-                ]),
-
-               
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: Text('Başvuruya Başla', style: theme.textTheme.titleSmall?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 24),
+                          _SectionTitle(text: 'Gerekli Belgeler'),
+                          const SizedBox(height: 12),
+                          _DocumentsGrid(items: const [
+                            _DocItem(icon: Icons.description_outlined, label: 'Proje Önerisi'),
+                            _DocItem(icon: Icons.science_outlined, label: 'Teknik Rapor'),
+                            _DocItem(icon: Icons.attach_money_outlined, label: 'Bütçe Planı'),
+                            _DocItem(icon: Icons.business_center_outlined, label: 'Şirket Kayıtları'),
+                          ]),
+                        ],
+                      ),
+                    ),
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: Text('Başvuruya Başla', style: theme.textTheme.titleSmall?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

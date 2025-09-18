@@ -21,6 +21,7 @@ class AppConstants {
   static const String getCompanies = '/service/user/account/companies';
 
   static const String getAllServices = '/service/general/general/services/all';
+  static String getServiceDetail(int id) => '/service/general/general/services/$id';
   // Company detail uses same base with ID path
   
   // Dinamik endpoint oluşturucular (userId tabanlı)

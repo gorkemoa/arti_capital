@@ -130,25 +130,19 @@ class _ShareIntentGateState extends State<_ShareIntentGate> {
     if (!mounted) return;
     if (payload == null) return;
 
-    final String? mode = payload['mode'] as String?; // 'project' | 'message'
-    final String? folder = payload['folder'] as String?; // Proje türü
-    // final String? text = payload['text'] as String?; // not (ileride gösterim için saklı)
-
-    // Proje modundaysa SupportDetailView'a yönlendir
+    final String? mode = payload['mode'] as String?; 
     if (mode == 'project') {
-      // Support kategorileri içinden eşleştir; yoksa 'Tümü'
-      final String category = (folder != null && kSupportCategories.contains(folder)) ? folder : 'Tümü';
       _handledShare = true;
-      await AppGroupService.clearSharePayload();
+      await AppGroupService.clearSharePayload();       
+
 
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => SupportDetailView(title: category, description: ''),
+          builder: (_) => const SupportView(),
           settings: const RouteSettings(name: '/support/detail-from-share'),
         ),
       );
 
-      // İsteğe bağlı: notu clipboard'a al veya snack olarak gösterilebilir
       return;
     }
   }
@@ -189,7 +183,6 @@ class _MainNavigationState extends State<_MainNavigation> {
   }
 
   Future<void> _loadUser() async {
-    // Önce localden dene (hızlı görüntüleme)
     final cached = StorageService.getUserData();
     if (cached != null && cached.isNotEmpty) {
       try {
@@ -231,7 +224,7 @@ class _MainNavigationState extends State<_MainNavigation> {
         Widget getCurrentPage() {
           switch (currentIndex) {
             case 0:
-              return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '');
+              return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '', profilePhoto: homeViewModel.user?.profilePhoto ?? '');
             case 1:
               return const RequestsView();
             case 2:
@@ -239,7 +232,7 @@ class _MainNavigationState extends State<_MainNavigation> {
             case 3:
               return const ProfileView();
             default:
-              return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '');
+              return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '', profilePhoto: homeViewModel.user?.profilePhoto ?? '');
           }
         }
 
