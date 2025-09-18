@@ -19,8 +19,12 @@ class AppConstants {
   static const String authCodeSend = '/service/auth/code/authSendCode';
   static const String checkCode = '/service/auth/code/checkCode';
   static const String getCompanies = '/service/user/account/companies';
+  static const String addCompany = '/service/user/account/company/add';
+  static const String updateCompany = '/service/user/account/company/update';
 
   static const String getAllServices = '/service/general/general/services/all';
+  static const String getCities = '/service/general/general/cities/all';
+  static String getDistrictsFor(int cityNo) => '/service/general/general/$cityNo/districts';
   static String getServiceDetail(int id) => '/service/general/general/services/$id';
   // Company detail uses same base with ID path
   

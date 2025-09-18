@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import '../models/company_models.dart';
 import '../services/user_service.dart';
+import '../theme/app_colors.dart';
+import 'edit_company_view.dart';
 
 class CompanyDetailView extends StatefulWidget {
   const CompanyDetailView({super.key, required this.compId});
@@ -39,8 +41,25 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
       appBar: AppBar(
         title: const Text('Firma Detayı'),
         centerTitle: true,
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        actions: [
+          if (!_loading && _company != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () async {
+                final result = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => EditCompanyView(company: _company!),
+                  ),
+                );
+                if (result == true) {
+                  _load();
+                }
+              },
+              tooltip: 'Düzenle',
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

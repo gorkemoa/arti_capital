@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'api_client.dart';
 import 'app_constants.dart';
 import '../models/support_models.dart';
+import '../models/location_models.dart';
 
 class GeneralService {
   Future<List<ServiceItem>> getAllServices() async {
@@ -20,6 +21,26 @@ class GeneralService {
       throw ApiException(message: 'Service detail not found');
     }
     return ServiceItem.fromJson(map);
+  }
+
+  Future<List<CityItem>> getCities() async {
+    final Response resp = await ApiClient.getJson(AppConstants.getCities);
+    final body = resp.data as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>?;
+    final list = (data?['cities'] as List<dynamic>? ?? [])
+        .map((e) => CityItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return list;
+  }
+
+  Future<List<DistrictItem>> getDistricts(int cityNo) async {
+    final Response resp = await ApiClient.getJson(AppConstants.getDistrictsFor(cityNo));
+    final body = resp.data as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>?;
+    final list = (data?['districts'] as List<dynamic>? ?? [])
+        .map((e) => DistrictItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return list;
   }
 }
 

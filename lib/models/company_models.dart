@@ -74,4 +74,127 @@ class GetCompaniesResponse {
   }
 }
 
+class AddCompanyRequest {
+  final String userToken;
+  final String userIdentityNo;
+  final String compName;
+  final String compTaxNo;
+  final String compTaxPalace;
+  final String compKepAddress;
+  final String compMersisNo;
+  final int compType;
+  final int compCity;
+  final int compDistrict;
+  final String compAddress;
+  final String compLogo;
+
+  AddCompanyRequest({
+    required this.userToken,
+    required this.userIdentityNo,
+    required this.compName,
+    required this.compTaxNo,
+    required this.compTaxPalace,
+    this.compKepAddress = '',
+    this.compMersisNo = '',
+    this.compType = 1,
+    required this.compCity,
+    required this.compDistrict,
+    this.compAddress = '',
+    this.compLogo = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'userToken': userToken,
+    'userIdentityNo': userIdentityNo,
+    'compName': compName,
+    'compTaxNo': compTaxNo,
+    'compTaxPalace': compTaxPalace,
+    'compKepAddress': compKepAddress,
+    'compMersisNo': compMersisNo,
+    'compType': compType,
+    'compCity': compCity,
+    'compDistrict': compDistrict,
+    'compAddress': compAddress,
+    'compLogo': compLogo,
+  };
+}
+
+class AddCompanyResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final int? compID;
+  final String? errorMessage;
+  final int? statusCode;
+
+  AddCompanyResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.compID,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory AddCompanyResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return AddCompanyResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      compID: data != null ? (data['compID'] as num?)?.toInt() : null,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+class UpdateCompanyRequest {
+  final String userToken;
+  final String userIdentityNo;
+  final int compID;
+  final String compName;
+  final String compTaxNo;
+  final String compTaxPalace;
+  final String compKepAddress;
+  final String compMersisNo;
+  final int compType;
+  final int compCity;
+  final int compDistrict;
+  final String compAddress;
+  final String compLogo;
+
+  UpdateCompanyRequest({
+    required this.userToken,
+    required this.userIdentityNo,
+    required this.compID,
+    required this.compName,
+    required this.compTaxNo,
+    required this.compTaxPalace,
+    this.compKepAddress = '',
+    this.compMersisNo = '',
+    this.compType = 1,
+    required this.compCity,
+    required this.compDistrict,
+    this.compAddress = '',
+    this.compLogo = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'userToken': userToken,
+    'userIdentityNo': userIdentityNo,
+    'compID': compID,
+    'compName': compName,
+    'compTaxNo': compTaxNo,
+    'compTaxPalace': compTaxPalace,
+    'compKepAddress': compKepAddress,
+    'compMersisNo': compMersisNo,
+    'compType': compType,
+    'compCity': compCity,
+    'compDistrict': compDistrict,
+    'compAddress': compAddress,
+    'compLogo': compLogo,
+  };
+}
+
 

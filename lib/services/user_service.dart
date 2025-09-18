@@ -483,4 +483,134 @@ class UserService {
       return null;
     }
   }
+
+  Future<AddCompanyResponse> addCompany(AddCompanyRequest request) async {
+    try {
+      final endpoint = AppConstants.addCompany;
+
+      AppLogger.i('POST $endpoint', tag: 'ADD_COMPANY');
+      AppLogger.i(request.toJson().toString(), tag: 'ADD_COMPANY_REQ');
+
+      final resp = await ApiClient.postJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_COMPANY');
+          return AddCompanyResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+            errorMessage: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'ADD_COMPANY');
+        return AddCompanyResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+          errorMessage: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_COMPANY');
+      AppLogger.i(body.toString(), tag: 'ADD_COMPANY_RES');
+
+      final addCompanyResp = AddCompanyResponse.fromJson(body, resp.statusCode);
+      return addCompanyResp;
+    } on ApiException catch (e) {
+      AppLogger.e('Add company error ${e.statusCode} ${e.message}', tag: 'ADD_COMPANY');
+      return AddCompanyResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Bir hata oluştu',
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in addCompany: $e', tag: 'ADD_COMPANY');
+      return AddCompanyResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+        errorMessage: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  Future<AddCompanyResponse> updateCompany(UpdateCompanyRequest request) async {
+    try {
+      final endpoint = AppConstants.updateCompany;
+
+      AppLogger.i('POST $endpoint', tag: 'UPDATE_COMPANY');
+      AppLogger.i(request.toJson().toString(), tag: 'UPDATE_COMPANY_REQ');
+
+      final resp = await ApiClient.postJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_COMPANY');
+          return AddCompanyResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+            errorMessage: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'UPDATE_COMPANY');
+        return AddCompanyResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+          errorMessage: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_COMPANY');
+      AppLogger.i(body.toString(), tag: 'UPDATE_COMPANY_RES');
+
+      final updateCompanyResp = AddCompanyResponse.fromJson(body, resp.statusCode);
+      return updateCompanyResp;
+    } on ApiException catch (e) {
+      AppLogger.e('Update company error ${e.statusCode} ${e.message}', tag: 'UPDATE_COMPANY');
+      return AddCompanyResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Bir hata oluştu',
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in updateCompany: $e', tag: 'UPDATE_COMPANY');
+      return AddCompanyResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+        errorMessage: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
 }
