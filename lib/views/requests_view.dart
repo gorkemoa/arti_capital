@@ -1,3 +1,4 @@
+import 'package:arti_capital/views/notifications_view.dart';
 import 'package:flutter/material.dart';
 import 'package:arti_capital/views/request_detail_view.dart';
 
@@ -43,7 +44,13 @@ class _RequestsViewState extends State<RequestsView> with TickerProviderStateMix
         iconTheme: IconThemeData(color: colorScheme.onPrimary),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => NotificationsView(),
+                ),
+              );
+            },
             icon: Icon(Icons.notifications_outlined, color: colorScheme.onPrimary),
           ),
         ],

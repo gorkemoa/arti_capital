@@ -2,6 +2,7 @@ import 'package:arti_capital/views/support_detail_view.dart';
 import 'package:flutter/material.dart';
 import '../models/support_models.dart';
 import '../services/general_service.dart';
+import '../views/notifications_view.dart';
 
 // Uygulama genelinde erişilebilir destek kategorileri
 const List<String> kSupportCategories = ['Tümü', 'Ar-Ge', 'Ür-Ge', 'İstihdam', 'İhracat'];
@@ -48,7 +49,13 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
         title: Text('Destekler', style: theme.appBarTheme.titleTextStyle),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => NotificationsView(),
+                ),
+              );
+            },
             icon: Icon(
               Icons.notifications_outlined,
               color: colorScheme.onPrimary,

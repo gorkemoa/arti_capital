@@ -12,6 +12,7 @@ class User {
   final String platform;
   final String userVersion;
   final String iOSVersion;
+  final String userIdentityNo;
   final String androidVersion;
   final String profilePhoto;
   final String? authTypeID;
@@ -32,6 +33,7 @@ class User {
     required this.platform,
     required this.userVersion,
     required this.iOSVersion,
+    required this.userIdentityNo,
     required this.androidVersion,
     required this.profilePhoto,
     this.authTypeID,
@@ -53,6 +55,7 @@ class User {
         platform: json['platform'] as String,
         userVersion: json['userVersion'] as String,
         iOSVersion: json['iOSVersion'] as String,
+        userIdentityNo: json['userIdentityNo'] as String,
         androidVersion: json['androidVersion'] as String,
         profilePhoto: json['profilePhoto'] as String? ?? '',
         authTypeID: json['authTypeID'] as String?,
@@ -74,6 +77,7 @@ class User {
         'platform': platform,
         'userVersion': userVersion,
         'iOSVersion': iOSVersion,
+        'userIdentityNo': userIdentityNo,
         'androidVersion': androidVersion,
         'profilePhoto': profilePhoto,
         'authTypeID': authTypeID,

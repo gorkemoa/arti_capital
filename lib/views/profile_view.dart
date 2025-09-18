@@ -23,30 +23,16 @@ class ProfileView extends StatelessWidget {
               title: const Text('Profil'),
               centerTitle: true,
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  color: theme.colorScheme.surface,
-                  tooltip: 'Ayarlar',
-                  onPressed: () {
-                    Navigator.of(context).pushNamed('/settings');
-                  },
-                ),
-                if (!vm.loading && vm.user != null)
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    color: theme.colorScheme.surface,
-                    tooltip: 'Düzenle',
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ChangeNotifierProvider.value(
-                            value: vm,
-                            child: const ProfileEditView(),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/settings');
+              },
+              icon: Icon(Icons.settings_outlined, color: theme.colorScheme.surface),
+             
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.surface,
+              ),
+            ),
               ],
             ),
             body: vm.loading
@@ -142,17 +128,27 @@ class _ProfileContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _Section(title: 'Hesap'),
+          _Section(
+            title: 'Hesap',
+            trailingLabel: 'Düzenle',
+            onTrailingPressed: () {
+              final vm = context.read<ProfileViewModel>();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider.value(
+                    value: vm,
+                    child: const ProfileEditView(),
+                  ),
+                ),
+              );
+            },
+          ),
           _Tile(label: 'Adı Soyadı', value: user.userFullname, icon: Icons.account_circle_outlined),
           _Tile(label: 'Telefon', value: user.userPhone, icon: Icons.phone_outlined),
           _Tile(label: 'Cinsiyet', value: user.userGender, icon: Icons.wc_outlined),
           _Tile(label: 'Rütbe', value: user.userRank, icon: Icons.verified_user_outlined),
-          const SizedBox(height: 12),
-          _Section(title: 'Uygulama'),
-          _Tile(label: 'Platform', value: user.platform.toUpperCase(), icon: Icons.devices_other_outlined),
-          _Tile(label: 'Versiyon', value: user.userVersion, icon: Icons.system_update_alt_outlined),
-          const SizedBox(height: 12),
-          const SizedBox(height: 24),
+          _Tile(label: 'Kimlik No', value: user.userIdentityNo, icon: Icons.person_outline),
+          const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: () async {
               await onLogout();
@@ -177,16 +173,40 @@ class _ProfileContent extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title});
+  const _Section({required this.title, this.trailingLabel, this.onTrailingPressed});
   final String title;
+  final String? trailingLabel;
+  final VoidCallback? onTrailingPressed;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          if (trailingLabel != null && onTrailingPressed != null)
+            TextButton(
+              onPressed: onTrailingPressed,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: const Size(0, 0),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                trailingLabel!,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -218,6 +238,7 @@ class _Tile extends StatelessWidget {
     );
   }
 }
+
 
  
 

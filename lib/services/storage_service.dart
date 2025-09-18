@@ -6,6 +6,7 @@ class StorageService {
   static const String _userDataKey = 'user_data';
   static const String _twoFactorEnabledKey = 'two_factor_enabled';
   static const String _twoFactorSendTypeKey = 'two_factor_send_type';
+  static const String _lastLoginAtKey = 'last_login_at';
 
   static SharedPreferences? _prefs;
 
@@ -57,6 +58,7 @@ class StorageService {
     await removeToken();
     await removeUserId();
     await removeUserData();
+    await removeLastLoginAt();
   }
 
   // Kullanıcı giriş yapmış mı kontrol et
@@ -79,6 +81,25 @@ class StorageService {
 
   static int getTwoFactorSendType() {
     return _prefs?.getInt(_twoFactorSendTypeKey) ?? 1;
+  }
+
+  // Last login time helpers
+  static Future<void> saveLastLoginAt(DateTime dateTime) async {
+    await _prefs?.setString(_lastLoginAtKey, dateTime.toIso8601String());
+  }
+
+  static DateTime? getLastLoginAt() {
+    final value = _prefs?.getString(_lastLoginAtKey);
+    if (value == null || value.isEmpty) return null;
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> removeLastLoginAt() async {
+    await _prefs?.remove(_lastLoginAtKey);
   }
 }
 

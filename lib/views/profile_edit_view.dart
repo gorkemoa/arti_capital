@@ -108,6 +108,26 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final subtleBorder = colorScheme.outline.withOpacity(0.12);
+    final vm = context.watch<ProfileViewModel>();
+    final existingPhoto = vm.user?.profilePhoto ?? '';
+
+    ImageProvider? avatarImage;
+    if (_pickedImageBytes != null) {
+      avatarImage = MemoryImage(_pickedImageBytes!);
+    } else if (existingPhoto.isNotEmpty) {
+      if (existingPhoto.startsWith('data:')) {
+        final commaIndex = existingPhoto.indexOf(',');
+        if (commaIndex != -1) {
+          final b64 = existingPhoto.substring(commaIndex + 1);
+          try {
+            final bytes = base64Decode(b64);
+            avatarImage = MemoryImage(bytes);
+          } catch (_) {}
+        }
+      } else if (existingPhoto.startsWith('http')) {
+        avatarImage = NetworkImage(existingPhoto);
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -128,12 +148,10 @@ class _ProfileEditViewState extends State<ProfileEditView> {
                     alignment: Alignment.bottomRight,
                     children: [
                       CircleAvatar(
-                        radius: 44,
+                        radius: 70,
                         backgroundColor: colorScheme.surface,
-                        backgroundImage: (_pickedImageBytes != null)
-                            ? MemoryImage(_pickedImageBytes!)
-                            : null,
-                        child: (_pickedImageBytes == null)
+                        backgroundImage: avatarImage,
+                        child: (avatarImage == null)
                             ? const Icon(Icons.person, size: 44)
                             : null,
                       ),
@@ -147,7 +165,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
                             foregroundColor: colorScheme.onPrimary,
                             padding: const EdgeInsets.all(6),
                           ),
-                          icon: const Icon(Icons.edit, size: 18),
+                          icon: const Icon(Icons.edit, size: 14),
                           tooltip: 'Profil Fotoğrafını Değiştir',
                         ),
                       ),

@@ -26,6 +26,8 @@ class AuthService {
       if (loginResponse.success && loginResponse.data != null) {
         await StorageService.saveToken(loginResponse.data!.token);
         await StorageService.saveUserId(loginResponse.data!.userId);
+        // Last login zamanını kaydet
+        await StorageService.saveLastLoginAt(DateTime.now());
       }
       
       return loginResponse;

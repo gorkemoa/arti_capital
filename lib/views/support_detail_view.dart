@@ -78,12 +78,11 @@ class _SupportDetailViewState extends State<SupportDetailView> {
                           const SizedBox(height: 24),
                           _SectionTitle(text: 'Gerekli Belgeler'),
                           const SizedBox(height: 12),
-                          _DocumentsGrid(items: const [
-                            _DocItem(icon: Icons.description_outlined, label: 'Proje Önerisi'),
-                            _DocItem(icon: Icons.science_outlined, label: 'Teknik Rapor'),
-                            _DocItem(icon: Icons.attach_money_outlined, label: 'Bütçe Planı'),
-                            _DocItem(icon: Icons.business_center_outlined, label: 'Şirket Kayıtları'),
-                          ]),
+                          _DocumentsGrid(
+                            items: (_detail?.duties ?? const <DutyItem>[]) 
+                                .map((d) => _DocItem(icon: Icons.description_outlined, label: d.dutyName))
+                                .toList(),
+                          ),
                         ],
                       ),
                     ),
@@ -123,6 +122,7 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _Checklist extends StatelessWidget {
   const _Checklist({required this.items});
   final List<String> items;

@@ -1,4 +1,5 @@
 import 'package:arti_capital/views/companies_view.dart';
+import 'package:arti_capital/services/storage_service.dart';
 import 'package:arti_capital/views/support_view.dart';
 import 'package:flutter/material.dart';
 import 'package:arti_capital/views/requests_view.dart';
@@ -55,7 +56,7 @@ class PanelView extends StatelessWidget {
               actions: [
                 _QuickAction(
                   icon: Icons.add_circle_outline,
-                  label: 'Yeni Proje Oluştur',
+                  label: 'Destek Oluştur',
                   routeTitle: 'Yeni Kayıt',
                   builder: (context) => const SupportView(),
                 ),
@@ -112,13 +113,35 @@ class PanelView extends StatelessWidget {
                 _ActivityItem(date: 'Dün', title: 'Talep oluşturuldu', status: 'Bekliyor', statusColor: colorScheme.primary),
                 _ActivityItem(date: 'Dün', title: 'Profil bilgisi güncellendi', status: 'Tamamlandı', statusColor: colorScheme.primary),
                 _ActivityItem(date: '2 gün önce', title: 'Rapor indirildi', status: 'Tamamlandı', statusColor: colorScheme.primary),
-              ],
+              ], 
             ),
             const SizedBox(height: 8),
             Center(
-              child: Text(
-                'Son giriş: 10:22  • Versiyon: $userVersion',
-                style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),
+              child: Builder(
+                builder: (_) {
+                  final dt = StorageService.getLastLoginAt();
+                  String lastLoginText;
+                  if (dt == null) {
+                    lastLoginText = 'Son giriş: -';
+                  } else {
+                    final now = DateTime.now();
+                    final local = dt.toLocal();
+                    String hh = local.hour.toString().padLeft(2, '0');
+                    String mm = local.minute.toString().padLeft(2, '0');
+                    String dayPrefix;
+                    final isSameDay = now.year == local.year && now.month == local.month && now.day == local.day;
+                    if (isSameDay) {
+                      dayPrefix = '';
+                    } else {
+                      dayPrefix = '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')} ';
+                    }
+                    lastLoginText = 'Son giriş: $dayPrefix$hh:$mm';
+                  }
+                  return Text(
+                    '$lastLoginText  • Versiyon: $userVersion',
+                    style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),
+                  );
+                },
               ),
             ),
           ],

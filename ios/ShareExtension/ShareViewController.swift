@@ -16,28 +16,16 @@ final class ShareViewController: UIViewController {
     private let appGroupId = "group.com.office701.articapital" // App Group
     private let userDefaultsKey = "ShareMedia" // receive_sharing_intent key
     // Projeler (API'den yüklenecek); boşsa geçici fallback olarak mock kullanılabilir
-    private var projects: [String] = []
-    private let fallbackProjects: [String] = ["Seçiniz"]
-    private let mockDocumentTypes: [String] = [
-        "Vergi Levhası",
-        "Faaliyet Belgesi",
-        "İmza Sirküleri",
-        "Ticaret Sicil Gazetesi",
-        "Banka Dekontu",
-        "Sözleşme",
-        "Fatura",
-        "İrsaliye",
-        "Teklif/Form",
-        "Proje Başvuru Formu",
-        "Destek Karar Yazısı",
-        "Taahhütname",
-        "Kimlik Fotokopisi",
-        "Yetki Belgesi"
-    ]
+    private struct Project { let id: Int; let name: String }
+    private var projects: [Project] = []
+    private let fallbackProjects: [Project] = [Project(id: -1, name: "Seçiniz")]
+    // Belgeler projeye göre dinamik olarak duties'den gelir
+    private var documentTypes: [String] = []
     private static var actionKey: UInt8 = 0
     
     private var accountName: String = ""
     private var selectedFolder: String = ""
+    private var selectedProjectId: Int?
     private var shareWith: String = ""
     private var noteText: String = ""
     private var userRank: String = ""
@@ -87,8 +75,8 @@ final class ShareViewController: UIViewController {
             parseFileNameForAdmin()
         }
         
-        if selectedFolder.isEmpty { selectedFolder = projects.first ?? fallbackProjects.first ?? "" }
-        if shareWith.isEmpty { shareWith = mockDocumentTypes.first ?? "" }
+        if selectedFolder.isEmpty { selectedFolder = projects.first?.name ?? fallbackProjects.first?.name ?? "" }
+        if shareWith.isEmpty { shareWith = documentTypes.first ?? "" }
         
         setupUI()
         setupConstraints()
@@ -263,7 +251,7 @@ final class ShareViewController: UIViewController {
         // Paylaşım seçeneği
         let shareOption = createOptionRow(
             title: "Belge Türü",
-            value: shareWith,
+            value: shareWith.isEmpty ? "Seçiniz" : shareWith,
             icon: "person.2"
         ) { [weak self] in
             self?.showShareOptions()
@@ -560,21 +548,33 @@ final class ShareViewController: UIViewController {
     }
     
     private func showFolderOptions() {
-        let folders = projects.isEmpty ? fallbackProjects : projects
+        let sourceProjects = projects.isEmpty ? fallbackProjects : projects
+        let folders = sourceProjects.map { $0.name }
         showBottomSheetSelection(title: "Proje Seç", options: folders, currentSelection: selectedFolder) { [weak self] selectedFolder in
+            guard let self = self else { return }
             if let folder = selectedFolder {
-                self?.selectedFolder = folder
-                self?.setupOptions()
+                self.selectedFolder = folder
+                self.selectedProjectId = sourceProjects.first(where: { $0.name == folder })?.id
+                self.setupOptions()
+                if let pid = self.selectedProjectId, pid > 0 {
+                    self.fetchServiceDetail(projectId: pid)
+                } else {
+                    // Belgeler yalnızca API'den gelir; fallback yok
+                    self.documentTypes = []
+                    self.shareWith = ""
+                    self.setupOptions()
+                }
                 // Proje seçildikten sonra otomatik olarak Belge Türü seçimine geç
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    self?.showShareOptions()
+                    self.showShareOptions()
                 }
             }
         }
     }
     
     private func showShareOptions() {
-        let shareOptions = mockDocumentTypes
+        let shareOptions = documentTypes
+        if shareOptions.isEmpty { return }
         showBottomSheetSelection(title: "Belge Türü Seç", options: shareOptions, currentSelection: shareWith) { [weak self] selectedOption in
             if let option = selectedOption {
                 self?.shareWith = option
@@ -677,12 +677,14 @@ final class ShareViewController: UIViewController {
             }
             
             // Proje listesinde varsa seç
-            if projects.contains(parsedProject) {
-                selectedFolder = parsedProject
+            if let match = projects.first(where: { $0.name == parsedProject }) {
+                selectedFolder = match.name
+                selectedProjectId = match.id
+                if match.id > 0 { fetchServiceDetail(projectId: match.id) }
             }
             
-            // Belge türü listesinde varsa seç
-            if mockDocumentTypes.contains(parsedDocType) {
+            // Belge türü listesinde varsa seç (dinamik documentTypes)
+            if documentTypes.contains(parsedDocType) {
                 shareWith = parsedDocType
             }
             
@@ -764,7 +766,7 @@ final class ShareViewController: UIViewController {
 // MARK: - Networking (Projects)
 extension ShareViewController {
     private func fetchProjects() {
-        // API: https://api.office701.com/arti-capital/service/general/general/services/all
+        // API: services/all
         guard let url = URL(string: "https://api.office701.com/arti-capital/service/general/general/services/all") else { return }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.httpMethod = "GET"
@@ -787,19 +789,77 @@ extension ShareViewController {
             }
             guard let data = data else { return }
             do {
-                // Beklenen JSON şeması: { data: { services: [ { serviceName: String } ] } }
+                // Beklenen JSON şeması: { data: { services: [ { serviceID:Int, serviceName:String } ] } }
                 if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
                    let dataObj = json["data"] as? [String: Any],
                    let services = dataObj["services"] as? [[String: Any]] {
-                    let names = services.compactMap { ($0["serviceName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                    let items: [Project] = services.compactMap { dict in
+                        let name = (dict["serviceName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                        let idVal = dict["serviceID"]
+                        let id: Int
+                        if let i = idVal as? Int { id = i } else if let s = idVal as? String, let parsed = Int(s) { id = parsed } else { id = -1 }
+                        return name.isEmpty ? nil : Project(id: id, name: name)
+                    }
                     DispatchQueue.main.async {
-                        self.projects = names.isEmpty ? self.fallbackProjects : names
-                        if self.selectedFolder.isEmpty { self.selectedFolder = self.projects.first ?? self.fallbackProjects.first ?? "" }
+                        self.projects = items.isEmpty ? self.fallbackProjects : items
+                        if self.selectedFolder.isEmpty { self.selectedFolder = (self.projects.first?.name ?? self.fallbackProjects.first?.name) ?? "" }
+                        self.selectedProjectId = self.projects.first(where: { $0.name == self.selectedFolder })?.id
+                        if let pid = self.selectedProjectId, pid > 0 {
+                            self.fetchServiceDetail(projectId: pid)
+                        } else {
+                            self.documentTypes = []
+                            if self.shareWith.isEmpty { self.shareWith = "" }
+                        }
                         self.setupOptions()
                     }
                 }
             } catch {
                 print("[ShareExtension] parse error: \(error)")
+            }
+        }
+        task.resume()
+    }
+}
+
+// MARK: - Networking (Service Detail -> Duties)
+extension ShareViewController {
+    private func fetchServiceDetail(projectId: Int) {
+        guard projectId > 0 else { return }
+        let urlString = "https://api.office701.com/arti-capital/service/general/general/services/\(projectId)"
+        guard let url = URL(string: urlString) else { return }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.httpMethod = "GET"
+        let username = "Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM"
+        let password = "vRParTCAqTjtmkI17I1EVpPH57Edl0"
+        let authString = "\(username):\(password)"
+        if let authData = authString.data(using: .utf8) {
+            let authHeader = authData.base64EncodedString()
+            request.setValue("Basic \(authHeader)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            if let error = error {
+                print("[ShareExtension] fetchServiceDetail error: \(error)")
+                return
+            }
+            guard let data = data else { return }
+            do {
+                // Beklenen JSON: { data: { service: { duties: [ { dutyName:String } ] } } }
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                   let dataObj = json["data"] as? [String: Any],
+                   let serviceObj = dataObj["service"] as? [String: Any] {
+                    let duties = (serviceObj["duties"] as? [[String: Any]] ?? [])
+                    let names: [String] = duties.compactMap { ($0["dutyName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                    DispatchQueue.main.async {
+                        self.documentTypes = names
+                        if self.shareWith.isEmpty || !self.documentTypes.contains(self.shareWith) { self.shareWith = self.documentTypes.first ?? "" }
+                        self.setupOptions()
+                    }
+                }
+            } catch {
+                print("[ShareExtension] fetchServiceDetail parse error: \(error)")
             }
         }
         task.resume()
