@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:intl/intl.dart';
+// import 'package:intl/intl.dart'; // Kaldırıldı - doğum tarihi alanı kaldırıldı
 import 'package:flutter/cupertino.dart';
 
 import '../models/company_models.dart';
@@ -22,13 +22,11 @@ class AddCompanyView extends StatefulWidget {
   State<AddCompanyView> createState() => _AddCompanyViewState();
 }
 
-enum FormStep { personal, company, location, address, additional, logo }
+enum FormStep { company, location, additional, logo }
 
 class _AddCompanyViewState extends State<AddCompanyView> {
-  final _formKey = GlobalKey<FormBuilderState>();
-  final _userFirstnameController = TextEditingController();
-  final _userLastnameController = TextEditingController();
-  final _userBirthdayController = TextEditingController();
+  // _formKey kaldırıldı - artık step-specific form key'ler kullanılıyor
+  // Kişisel alanlar kaldırıldı
   final _compNameController = TextEditingController();
   final _compTaxNoController = TextEditingController();
   final _compTaxPalaceController = TextEditingController();
@@ -40,18 +38,27 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   final GeneralService _generalService = GeneralService();
   
   List<CityItem> _cities = const [];
+  List<DistrictItem> _districts = const [];
   CityItem? _selectedCity;
+  DistrictItem? _selectedDistrict;
   bool _loading = false; // submit için
   bool _loadingMeta = true; // şehir/ilçe yükleme için
   String _logoBase64 = '';
-  FormStep _currentStep = FormStep.personal;
-  DateTime? _selectedBirthday;
+  FormStep _currentStep = FormStep.company;
+  // _selectedBirthday kaldırıldı - doğum tarihi alanı kaldırıldı
+  
+  // Step-specific form keys
+  // Kişisel step kaldırıldı
+  final _companyFormKey = GlobalKey<FormBuilderState>();
+  final _locationFormKey = GlobalKey<FormBuilderState>();
+  final _additionalFormKey = GlobalKey<FormBuilderState>();
+  final _logoFormKey = GlobalKey<FormBuilderState>();
   
   @override
   void initState() {
     super.initState();
     _loadCities();
-    _prefillUserFields();
+    // Kişisel alanlar kaldırıldığı için prefill yok
   }
 
   Future<void> _loadCities() async {
@@ -74,34 +81,33 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     }
   }
 
-  void _prefillUserFields() {
-    final userData = StorageService.getUserData();
-    if (userData == null || userData.isEmpty) return;
+  Future<void> _loadDistricts(int cityNo) async {
+    setState(() { _loadingMeta = true; });
     try {
-      final dynamic parsed = jsonDecode(userData);
-      if (parsed is Map<String, dynamic>) {
-        final f = parsed['userFirstname'] as String?;
-        final l = parsed['userLastname'] as String?;
-        final b = parsed['userBirthday'] as String?;
-        if (f != null && f.isNotEmpty) {
-          _userFirstnameController.text = f.toUpperCase();
-        }
-        if (l != null && l.isNotEmpty) {
-          _userLastnameController.text = l.toUpperCase();
-        }
-        if (b != null && b.isNotEmpty) {
-          _userBirthdayController.text = b;
-        }
+      final districts = await _generalService.getDistricts(cityNo);
+      setState(() {
+        _districts = districts;
+        _selectedDistrict = null; // Yeni şehir seçildiğinde ilçe sıfırla
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('İlçe listesi alınamadı')),
+        );
       }
-    } catch (_) {}
+    } finally {
+      if (mounted) {
+        setState(() { _loadingMeta = false; });
+      }
+    }
   }
+
+  // Kişisel alanlar kaldırıldığı için prefill fonksiyonu kaldırıldı
 
 
   @override
   void dispose() {
-    _userFirstnameController.dispose();
-    _userLastnameController.dispose();
-    _userBirthdayController.dispose();
+    // Kişisel controllerlar kaldırıldı
     _compNameController.dispose();
     _compTaxNoController.dispose();
     _compTaxPalaceController.dispose();
@@ -162,11 +168,23 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   }
 
   Future<void> _submitForm() async {
-    _formKey.currentState!.save();
+    // Tüm step formlarını kaydet
+    // Kişisel step yok
+    _companyFormKey.currentState?.save();
+    _locationFormKey.currentState?.save();
+    _additionalFormKey.currentState?.save();
+    _logoFormKey.currentState?.save();
     
     if (_selectedCity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lütfen bir şehir seçin')),
+      );
+      return;
+    }
+    
+    if (_selectedDistrict == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lütfen bir ilçe seçin')),
       );
       return;
     }
@@ -182,48 +200,17 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         throw Exception('Token bulunamadı');
       }
 
-      // Kullanıcı kimlik no'yu al (userData JSON değil; toString kaydediliyor)
-      final userData = StorageService.getUserData();
-      if (userData == null) {
-        throw Exception('Kullanıcı verisi bulunamadı');
-      }
-      String? identityNo;
-      try {
-        // Önce JSON gibi parse etmeyi dene (ileride düzeltilebilir)
-        final dynamic parsed = jsonDecode(userData);
-        if (parsed is Map<String, dynamic>) {
-          identityNo = parsed['userIdentityNo'] as String?;
-        }
-      } catch (_) {
-        // Stringleştirilmiş Map formatından çek
-        final match = RegExp(r'userIdentityNo[:=]\s*([^,}\s]+)').firstMatch(userData);
-        identityNo = match?.group(1);
-      }
-      if (identityNo == null || identityNo.isEmpty) {
-        throw Exception('Kimlik numarası bulunamadı');
-      }
-
-      // FormBuilder'dan değerleri al
-      final formData = _formKey.currentState!.value;
-      final uppercaseFirstname = (formData['userFirstname'] as String? ?? '').trim().toUpperCase();
-      final uppercaseLastname = (formData['userLastname'] as String? ?? '').trim().toUpperCase();
-      final normalizedBirthday = _selectedBirthday != null ? DateFormat('dd.MM.yyyy').format(_selectedBirthday!) : '';
-
       final request = AddCompanyRequest(
         userToken: token,
-        userFirstname: uppercaseFirstname,
-        userLastname: uppercaseLastname,
-        userBirthday: normalizedBirthday,
-        userIdentityNo: identityNo,
-        compName: (formData['compName'] as String? ?? '').trim(),
-        compTaxNo: (formData['compTaxNo'] as String? ?? '').trim(),
-        compTaxPalace: (formData['compTaxPalace'] as String? ?? '').trim(),
-        compKepAddress: (formData['compKepAddress'] as String? ?? '').trim(),
-        compMersisNo: (formData['compMersisNo'] as String? ?? '').trim(),
+        compName: _compNameController.text.trim(),
+        compTaxNo: _compTaxNoController.text.trim(),
+        compTaxPalace: _compTaxPalaceController.text.trim(),
+        compKepAddress: _compKepAddressController.text.trim(),
+        compMersisNo: _compMersisNoController.text.trim(),
         compType: 1,
         compCity: _selectedCity!.cityNo,
-        compDistrict: 0, // District artık seçilmiyor
-        compAddress: (formData['compAddress'] as String? ?? '').trim(),
+        compDistrict: _selectedDistrict!.districtNo,
+        compAddress: _compAddressController.text.trim(),
         compLogo: _logoBase64,
       );
 
@@ -288,25 +275,22 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             ),
         ],
       ),
-      body: FormBuilder(
-        key: _formKey,
-                child: Column(
+      body: Column(
                   children: [
-            // Top step indicator
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.grey[50],
-              child: _buildStepIndicator(),
+          // Top step indicator
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.grey[50],
+            child: _buildStepIndicator(),
+          ),
+          // Main content area
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: _buildCurrentStepContent(),
             ),
-            // Main content area
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: _buildCurrentStepContent(),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: _buildNavigationBar(),
     );
@@ -316,16 +300,10 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   void _nextStep() {
     setState(() {
       switch (_currentStep) {
-        case FormStep.personal:
-          _currentStep = FormStep.company;
-          break;
         case FormStep.company:
           _currentStep = FormStep.location;
           break;
         case FormStep.location:
-          _currentStep = FormStep.address;
-          break;
-        case FormStep.address:
           _currentStep = FormStep.additional;
           break;
         case FormStep.additional:
@@ -342,20 +320,14 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   void _previousStep() {
     setState(() {
       switch (_currentStep) {
-        case FormStep.personal:
-          // First step, can't go back
-          break;
         case FormStep.company:
-          _currentStep = FormStep.personal;
+          // First step, can't go back
           break;
         case FormStep.location:
           _currentStep = FormStep.company;
           break;
-        case FormStep.address:
-          _currentStep = FormStep.location;
-          break;
         case FormStep.additional:
-          _currentStep = FormStep.address;
+          _currentStep = FormStep.location;
           break;
         case FormStep.logo:
           _currentStep = FormStep.additional;
@@ -366,84 +338,69 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
   Widget _buildCurrentStepContent() {
     switch (_currentStep) {
-      case FormStep.personal:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-            _buildSectionTitle('Kişisel Bilgiler'),
-            const SizedBox(height: 24),
-            _buildPersonalInfoFields(),
-          ],
-        );
       case FormStep.company:
-        return Column(
+        return FormBuilder(
+          key: _companyFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+              _buildSectionTitle('Şirket Bilgileri'),
+                    const SizedBox(height: 24),
+              _buildCompanyInfoFields(),
+                  ],
+                ),
+              );
+      case FormStep.location:
+        return FormBuilder(
+          key: _locationFormKey,
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-            _buildSectionTitle('Şirket Bilgileri'),
+              _buildSectionTitle('Konum Bilgileri'),
                           const SizedBox(height: 24),
-            _buildCompanyInfoFields(),
-          ],
-        );
-      case FormStep.location:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildSectionTitle('Konum Bilgileri'),
+              _buildLocationInfoFields(),
                           const SizedBox(height: 24),
-            _buildLocationInfoFields(),
-          ],
-        );
-      case FormStep.address:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildSectionTitle('Şirket Adresi'),
-            const SizedBox(height: 24),
-            _buildAddressField(),
-          ],
+              _buildAddressField(),
+            ],
+          ),
         );
       case FormStep.additional:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildSectionTitle('Ek Bilgiler'),
-            const SizedBox(height: 24),
-            _buildCompanyTypeField(),
-          ],
+        return FormBuilder(
+          key: _additionalFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSectionTitle('Ek Bilgiler'),
+              const SizedBox(height: 24),
+              _buildCompanyTypeField(),
+            ],
+          ),
         );
       case FormStep.logo:
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-            _buildSectionTitle('Logo Yükleme'),
-            const SizedBox(height: 24),
-            _buildLogoUploadSection(),
-          ],
+        return FormBuilder(
+          key: _logoFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSectionTitle('Logo Yükleme'),
+              const SizedBox(height: 24),
+              _buildLogoUploadSection(),
+            ],
+          ),
         );
     }
   }
 
   Widget _buildStepIndicator() {
     final steps = [
-      ('Kişisel', FormStep.personal, Icons.person_outline),
       ('Şirket', FormStep.company, Icons.business_outlined),
       ('Konum', FormStep.location, Icons.location_on_outlined),
-      ('Adres', FormStep.address, Icons.home_outlined),
       ('Ek Bilgiler', FormStep.additional, Icons.info_outline),
       ('Logo', FormStep.logo, Icons.image_outlined),
     ];
 
     return Column(
-            children: [
-                Text(
-          'Form Adımları',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontSize: 15,
-                    fontWeight: FontWeight.w600,
-            color: AppColors.onSurface,
-          ),
-        ),
-        const SizedBox(height: 12),
+      children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: steps.asMap().entries.map((entry) {
@@ -456,10 +413,10 @@ class _AddCompanyViewState extends State<AddCompanyView> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Step indicator
-                Container(
+        Container(
                   width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
+                  height: 30,
+          decoration: BoxDecoration(
                     color: isActive 
                         ? AppColors.primary
                         : isCompleted 
@@ -491,8 +448,8 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
   Widget _buildNavigationBar() {
       return Container(
-      padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
         color: AppColors.surface,
         boxShadow: [
           BoxShadow(
@@ -503,9 +460,9 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         ],
       ),
             child: Row(
-              children: [
+            children: [
           // Previous button
-          if (_currentStep != FormStep.personal)
+          if (_currentStep != FormStep.company)
             Expanded(
               child: OutlinedButton(
                 onPressed: _previousStep,
@@ -526,7 +483,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
               ),
             ),
           
-          if (_currentStep != FormStep.personal)
+          if (_currentStep != FormStep.company)
             const SizedBox(width: 16),
           
           // Next/Submit button
@@ -534,13 +491,13 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             flex: 2,
             child: ElevatedButton(
               onPressed: _loading ? null : _nextStep,
-              style: ElevatedButton.styleFrom(
+                  style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
               child: _loading
                   ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -589,32 +546,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     );
   }
 
-  Widget _buildPersonalInfoFields() {
-    return Column(
-      children: [
-        _buildTextField(
-          name: 'userFirstname',
-          label: 'Ad',
-          inputFormatters: [UpperCaseTextFormatter()],
-        ),
-        const SizedBox(height: 16),
-        _buildTextField(
-          name: 'userLastname',
-          label: 'Soyad',
-          inputFormatters: [UpperCaseTextFormatter()],
-        ),
-        const SizedBox(height: 16),
-        _buildBirthdayField(),
-        const SizedBox(height: 16),
-        _buildTextField(
-          name: 'userIdentityNo',
-          label: 'T.C. Kimlik No',
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        ),
-      ],
-    );
-  }
+  // _buildPersonalInfoFields kaldırıldı - kişisel alanlar kaldırıldı
 
   Widget _buildCompanyInfoFields() {
     return Column(
@@ -656,17 +588,115 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     return Column(
       children: [
         _buildCityDropdown(Theme.of(context)),
+        const SizedBox(height: 16),
+        _buildDistrictDropdown(Theme.of(context)),
       ],
     );
   }
 
+  Widget _buildDistrictDropdown(ThemeData theme) {
+    if (_selectedCity == null) {
+    return Container(
+        height: 56,
+      decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+              Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
+                const SizedBox(width: 12),
+              Text(
+                'Önce il seçin',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+        ),
+      ),
+    );
+  }
+
+    if (_loadingMeta && _districts.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<DistrictItem>(
+          isExpanded: true,
+          value: _selectedDistrict,
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
+                const SizedBox(width: 12),
+                Text(
+                  'İlçe',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          items: _districts.map((district) {
+            return DropdownMenuItem<DistrictItem>(
+              value: district,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  district.districtName,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (DistrictItem? district) {
+            setState(() {
+              _selectedDistrict = district;
+            });
+          },
+        ),
+      ),
+    );
+  }
 
   Widget _buildAddressField() {
-    return FormBuilderTextField(
-          name: 'compAddress',
+    return TextField(
+      controller: _compAddressController,
           decoration: InputDecoration(
-            labelText: 'Şirket Adresi',
-            hintText: 'Detaylı adres bilgilerini girin',
+        labelText: 'Şirket Adresi',
+        hintText: 'Detaylı adres bilgilerini girin',
         labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: AppColors.onSurface.withOpacity(0.6),
         ),
@@ -687,7 +717,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             ),
             filled: true,
         fillColor: AppColors.surface,
-            alignLabelWithHint: true,
+        alignLabelWithHint: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -701,7 +731,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
@@ -765,7 +795,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
               foregroundColor: AppColors.primary,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8),
               ),
             ),
             child: Text(
@@ -824,146 +854,9 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     );
   }
 
-  Widget _buildBirthdayField() {
-    return GestureDetector(
-      onTap: _showDatePicker,
-      child: Container(
-      decoration: BoxDecoration(
-          color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
-      ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Row(
-        children: [
-              Icon(
-                Icons.calendar_today,
-                color: AppColors.onSurface.withOpacity(0.6),
-                size: 20,
-              ),
-          const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _selectedBirthday != null 
-                      ? DateFormat('dd.MM.yyyy').format(_selectedBirthday!)
-                      : 'Doğum Tarihi',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: _selectedBirthday != null 
-                        ? AppColors.onSurface 
-                        : AppColors.onSurface.withOpacity(0.6),
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.arrow_drop_down,
-                color: AppColors.onSurface.withOpacity(0.6),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // _buildBirthdayField kaldırıldı - doğum tarihi alanı kaldırıldı
 
-  void _showDatePicker() {
-    if (Platform.isIOS) {
-      _showIOSDatePicker();
-    } else {
-      _showAndroidDatePicker();
-    }
-  }
-
-  void _showIOSDatePicker() {
-    showCupertinoModalPopup<DateTime>(
-      context: context,
-      builder: (context) => Container(
-        height: 300,
-        color: AppColors.surface,
-        child: Column(
-      children: [
-        Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.9),
-            borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(8),
-                  topRight: Radius.circular(8),
-            ),
-          ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-                  CupertinoButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'İptal',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onPrimary,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                  CupertinoButton(
-                    onPressed: () => Navigator.pop(context, _selectedBirthday),
-                    child: Text(
-                      'Tamam',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onPrimary,
-                        fontWeight: FontWeight.w400,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-              child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
-                initialDateTime: _selectedBirthday ?? DateTime.now(),
-                minimumDate: DateTime.now(),
-                maximumDate: DateTime.now().add(const Duration(days: 365 * 100)), // 100 yıl sonrasına kadar
-                dateOrder: DatePickerDateOrder.dmy, // Gün, Ay, Yıl sırası
-                onDateTimeChanged: (DateTime newDate) {
-                  setState(() {
-                    _selectedBirthday = newDate;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAndroidDatePicker() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedBirthday ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 100)), // 100 yıl sonrasına kadar
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: AppColors.onPrimary,
-              surface: AppColors.surface,
-              onSurface: AppColors.onSurface,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    
-    if (picked != null) {
-      setState(() {
-        _selectedBirthday = picked;
-      });
-    }
-  }
+  // Date picker metodları kaldırıldı - doğum tarihi alanı kaldırıldı
 
   Widget _buildTextField({
     required String name,
@@ -971,29 +864,53 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
   }) {
-    return FormBuilderTextField(
-      name: name,
-      decoration: InputDecoration(
+    // Controller'ı name'e göre bul
+    TextEditingController? controller;
+    switch (name) {
+     
+      case 'compName':
+        controller = _compNameController;
+        break;
+      case 'compTaxNo':
+        controller = _compTaxNoController;
+        break;
+      case 'compTaxPalace':
+        controller = _compTaxPalaceController;
+        break;
+      case 'compKepAddress':
+        controller = _compKepAddressController;
+        break;
+      case 'compMersisNo':
+        controller = _compMersisNoController;
+        break;
+      case 'compAddress':
+        controller = _compAddressController;
+        break;
+    }
+    
+    return TextField(
+      controller: controller,
+          decoration: InputDecoration(
         labelText: label,
         labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: AppColors.onSurface.withOpacity(0.6),
         ),
-        border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
-        ),
-        filled: true,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
+            ),
+            filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
         color: AppColors.onSurface,
       ),
@@ -1006,25 +923,25 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
   Widget _buildCityDropdown(ThemeData theme) {
     if (_loadingMeta && _cities.isEmpty) {
-      return Container(
+    return Container(
         height: 56,
-        decoration: BoxDecoration(
+      decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade300),
         ),
         child: const Center(
           child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
-          ),
-        ),
-      );
-    }
+                ),
+              ),
+      ),
+    );
+  }
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1037,19 +954,19 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           value: _selectedCity,
           hint: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
+      child: Row(
+        children: [
                 Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
                 const SizedBox(width: 12),
                 Text(
                   'İl',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.onSurface.withOpacity(0.6),
-                  ),
+                                  ),
+                                ),
+                              ],
                             ),
-                        ],
-                      ),
-          ),
+                          ),
           items: _cities.map((city) {
             return DropdownMenuItem<CityItem>(
               value: city,
@@ -1068,6 +985,9 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             setState(() {
               _selectedCity = city;
             });
+            if (city != null) {
+              _loadDistricts(city.cityNo);
+            }
             },
           ),
         ),

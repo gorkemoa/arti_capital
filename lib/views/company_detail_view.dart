@@ -205,8 +205,8 @@ class _HeaderCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 3,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                  maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),

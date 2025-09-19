@@ -76,10 +76,6 @@ class GetCompaniesResponse {
 
 class AddCompanyRequest {
   final String userToken;
-  final String userFirstname;
-  final String userLastname;
-  final String userBirthday;
-  final String userIdentityNo;
   final String compName;
   final String compTaxNo;
   final String compTaxPalace;
@@ -93,10 +89,6 @@ class AddCompanyRequest {
 
   AddCompanyRequest({
     required this.userToken,
-    required this.userFirstname,
-    required this.userLastname,
-    required this.userBirthday,
-    required this.userIdentityNo,
     required this.compName,
     required this.compTaxNo,
     required this.compTaxPalace,
@@ -111,10 +103,6 @@ class AddCompanyRequest {
 
   Map<String, dynamic> toJson() => {
     'userToken': userToken,
-    'userFirstname': userFirstname,
-    'userLastname': userLastname,
-    'userBirthday': userBirthday,
-    'userIdentityNo': userIdentityNo,
     'compName': compName,
     'compTaxNo': compTaxNo,
     'compTaxPalace': compTaxPalace,
