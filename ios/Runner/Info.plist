@@ -79,5 +79,8 @@
 	<string>Medya paylaşımı için fotoğraflarınıza erişime ihtiyaç duyuyoruz.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Paylaşılan medya dosyalarını fotoğraf arşivinize kaydedebilmek için gerekli.</string>
+	<!-- Kamera izin açıklaması (galeriden farklı olarak kamera ile çekim) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Logo eklemek için kameraya erişim izni gerekiyor.</string>
 </dict>
 </plist>

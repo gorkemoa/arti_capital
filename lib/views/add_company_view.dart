@@ -1,9 +1,14 @@
+import 'dart:ui';
+
 import 'package:arti_capital/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 // import 'package:intl/intl.dart'; // Kaldırıldı - doğum tarihi alanı kaldırıldı
 import 'package:flutter/cupertino.dart';
@@ -44,6 +49,8 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   bool _loading = false; // submit için
   bool _loadingMeta = true; // şehir/ilçe yükleme için
   String _logoBase64 = '';
+  // Dashed container helper
+  bool _hasUnsavedChanges = false;
   FormStep _currentStep = FormStep.company;
   // _selectedBirthday kaldırıldı - doğum tarihi alanı kaldırıldı
   
@@ -118,37 +125,111 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
   Future<void> _pickLogo() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-        withData: true,
+      // Kullanıcıya seçim kaynağını sor
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        builder: (context) {
+          return SafeArea(
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Fotoğraflardan Seç'),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.insert_drive_file_outlined),
+                  title: const Text('Dosyadan Seç'),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.close),
+                  title: const Text('İptal'),
+                  onTap: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          );
+        },
       );
-      
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        Uint8List? bytes = file.bytes;
-        
-        // Bazı platformlarda bytes null olabilir, path üzerinden oku
-        if (bytes == null && file.path != null) {
-          try {
-            bytes = await File(file.path!).readAsBytes();
-          } catch (_) {}
+
+      Uint8List? bytes;
+      String pickedFilePath = '';
+
+      if (source == ImageSource.gallery) {
+        final ImagePicker picker = ImagePicker();
+        final XFile? xfile = await picker.pickImage(source: ImageSource.gallery);
+        if (xfile != null) {
+          pickedFilePath = xfile.path;
+          bytes = await xfile.readAsBytes();
         }
-        
-        if (bytes != null) {
-          final base64String = base64Encode(bytes);
-          
+      } else if (source == ImageSource.camera) {
+        // Dosyadan seç: file picker
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['png','jpg','jpeg','gif','webp','heic','heif'],
+          allowMultiple: false,
+          withData: true,
+        );
+        if (result != null && result.files.isNotEmpty) {
+          final file = result.files.first;
+          pickedFilePath = file.path ?? '';
+          bytes = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
+        }
+      } else {
+        return; // iptal
+      }
+      
+      if (bytes != null) {
+          // 1) Geçici dosya oluştur ve kırpma ekranını aç
+          final String tempPath = pickedFilePath;
+          final CroppedFile? cropped = await ImageCropper().cropImage(
+            sourcePath: tempPath,
+            compressFormat: ImageCompressFormat.png,
+            uiSettings: [
+              AndroidUiSettings(
+                toolbarTitle: 'Görseli Düzenle',
+                toolbarColor: AppColors.primary,
+                toolbarWidgetColor: AppColors.onPrimary,
+                activeControlsWidgetColor: AppColors.primary,
+                initAspectRatio: CropAspectRatioPreset.square,
+                lockAspectRatio: true,
+              ),
+              IOSUiSettings(
+                title: 'Görseli Düzenle',
+                aspectRatioLockEnabled: true,
+                resetButtonHidden: false,
+                rotateButtonsHidden: false,
+              ),
+            ],
+            aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          );
+
+          Uint8List finalBytes;
+          if (cropped != null) {
+            final croppedBytes = await File(cropped.path).readAsBytes();
+            finalBytes = croppedBytes;
+          } else {
+            finalBytes = bytes; // kullanıcı iptal ettiyse orijinali kullan
+          }
+
+          // 2) 600x600'e yeniden boyutlandır
+          try {
+            final img.Image? original = img.decodeImage(finalBytes);
+            if (original != null) {
+              final img.Image resized = img.copyResizeCropSquare(original, size: 600);
+              finalBytes = Uint8List.fromList(img.encodePng(resized));
+            }
+          } catch (_) {}
+
+          final base64String = base64Encode(finalBytes);
           // Dosya tipini belirle
           String mimeType = 'image/png';
-          final fileName = file.name.toLowerCase();
-          if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-            mimeType = 'image/jpeg';
-          }
           
           setState(() {
             _logoBase64 = 'data:$mimeType;base64,$base64String';
+            _hasUnsavedChanges = true;
           });
-        }
       }
     } catch (e) {
       AppLogger.e('Logo seçme hatası: $e', tag: 'ADD_COMPANY');
@@ -163,6 +244,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   Future<void> _removeLogo() async {
     setState(() {
       _logoBase64 = '';
+      _hasUnsavedChanges = true;
     });
   }
 
@@ -250,7 +332,33 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        if (_hasUnsavedChanges) {
+          final bool? leave = await showDialog<bool>(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('Çıkmak istiyor musunuz?'),
+                content: const Text('Kaydedilmemiş değişiklikler var. Çıkarsanız kaybolacak.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('İptal'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Çık'),
+                  ),
+                ],
+              );
+            },
+          );
+          return leave ?? false;
+        }
+        return true;
+      },
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Firma Ekle'),
@@ -291,6 +399,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         ],
       ),
       bottomNavigationBar: _buildNavigationBar(),
+      ),
     );
   }
 
@@ -817,41 +926,57 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             color: AppColors.onSurface,
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'PNG, JPG, GIF (MAX. 800×400px)',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.onSurface.withOpacity(0.6),
-          ),
-        ),
         const SizedBox(height: 20),
         if (_logoBase64.isEmpty) ...[
-          ElevatedButton(
-            onPressed: _pickLogo,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary.withOpacity(0.1),
-              foregroundColor: AppColors.primary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+          GestureDetector(
+            onTap: _pickLogo,
+            child: DashedBorderContainer(
+              width: 240,
+              height: 140,
+              borderColor: AppColors.primary.withOpacity(0.6),
+              dashWidth: 6,
+              dashSpace: 4,
+              radius: 8,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.image_outlined, color: AppColors.primary, size: 28),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Görsel Seç \n (PNG, JPG, JPEG, HEIC)',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Text(
-              'Dosya Seç',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: 160,
+            child: ElevatedButton.icon(
+              onPressed: _pickLogo,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: const Text('Logo Ekle'),
             ),
           ),
         ] else ...[
-          Container(
-            width: 120,
-            height: 80,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
+          DashedBorderContainer(
+            width: 240,
+            height: 140,
+            borderColor: Colors.grey.shade400,
+            dashWidth: 6,
+            dashSpace: 4,
+            radius: 8,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.memory(
@@ -1026,7 +1151,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             }
             },
           ),
-        ),
+      ),
     );
   }
 
@@ -1049,4 +1174,86 @@ class UpperCaseTextFormatter extends TextInputFormatter {
       composing: TextRange.empty,
     );
   }
+}
+
+class DashedBorderContainer extends StatelessWidget {
+  final double width;
+  final double height;
+  final double radius;
+  final Color borderColor;
+  final double dashWidth;
+  final double dashSpace;
+  final Widget child;
+
+  const DashedBorderContainer({
+    super.key,
+    required this.width,
+    required this.height,
+    required this.borderColor,
+    required this.dashWidth,
+    required this.dashSpace,
+    this.radius = 8,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashedRectPainter(
+        color: borderColor,
+        dashWidth: dashWidth,
+        dashSpace: dashSpace,
+        radius: radius,
+      ),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Center(child: child),
+      ),
+    );
+  }
+}
+
+class _DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double dashWidth;
+  final double dashSpace;
+  final double radius;
+
+  _DashedRectPainter({
+    required this.color,
+    required this.dashWidth,
+    required this.dashSpace,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final RRect rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Radius.circular(radius),
+    );
+
+    final Path path = Path()..addRRect(rrect);
+    final PathMetrics metrics = path.computeMetrics();
+    for (final PathMetric metric in metrics) {
+      double distance = 0.0;
+      while (distance < metric.length) {
+        final double next = distance + dashWidth;
+        canvas.drawPath(
+          metric.extractPath(distance, next),
+          paint,
+        );
+        distance = next + dashSpace;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -28,6 +28,9 @@ dependencies:
   flutter_local_notifications: ^17.2.3
   flutter_quill: ^11.4.2
   file_picker: ^8.1.2
+  image_cropper: ^8.0.2
+  image: ^4.2.0
+  image_picker: ^1.1.2
   quill_native_bridge: any
   quill_native_bridge_ios: any
   receive_sharing_intent: ^1.8.1
