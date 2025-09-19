@@ -13,6 +13,7 @@ class CompaniesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // ignore: deprecated_member_use
     final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
     return ChangeNotifierProvider(
       create: (_) => CompaniesViewModel(),
@@ -84,6 +85,7 @@ class CompaniesView extends StatelessWidget {
 
 Widget _logoWidget(String logo, ThemeData theme) {
   final bg = theme.colorScheme.surface;
+  // ignore: deprecated_member_use
   final border = theme.colorScheme.outline.withOpacity(0.12);
   Widget child;
   if (logo.isEmpty) {

@@ -186,7 +186,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
       } catch (_) {
         // Stringleştirilmiş Map formatından çek
         final match = RegExp(r'userIdentityNo[:=]\s*([^,}\s]+)').firstMatch(userData);
-        identityNo = match != null ? match.group(1) : null;
+        identityNo = match?.group(1);
       }
       if (identityNo == null || identityNo.isEmpty) {
         throw Exception('Kimlik numarası bulunamadı');
@@ -388,6 +388,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        // ignore: deprecated_member_use
         border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
       ),
       child: Column(
@@ -404,6 +405,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
+                // ignore: deprecated_member_use
                 border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
               ),
               child: Icon(
@@ -418,6 +420,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
               height: 80,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
+                // ignore: deprecated_member_use
                 border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
               ),
               child: ClipRRect(

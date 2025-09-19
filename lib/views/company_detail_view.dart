@@ -36,7 +36,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Firma Detayı'),
@@ -65,24 +64,69 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
           ? const Center(child: CircularProgressIndicator())
           : (_company == null)
               ? const Center(child: Text('Firma bulunamadı'))
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Center(
-                      child: _detailLogoWidget(_company!.compLogo, theme),
-                    ),
-                    const SizedBox(height: 16),
-                    _Section(title: 'Firma Bilgileri'),
-                    _Tile(label: 'Adı', value: _company!.compName, icon: Icons.badge_outlined),
-                    _Tile(label: 'Tür', value: _company!.compType ?? '-', icon: Icons.category_outlined),
-                    _Tile(label: 'Vergi No', value: _company!.compTaxNo ?? '-', icon: Icons.receipt_long_outlined),
-                    _Tile(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? '-', icon: Icons.apartment),
-                    _Tile(label: 'MERSİS', value: _company!.compMersisNo ?? '-', icon: Icons.confirmation_number_outlined),
-                    const SizedBox(height: 12),
-                    _Section(title: 'Adres'),
-                    _Tile(label: 'İl / İlçe', value: '${_company!.compCity} / ${_company!.compDistrict}', icon: Icons.location_city_outlined),
-                    _Tile(label: 'Adres', value: _company!.compAddress, icon: Icons.place_outlined),
-                  ],
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 640;
+                return ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      children: [
+                        _HeaderCard(
+                          logo: _company!.compLogo,
+                          name: _company!.compName,
+                          type: _company!.compType ?? '-',
+                        ),
+                        const SizedBox(height: 12),
+                        if (isWide)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _Panel(
+                                  title: 'Firma Bilgileri',
+                                  icon: Icons.apartment_outlined,
+                                  children: [
+                                    _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
+                                    _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? '-'),
+                                    _InfoRow(label: 'MERSİS', value: _company!.compMersisNo ?? '-'),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _Panel(
+                                  title: 'Adres',
+                                  icon: Icons.location_on_outlined,
+                                  children: [
+                                    _InfoRow(label: 'İl / İlçe', value: '${_company!.compCity} / ${_company!.compDistrict}'),
+                                    _InfoRow(label: 'Adres', value: _company!.compAddress),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          _Panel(
+                            title: 'Firma Bilgileri',
+                            icon: Icons.apartment_outlined,
+                            children: [
+                              _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
+                              _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? '-'),
+                              _InfoRow(label: 'MERSİS', value: _company!.compMersisNo ?? '-'),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _Panel(
+                            title: 'Adres',
+                            icon: Icons.location_on_outlined,
+                            children: [
+                              _InfoRow(label: 'İl / İlçe', value: '${_company!.compCity} / ${_company!.compDistrict}'),
+                              _InfoRow(label: 'Adres', value: _company!.compAddress),
+                            ],
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
     );
   }
@@ -90,6 +134,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
 
 Widget _detailLogoWidget(String logo, ThemeData theme) {
   final bg = theme.colorScheme.surface;
+  // ignore: deprecated_member_use
   final border = theme.colorScheme.outline.withOpacity(0.12);
   Widget child;
   if (logo.isEmpty) {
@@ -126,45 +171,161 @@ Widget _detailLogoWidget(String logo, ThemeData theme) {
   );
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title});
-  final String title;
+
+class _HeaderCard extends StatelessWidget {
+  const _HeaderCard({required this.logo, required this.name, required this.type});
+  final String logo;
+  final String name;
+  final String type;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+    // ignore: deprecated_member_use
+    final border = theme.colorScheme.outline.withOpacity(0.12);
+    final muted = theme.colorScheme.onSurface.withOpacity(0.7);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            child: _detailLogoWidget(logo, theme),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.apartment_outlined, size: 16, color: muted),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        type,
+                        style: theme.textTheme.bodySmall?.copyWith(color: muted, fontWeight: FontWeight.w600, letterSpacing: 0.2),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile({required this.label, required this.value, required this.icon});
-  final String label;
-  final String value;
+
+class _Panel extends StatelessWidget {
+  const _Panel({required this.title, required this.icon, required this.children});
+  final String title;
   final IconData icon;
+  final List<Widget> children;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
+    // ignore: deprecated_member_use
+    final border = theme.colorScheme.outline.withOpacity(0.12);
+    final headerBg = theme.colorScheme.surface;
+    final muted = theme.colorScheme.onSurface.withOpacity(0.7);
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: subtleBorder),
+        border: Border.all(color: border),
       ),
-      child: ListTile(
-        leading: Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.7)),
-        title: Text(label, style: theme.textTheme.bodyMedium),
-        subtitle: Text(value, style: theme.textTheme.bodySmall),
-        dense: true,
-        visualDensity: VisualDensity.compact,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: headerBg,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+              border: Border(
+                bottom: BorderSide(color: border),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: muted),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Column(
+              children: [
+                for (int i = 0; i < children.length; i++) ...[
+                  children[i],
+                  if (i != children.length - 1)
+                    Divider(height: 16, thickness: 0.5, color: border),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // ignore: deprecated_member_use
+    final subtle = theme.colorScheme.onSurface.withOpacity(0.7);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700, color: subtle, letterSpacing: 0.2, height: 1.2),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 6,
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, height: 1.25),
+          ),
+        ),
+      ],
     );
   }
 }

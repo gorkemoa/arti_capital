@@ -25,6 +25,7 @@ class AppTypography {
         fontFamily: 'Poppins',
         fontSize: 12,
         fontWeight: FontWeight.w400,
+        // ignore: deprecated_member_use
         color: AppColors.onSurface.withOpacity(0.8),
       ),
       labelLarge: const TextStyle(

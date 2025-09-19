@@ -14,7 +14,6 @@ import 'views/notifications_view.dart';
 import 'views/requests_view.dart';
 import 'views/companies_view.dart';
 import 'views/support_view.dart';
-import 'views/support_detail_view.dart';
 import 'widgets/app_bottom_nav.dart';
 import 'package:provider/provider.dart';
 import 'viewmodels/login_view_model.dart';
@@ -136,6 +135,7 @@ class _ShareIntentGateState extends State<_ShareIntentGate> {
       await AppGroupService.clearSharePayload();       
 
 
+      // ignore: use_build_context_synchronously
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => const SupportView(),

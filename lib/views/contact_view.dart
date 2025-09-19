@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 // Toolbar ayrı pakette değil; 11.x ile ana pakette. Ayrı importu kaldırıyoruz.
@@ -48,10 +50,11 @@ class _ContactViewState extends State<ContactView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    // ignore: deprecated_member_use
     final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: const Text('İletişim'),
         centerTitle: true,

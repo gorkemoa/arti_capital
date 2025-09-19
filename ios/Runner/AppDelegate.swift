@@ -3,9 +3,11 @@ import UIKit
 import Firebase
 import FirebaseMessaging
 import Foundation
+import SwiftUI
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  var privacyOverlayView: UIView?
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -75,6 +77,46 @@ extension AppDelegate {
   override func application(_ application: UIApplication,
                             didRegister notificationSettings: UIUserNotificationSettings) {
     // no-op
+  }
+
+  override func applicationWillResignActive(_ application: UIApplication) {
+    addPrivacyOverlay()
+  }
+
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    removePrivacyOverlay()
+  }
+
+  func addPrivacyOverlay() {
+    guard privacyOverlayView == nil, let window = self.window else { return }
+    let overlay = UIView(frame: window.bounds)
+    overlay.backgroundColor = UIColor(red: 0xF3/255.0, green: 0xEF/255.0, blue: 0xE6/255.0, alpha: 1.0)
+
+    let imageView = UIImageView()
+    imageView.translatesAutoresizingMaskIntoConstraints = false
+    // LaunchScreen'deki görseli dene; yoksa sistem ikonu kullan
+    imageView.image = UIImage(named: "LaunchImage")
+    if imageView.image == nil {
+      imageView.image = UIImage(systemName: "app")
+      imageView.tintColor = .white
+    }
+    imageView.contentMode = .scaleAspectFit
+
+    overlay.addSubview(imageView)
+    NSLayoutConstraint.activate([
+      imageView.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+      imageView.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
+      imageView.widthAnchor.constraint(equalTo: overlay.widthAnchor, multiplier: 0.60),
+      imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor)
+    ])
+
+    window.addSubview(overlay)
+    privacyOverlayView = overlay
+  }
+
+  func removePrivacyOverlay() {
+    privacyOverlayView?.removeFromSuperview()
+    privacyOverlayView = nil
   }
 }
 

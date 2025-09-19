@@ -63,6 +63,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // ignore: deprecated_member_use
     final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
     return Scaffold(
       appBar: AppBar(
@@ -94,6 +95,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                             const SizedBox(height: 4),
                             Text(
                               'Yeni şifre en az 8 karakter olmalı ve harf ile rakam içermelidir.',
+                              // ignore: deprecated_member_use
                               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
                             ),
                             const SizedBox(height: 16),

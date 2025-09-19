@@ -24,14 +24,16 @@ class AppBottomNav extends StatelessWidget {
         _NavLabel(icon: Icons.person_outline, label: 'Profil'),
       ],
       height: 75,
-      circleWidth: 68,
+      circleWidth: 75,
       activeIndex: currentIndex,
       onTap: onTap,
       color: theme.colorScheme.surface,
       circleColor: theme.colorScheme.primary,
       padding: const EdgeInsets.only(left: 0, right: 0, bottom: 0),
       elevation: 8,
+      // ignore: deprecated_member_use
       shadowColor: theme.shadowColor.withOpacity(0.2),
+      // ignore: deprecated_member_use
       circleShadowColor: theme.colorScheme.primary.withOpacity(0.4),
       gradient: LinearGradient(
         begin: Alignment.topCenter,
@@ -67,11 +69,13 @@ class _NavLabel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // ignore: deprecated_member_use
           Icon(icon, color: theme.colorScheme.onSurface.withOpacity(0.8)),
           const SizedBox(height: 4),
           Text(
             label,
             style: theme.textTheme.labelSmall?.copyWith(
+              // ignore: deprecated_member_use
               color: theme.colorScheme.onSurface.withOpacity(0.7),
               fontWeight: FontWeight.w600,
             ),
