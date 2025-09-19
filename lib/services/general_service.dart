@@ -4,6 +4,7 @@ import 'api_client.dart';
 import 'app_constants.dart';
 import '../models/support_models.dart';
 import '../models/location_models.dart';
+import '../models/company_models.dart';
 
 class GeneralService {
   Future<List<ServiceItem>> getAllServices() async {
@@ -41,6 +42,14 @@ class GeneralService {
         .map((e) => DistrictItem.fromJson(e as Map<String, dynamic>))
         .toList();
     return list;
+  }
+
+  Future<List<CompanyTypeItem>> getCompanyTypes() async {
+    final Response resp = await ApiClient.getJson(AppConstants.getCompanyTypes);
+    final body = resp.data as Map<String, dynamic>;
+    final code = resp.statusCode;
+    final parsed = GetCompanyTypesResponse.fromJson(body, code);
+    return parsed.types;
   }
 }
 

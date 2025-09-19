@@ -24,6 +24,7 @@ class AppConstants {
 
   static const String getAllServices = '/service/general/general/services/all';
   static const String getCities = '/service/general/general/cities/all';
+  static const String getCompanyTypes = '/service/general/general/companyTypes/all';
   static String getDistrictsFor(int cityNo) => '/service/general/general/$cityNo/districts';
   static String getServiceDetail(int id) => '/service/general/general/services/$id';
   // Company detail uses same base with ID path

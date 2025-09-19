@@ -22,7 +22,7 @@ class AddCompanyView extends StatefulWidget {
   State<AddCompanyView> createState() => _AddCompanyViewState();
 }
 
-enum FormStep { company, location, additional, logo }
+enum FormStep { company, location, logo }
 
 class _AddCompanyViewState extends State<AddCompanyView> {
   // _formKey kaldırıldı - artık step-specific form key'ler kullanılıyor
@@ -51,7 +51,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   // Kişisel step kaldırıldı
   final _companyFormKey = GlobalKey<FormBuilderState>();
   final _locationFormKey = GlobalKey<FormBuilderState>();
-  final _additionalFormKey = GlobalKey<FormBuilderState>();
   final _logoFormKey = GlobalKey<FormBuilderState>();
   
   @override
@@ -172,7 +171,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     // Kişisel step yok
     _companyFormKey.currentState?.save();
     _locationFormKey.currentState?.save();
-    _additionalFormKey.currentState?.save();
     _logoFormKey.currentState?.save();
     
     if (_selectedCity == null) {
@@ -304,9 +302,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           _currentStep = FormStep.location;
           break;
         case FormStep.location:
-          _currentStep = FormStep.additional;
-          break;
-        case FormStep.additional:
           _currentStep = FormStep.logo;
           break;
         case FormStep.logo:
@@ -326,11 +321,8 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         case FormStep.location:
           _currentStep = FormStep.company;
           break;
-        case FormStep.additional:
-          _currentStep = FormStep.location;
-          break;
         case FormStep.logo:
-          _currentStep = FormStep.additional;
+          _currentStep = FormStep.location;
           break;
       }
     });
@@ -364,18 +356,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             ],
           ),
         );
-      case FormStep.additional:
-        return FormBuilder(
-          key: _additionalFormKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSectionTitle('Ek Bilgiler'),
-              const SizedBox(height: 24),
-              _buildCompanyTypeField(),
-            ],
-          ),
-        );
       case FormStep.logo:
         return FormBuilder(
           key: _logoFormKey,
@@ -395,7 +375,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     final steps = [
       ('Şirket', FormStep.company, Icons.business_outlined),
       ('Konum', FormStep.location, Icons.location_on_outlined),
-      ('Ek Bilgiler', FormStep.additional, Icons.info_outline),
       ('Logo', FormStep.logo, Icons.image_outlined),
     ];
 
@@ -433,10 +412,10 @@ class _AddCompanyViewState extends State<AddCompanyView> {
                 // Connector line (except for last item)
                 if (index < steps.length - 1)
                   Container(
-                    width: 12,
-                    height: 2,
+                    width: 100,
+                    height: 3,
                     color: isCompleted ? Colors.green : Colors.grey[300],
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
                   ),
               ],
             );
@@ -551,6 +530,8 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   Widget _buildCompanyInfoFields() {
     return Column(
       children: [
+        _buildCompanyTypeField(),
+        const SizedBox(height: 16),
         _buildTextField(
           name: 'compName',
           label: 'Şirket Adı',
@@ -607,8 +588,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-              Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
-                const SizedBox(width: 12),
               Text(
                 'Önce il seçin',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -656,8 +635,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
-                const SizedBox(width: 12),
                 Text(
                   'İlçe',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -728,42 +705,103 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   }
 
   Widget _buildCompanyTypeField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return FutureBuilder<List<CompanyTypeItem>>(
+      future: _generalService.getCompanyTypes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: null,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              ),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red.shade200),
+            ),
             child: Row(
-                children: [
-                Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
-                  const SizedBox(width: 12),
-                  Text(
-                  'Şirket Türü',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.onSurface.withOpacity(0.6),
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade400),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Şirket türleri alınamadı',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.red.shade400,
                     ),
                   ),
-                ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        final types = snapshot.data ?? [];
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+              borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<CompanyTypeItem>(
+              isExpanded: true,
+              value: null,
+              hint: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    Text(
+                      'Şirket Türü',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              items: types.map((type) {
+                return DropdownMenuItem<CompanyTypeItem>(
+                  value: type,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      type.typeName,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (CompanyTypeItem? type) {
+                setState(() {
+                  // Seçimi state'e bağlamak istersen ekleyebiliriz
+                });
+              },
             ),
           ),
-          items: const [
-            DropdownMenuItem(value: '1', child: Text('Limited Şirket')),
-            DropdownMenuItem(value: '2', child: Text('Anonim Şirket')),
-            DropdownMenuItem(value: '3', child: Text('Kollektif Şirket')),
-            DropdownMenuItem(value: '4', child: Text('Komandit Şirket')),
-          ],
-          onChanged: (String? value) {
-            // Handle dropdown selection
-          },
-              ),
-      ),
+        );
+      },
     );
   }
 
@@ -955,9 +993,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           hint: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: [
-                Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
-                const SizedBox(width: 12),
+              children: [
                 Text(
                   'İl',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(

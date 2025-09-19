@@ -146,6 +146,46 @@ class AddCompanyResponse {
   }
 }
 
+class CompanyTypeItem {
+  final int typeID;
+  final String typeName;
+
+  CompanyTypeItem({required this.typeID, required this.typeName});
+
+  factory CompanyTypeItem.fromJson(Map<String, dynamic> json) => CompanyTypeItem(
+        typeID: (json['typeID'] as num).toInt(),
+        typeName: json['typeName'] as String? ?? '',
+      );
+}
+
+class GetCompanyTypesResponse {
+  final bool error;
+  final bool success;
+  final List<CompanyTypeItem> types;
+  final String? errorMessage;
+  final int? statusCode;
+
+  GetCompanyTypesResponse({
+    required this.error,
+    required this.success,
+    required this.types,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory GetCompanyTypesResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final list = (data != null ? data['types'] as List<dynamic>? : null) ?? [];
+    return GetCompanyTypesResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      types: list.map((e) => CompanyTypeItem.fromJson(e as Map<String, dynamic>)).toList(),
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
 class UpdateCompanyRequest {
   final String userToken;
   final String userIdentityNo;
