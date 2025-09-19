@@ -1,10 +1,13 @@
+import 'package:arti_capital/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
 
-import '../theme/app_colors.dart';
 import '../models/company_models.dart';
 import '../models/location_models.dart';
 import '../services/user_service.dart';
@@ -19,8 +22,13 @@ class AddCompanyView extends StatefulWidget {
   State<AddCompanyView> createState() => _AddCompanyViewState();
 }
 
+enum FormStep { personal, company, location, address, additional, logo }
+
 class _AddCompanyViewState extends State<AddCompanyView> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormBuilderState>();
+  final _userFirstnameController = TextEditingController();
+  final _userLastnameController = TextEditingController();
+  final _userBirthdayController = TextEditingController();
   final _compNameController = TextEditingController();
   final _compTaxNoController = TextEditingController();
   final _compTaxPalaceController = TextEditingController();
@@ -32,17 +40,18 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   final GeneralService _generalService = GeneralService();
   
   List<CityItem> _cities = const [];
-  List<DistrictItem> _districts = const [];
   CityItem? _selectedCity;
-  DistrictItem? _selectedDistrict;
   bool _loading = false; // submit için
   bool _loadingMeta = true; // şehir/ilçe yükleme için
   String _logoBase64 = '';
+  FormStep _currentStep = FormStep.personal;
+  DateTime? _selectedBirthday;
   
   @override
   void initState() {
     super.initState();
     _loadCities();
+    _prefillUserFields();
   }
 
   Future<void> _loadCities() async {
@@ -65,26 +74,34 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     }
   }
 
-  Future<void> _loadDistricts(int cityNo) async {
-    setState(() { _loadingMeta = true; _districts = const []; _selectedDistrict = null; });
+  void _prefillUserFields() {
+    final userData = StorageService.getUserData();
+    if (userData == null || userData.isEmpty) return;
     try {
-      final d = await _generalService.getDistricts(cityNo);
-      setState(() { _districts = d; });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('İlçe listesi alınamadı')),
-        );
+      final dynamic parsed = jsonDecode(userData);
+      if (parsed is Map<String, dynamic>) {
+        final f = parsed['userFirstname'] as String?;
+        final l = parsed['userLastname'] as String?;
+        final b = parsed['userBirthday'] as String?;
+        if (f != null && f.isNotEmpty) {
+          _userFirstnameController.text = f.toUpperCase();
+        }
+        if (l != null && l.isNotEmpty) {
+          _userLastnameController.text = l.toUpperCase();
+        }
+        if (b != null && b.isNotEmpty) {
+          _userBirthdayController.text = b;
+        }
       }
-    } finally {
-      if (mounted) {
-        setState(() { _loadingMeta = false; });
-      }
-    }
+    } catch (_) {}
   }
+
 
   @override
   void dispose() {
+    _userFirstnameController.dispose();
+    _userLastnameController.dispose();
+    _userBirthdayController.dispose();
     _compNameController.dispose();
     _compTaxNoController.dispose();
     _compTaxPalaceController.dispose();
@@ -145,7 +162,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
     
     if (_selectedCity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -154,12 +171,6 @@ class _AddCompanyViewState extends State<AddCompanyView> {
       return;
     }
     
-    if (_selectedDistrict == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen bir ilçe seçin')),
-      );
-      return;
-    }
 
     setState(() {
       _loading = true;
@@ -192,18 +203,27 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         throw Exception('Kimlik numarası bulunamadı');
       }
 
+      // FormBuilder'dan değerleri al
+      final formData = _formKey.currentState!.value;
+      final uppercaseFirstname = (formData['userFirstname'] as String? ?? '').trim().toUpperCase();
+      final uppercaseLastname = (formData['userLastname'] as String? ?? '').trim().toUpperCase();
+      final normalizedBirthday = _selectedBirthday != null ? DateFormat('dd.MM.yyyy').format(_selectedBirthday!) : '';
+
       final request = AddCompanyRequest(
         userToken: token,
+        userFirstname: uppercaseFirstname,
+        userLastname: uppercaseLastname,
+        userBirthday: normalizedBirthday,
         userIdentityNo: identityNo,
-        compName: _compNameController.text.trim(),
-        compTaxNo: _compTaxNoController.text.trim(),
-        compTaxPalace: _compTaxPalaceController.text.trim(),
-        compKepAddress: _compKepAddressController.text.trim(),
-        compMersisNo: _compMersisNoController.text.trim(),
+        compName: (formData['compName'] as String? ?? '').trim(),
+        compTaxNo: (formData['compTaxNo'] as String? ?? '').trim(),
+        compTaxPalace: (formData['compTaxPalace'] as String? ?? '').trim(),
+        compKepAddress: (formData['compKepAddress'] as String? ?? '').trim(),
+        compMersisNo: (formData['compMersisNo'] as String? ?? '').trim(),
         compType: 1,
         compCity: _selectedCity!.cityNo,
-        compDistrict: _selectedDistrict!.districtNo,
-        compAddress: _compAddressController.text.trim(),
+        compDistrict: 0, // District artık seçilmiyor
+        compAddress: (formData['compAddress'] as String? ?? '').trim(),
         compLogo: _logoBase64,
       );
 
@@ -245,14 +265,14 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Firma Ekle'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
+        elevation: 0,
         actions: [
           if (_loading)
             const Padding(
@@ -262,287 +282,815 @@ class _AddCompanyViewState extends State<AddCompanyView> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                 ),
               ),
             ),
         ],
       ),
-      body: Form(
+      body: FormBuilder(
         key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Column(
+                  children: [
+            // Top step indicator
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.grey[50],
+              child: _buildStepIndicator(),
+            ),
+            // Main content area
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: _buildCurrentStepContent(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildNavigationBar(),
+    );
+  }
+
+  // Step Navigation Methods
+  void _nextStep() {
+    setState(() {
+      switch (_currentStep) {
+        case FormStep.personal:
+          _currentStep = FormStep.company;
+          break;
+        case FormStep.company:
+          _currentStep = FormStep.location;
+          break;
+        case FormStep.location:
+          _currentStep = FormStep.address;
+          break;
+        case FormStep.address:
+          _currentStep = FormStep.additional;
+          break;
+        case FormStep.additional:
+          _currentStep = FormStep.logo;
+          break;
+        case FormStep.logo:
+          // Last step, submit form
+          _submitForm();
+          break;
+      }
+    });
+  }
+
+  void _previousStep() {
+    setState(() {
+      switch (_currentStep) {
+        case FormStep.personal:
+          // First step, can't go back
+          break;
+        case FormStep.company:
+          _currentStep = FormStep.personal;
+          break;
+        case FormStep.location:
+          _currentStep = FormStep.company;
+          break;
+        case FormStep.address:
+          _currentStep = FormStep.location;
+          break;
+        case FormStep.additional:
+          _currentStep = FormStep.address;
+          break;
+        case FormStep.logo:
+          _currentStep = FormStep.additional;
+          break;
+      }
+    });
+  }
+
+  Widget _buildCurrentStepContent() {
+    switch (_currentStep) {
+      case FormStep.personal:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+            _buildSectionTitle('Kişisel Bilgiler'),
+            const SizedBox(height: 24),
+            _buildPersonalInfoFields(),
+          ],
+        );
+      case FormStep.company:
+        return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+            _buildSectionTitle('Şirket Bilgileri'),
+                          const SizedBox(height: 24),
+            _buildCompanyInfoFields(),
+          ],
+        );
+      case FormStep.location:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSectionTitle('Konum Bilgileri'),
+                          const SizedBox(height: 24),
+            _buildLocationInfoFields(),
+          ],
+        );
+      case FormStep.address:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSectionTitle('Şirket Adresi'),
+            const SizedBox(height: 24),
+            _buildAddressField(),
+          ],
+        );
+      case FormStep.additional:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSectionTitle('Ek Bilgiler'),
+            const SizedBox(height: 24),
+            _buildCompanyTypeField(),
+          ],
+        );
+      case FormStep.logo:
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+            _buildSectionTitle('Logo Yükleme'),
+            const SizedBox(height: 24),
+            _buildLogoUploadSection(),
+          ],
+        );
+    }
+  }
+
+  Widget _buildStepIndicator() {
+    final steps = [
+      ('Kişisel', FormStep.personal, Icons.person_outline),
+      ('Şirket', FormStep.company, Icons.business_outlined),
+      ('Konum', FormStep.location, Icons.location_on_outlined),
+      ('Adres', FormStep.address, Icons.home_outlined),
+      ('Ek Bilgiler', FormStep.additional, Icons.info_outline),
+      ('Logo', FormStep.logo, Icons.image_outlined),
+    ];
+
+    return Column(
             children: [
-              // Logo Section
-              _buildLogoSection(theme),
-              const SizedBox(height: 24),
-              
-              // Company Name
-              _buildTextField(
-                controller: _compNameController,
-                label: 'Firma Adı *',
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Firma adı gereklidir';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              
-              // Tax Number
-              _buildTextField(
-                controller: _compTaxNoController,
-                label: 'Vergi No *',
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vergi numarası gereklidir';
-                  }
-                  if (value.trim().length != 10) {
-                    return 'Vergi numarası 10 haneli olmalıdır';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              
-              // Tax Office
-              _buildTextField(
-                controller: _compTaxPalaceController,
-                label: 'Vergi Dairesi *',
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Vergi dairesi gereklidir';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              
-              // City Dropdown
-              _buildCityDropdown(theme),
-              const SizedBox(height: 16),
-              
-              // District Dropdown
-              _buildDistrictDropdown(theme),
-              const SizedBox(height: 16),
-              
-              // Address
-              _buildTextField(
-                controller: _compAddressController,
-                label: 'Adres',
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              
-              // KEP Address
-              _buildTextField(
-                controller: _compKepAddressController,
-                label: 'KEP Adresi',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              
-              // MERSIS No
-              _buildTextField(
-                controller: _compMersisNoController,
-                label: 'MERSIS No',
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-              const SizedBox(height: 32),
-              
-              // Submit Button
-              ElevatedButton(
-                onPressed: _loading ? null : _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
+                Text(
+          'Form Adımları',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 15,
+                    fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: steps.asMap().entries.map((entry) {
+            final index = entry.key;
+            final (title, step, icon) = entry.value;
+            final isActive = _currentStep == step;
+            final isCompleted = _currentStep.index > step.index;
+            
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Step indicator
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: isActive 
+                        ? AppColors.primary
+                        : isCompleted 
+                            ? Colors.green 
+                            : Colors.grey[300],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.check : icon,
+                    color: isActive || isCompleted ? AppColors.onPrimary : Colors.grey[600],
+                    size: 14,
+                  ),
+                ),
+                // Connector line (except for last item)
+                if (index < steps.length - 1)
+                  Container(
+                    width: 12,
+                    height: 2,
+                    color: isCompleted ? Colors.green : Colors.grey[300],
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+              ],
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavigationBar() {
+      return Container(
+      padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+            child: Row(
+              children: [
+          // Previous button
+          if (_currentStep != FormStep.personal)
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _previousStep,
+                style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: Text(
-                  _loading ? 'Ekleniyor...' : 'Firmayı Ekle',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: AppColors.onPrimary,
+                  'Geri',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogoSection(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        // ignore: deprecated_member_use
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.12)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Firma Logosu',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          if (_logoBase64.isEmpty)
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                // ignore: deprecated_member_use
-                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
-              ),
-              child: Icon(
-                Icons.apartment_outlined,
-                size: 40,
-                color: theme.colorScheme.outline,
-              ),
-            )
-          else
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                // ignore: deprecated_member_use
-                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  base64Decode(_logoBase64.split(',').last),
-                  fit: BoxFit.contain,
-                ),
-              ),
             ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton.icon(
-                onPressed: _pickLogo,
-                icon: const Icon(Icons.photo_library),
-                label: Text(_logoBase64.isEmpty ? 'Logo Seç' : 'Değiştir'),
-              ),
-              if (_logoBase64.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: _removeLogo,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Kaldır'),
+          
+          if (_currentStep != FormStep.personal)
+            const SizedBox(width: 16),
+          
+          // Next/Submit button
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _nextStep,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ],
+              ),
+              child: _loading
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+            width: 20,
+            height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+                          ),
+                        ),
+                const SizedBox(width: 12),
+                        Text(
+                          'Kaydediliyor...',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppColors.onPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      _currentStep == FormStep.logo ? 'Kaydet' : 'İleri',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.onPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.grey.shade50,
+  // New UI Helper Methods
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: AppColors.onSurface,
       ),
-      validator: validator,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      maxLines: maxLines,
     );
   }
 
+  Widget _buildPersonalInfoFields() {
+    return Column(
+      children: [
+        _buildTextField(
+          name: 'userFirstname',
+          label: 'Ad',
+          inputFormatters: [UpperCaseTextFormatter()],
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'userLastname',
+          label: 'Soyad',
+          inputFormatters: [UpperCaseTextFormatter()],
+        ),
+        const SizedBox(height: 16),
+        _buildBirthdayField(),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'userIdentityNo',
+          label: 'T.C. Kimlik No',
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompanyInfoFields() {
+    return Column(
+      children: [
+        _buildTextField(
+          name: 'compName',
+          label: 'Şirket Adı',
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'compTaxNo',
+          label: 'Vergi No',
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'compTaxPalace',
+          label: 'Vergi Dairesi',
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'compMersisNo',
+          label: 'MERSİS No',
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'compKepAddress',
+          label: 'KEP Adresi',
+          keyboardType: TextInputType.emailAddress,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationInfoFields() {
+    return Column(
+      children: [
+        _buildCityDropdown(Theme.of(context)),
+      ],
+    );
+  }
+
+
+  Widget _buildAddressField() {
+    return FormBuilderTextField(
+          name: 'compAddress',
+          decoration: InputDecoration(
+            labelText: 'Şirket Adresi',
+            hintText: 'Detaylı adres bilgilerini girin',
+        labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppColors.onSurface.withOpacity(0.6),
+        ),
+        hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppColors.onSurface.withOpacity(0.4),
+        ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
+            ),
+            filled: true,
+        fillColor: AppColors.surface,
+            alignLabelWithHint: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: AppColors.onSurface,
+      ),
+      maxLines: 4,
+    );
+  }
+
+  Widget _buildCompanyTypeField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: null,
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+                children: [
+                Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
+                  const SizedBox(width: 12),
+                  Text(
+                  'Şirket Türü',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+            ),
+          ),
+          items: const [
+            DropdownMenuItem(value: '1', child: Text('Limited Şirket')),
+            DropdownMenuItem(value: '2', child: Text('Anonim Şirket')),
+            DropdownMenuItem(value: '3', child: Text('Kollektif Şirket')),
+            DropdownMenuItem(value: '4', child: Text('Komandit Şirket')),
+          ],
+          onChanged: (String? value) {
+            // Handle dropdown selection
+          },
+              ),
+      ),
+    );
+  }
+
+  Widget _buildLogoUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          'Şirket Logosunu Yükle',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'PNG, JPG, GIF (MAX. 800×400px)',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.onSurface.withOpacity(0.6),
+          ),
+        ),
+        const SizedBox(height: 20),
+        if (_logoBase64.isEmpty) ...[
+          ElevatedButton(
+            onPressed: _pickLogo,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              foregroundColor: AppColors.primary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Dosya Seç',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ] else ...[
+          Container(
+            width: 120,
+            height: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                base64Decode(_logoBase64.split(',').last),
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+              TextButton.icon(
+                onPressed: _pickLogo,
+                icon: Icon(Icons.edit, color: AppColors.primary),
+                label: Text(
+                  'Değiştir',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              TextButton.icon(
+                onPressed: _removeLogo,
+                icon: Icon(Icons.delete_outline, color: Colors.red),
+                label: Text(
+                  'Kaldır',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.red,
+                  ),
+            ),
+          ),
+        ],
+      ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildBirthdayField() {
+    return GestureDetector(
+      onTap: _showDatePicker,
+      child: Container(
+      decoration: BoxDecoration(
+          color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+      ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        children: [
+              Icon(
+                Icons.calendar_today,
+                color: AppColors.onSurface.withOpacity(0.6),
+                size: 20,
+              ),
+          const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _selectedBirthday != null 
+                      ? DateFormat('dd.MM.yyyy').format(_selectedBirthday!)
+                      : 'Doğum Tarihi',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _selectedBirthday != null 
+                        ? AppColors.onSurface 
+                        : AppColors.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_drop_down,
+                color: AppColors.onSurface.withOpacity(0.6),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDatePicker() {
+    if (Platform.isIOS) {
+      _showIOSDatePicker();
+    } else {
+      _showAndroidDatePicker();
+    }
+  }
+
+  void _showIOSDatePicker() {
+    showCupertinoModalPopup<DateTime>(
+      context: context,
+      builder: (context) => Container(
+        height: 300,
+        color: AppColors.surface,
+        child: Column(
+      children: [
+        Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.9),
+            borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                  topRight: Radius.circular(8),
+            ),
+          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+                  CupertinoButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'İptal',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onPrimary,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                  CupertinoButton(
+                    onPressed: () => Navigator.pop(context, _selectedBirthday),
+                    child: Text(
+                      'Tamam',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onPrimary,
+                        fontWeight: FontWeight.w400,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: _selectedBirthday ?? DateTime.now(),
+                minimumDate: DateTime.now(),
+                maximumDate: DateTime.now().add(const Duration(days: 365 * 100)), // 100 yıl sonrasına kadar
+                dateOrder: DatePickerDateOrder.dmy, // Gün, Ay, Yıl sırası
+                onDateTimeChanged: (DateTime newDate) {
+                  setState(() {
+                    _selectedBirthday = newDate;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAndroidDatePicker() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedBirthday ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 100)), // 100 yıl sonrasına kadar
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: AppColors.onPrimary,
+              surface: AppColors.surface,
+              onSurface: AppColors.onSurface,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null) {
+      setState(() {
+        _selectedBirthday = picked;
+      });
+    }
+  }
+
+  Widget _buildTextField({
+    required String name,
+    required String label,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return FormBuilderTextField(
+      name: name,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppColors.onSurface.withOpacity(0.6),
+        ),
+        border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
+        ),
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: AppColors.onSurface,
+      ),
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+    );
+  }
+
+
+
   Widget _buildCityDropdown(ThemeData theme) {
     if (_loadingMeta && _cities.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(4),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<CityItem>(
           isExpanded: true,
           value: _selectedCity,
-          hint: const Text('Şehir Seçin *'),
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.expand_more, color: AppColors.onSurface.withOpacity(0.6)),
+                const SizedBox(width: 12),
+                Text(
+                  'İl',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.6),
+                  ),
+                            ),
+                        ],
+                      ),
+          ),
           items: _cities.map((city) {
             return DropdownMenuItem<CityItem>(
               value: city,
-              child: Text(city.cityName),
-            );
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  city.cityName,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface,
+                    ),
+                  ),
+                ),
+              );
           }).toList(),
           onChanged: (CityItem? city) {
             setState(() {
               _selectedCity = city;
-              _selectedDistrict = null; // Reset district when city changes
             });
-            if (city != null) {
-              _loadDistricts(city.cityNo);
-            }
-          },
+            },
+          ),
         ),
-      ),
     );
   }
 
-  Widget _buildDistrictDropdown(ThemeData theme) {
-    if (_loadingMeta && _selectedCity != null && _districts.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<DistrictItem>(
-          isExpanded: true,
-          value: _selectedDistrict,
-          hint: const Text('İlçe Seçin *'),
-          items: _districts.map((district) {
-            return DropdownMenuItem<DistrictItem>(
-              value: district,
-              child: Text(district.districtName),
-            );
-          }).toList(),
-          onChanged: _districts.isEmpty ? null : (DistrictItem? district) {
-            setState(() {
-              _selectedDistrict = district;
-            });
-          },
-        ),
-      ),
+
+
+
+
+
+
+
+}
+
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return newValue.copyWith(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+      composing: TextRange.empty,
     );
   }
 }

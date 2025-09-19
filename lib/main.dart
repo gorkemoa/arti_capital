@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/cupertino.dart';
 import 'theme/app_theme.dart';
 import 'views/login_view.dart';
 import 'views/profile_view.dart';
@@ -71,6 +73,16 @@ class MyApp extends StatelessWidget {
         title: 'Arti Capital',
         theme: AppTheme.light(context),
         navigatorKey: ApiClient.navigatorKey,
+        locale: const Locale('tr', 'TR'),
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('tr', 'TR'),
+          Locale('en', 'US'),
+        ],
         home: _ShareIntentGate(initial: _getInitialRoute(authService)),
         routes: {
           '/login': (context) => const LoginView(),
