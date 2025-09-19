@@ -28,6 +28,7 @@ class AddCompanyView extends StatefulWidget {
 }
 
 enum FormStep { company, location, logo }
+enum PickerSource { gallery, files }
 
 class _AddCompanyViewState extends State<AddCompanyView> {
   // _formKey kaldırıldı - artık step-specific form key'ler kullanılıyor
@@ -123,64 +124,94 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     super.dispose();
   }
 
+  Future<PickerSource?> _askPickerSource() async {
+    if (Platform.isIOS) {
+      return await showCupertinoModalPopup<PickerSource>(
+        context: context,
+        builder: (context) => CupertinoActionSheet(
+          title: const Text('Logo Ekle'),
+          message: const Text('Kaynak seçin'),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(context, PickerSource.gallery),
+              child: const Text('Fotoğraflar'),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(context, PickerSource.files),
+              child: const Text('Dosyalar'),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(context),
+            isDestructiveAction: false,
+            child: const Text('İptal'),
+          ),
+        ),
+      );
+    }
+
+    // Android / others: Material bottom sheet
+    return await showModalBottomSheet<PickerSource>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Fotoğraflar'),
+                onTap: () => Navigator.pop(context, PickerSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder_open),
+                title: const Text('Dosyalar'),
+                onTap: () => Navigator.pop(context, PickerSource.files),
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('İptal'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _pickLogo() async {
     try {
-      // Kullanıcıya seçim kaynağını sor
-      final source = await showModalBottomSheet<ImageSource>(
-        context: context,
-        builder: (context) {
-          return SafeArea(
-            child: Wrap(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.photo_library),
-                  title: const Text('Fotoğraflardan Seç'),
-                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.insert_drive_file_outlined),
-                  title: const Text('Dosyadan Seç'),
-                  onTap: () => Navigator.pop(context, ImageSource.camera),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.close),
-                  title: const Text('İptal'),
-                  onTap: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          );
-        },
-      );
+      // Kullanıcıya seçim kaynağını sor (native UI)
+      final PickerSource? source = await _askPickerSource();
 
       Uint8List? bytes;
       String pickedFilePath = '';
 
-      if (source == ImageSource.gallery) {
+      if (source == PickerSource.gallery) {
         final ImagePicker picker = ImagePicker();
         final XFile? xfile = await picker.pickImage(source: ImageSource.gallery);
         if (xfile != null) {
           pickedFilePath = xfile.path;
           bytes = await xfile.readAsBytes();
         }
-      } else if (source == ImageSource.camera) {
-        // Dosyadan seç: file picker
-        final result = await FilePicker.platform.pickFiles(
+      } else if (source == PickerSource.files) {
+        // Dosyalardan seç: FilePicker
+      final result = await FilePicker.platform.pickFiles(
           type: FileType.custom,
           allowedExtensions: ['png','jpg','jpeg','gif','webp','heic','heif'],
-          allowMultiple: false,
-          withData: true,
-        );
-        if (result != null && result.files.isNotEmpty) {
-          final file = result.files.first;
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
           pickedFilePath = file.path ?? '';
           bytes = file.bytes ?? (file.path != null ? await File(file.path!).readAsBytes() : null);
         }
       } else {
         return; // iptal
-      }
-      
-      if (bytes != null) {
+        }
+        
+        if (bytes != null) {
           // 1) Geçici dosya oluştur ve kırpma ekranını aç
           final String tempPath = pickedFilePath;
           final CroppedFile? cropped = await ImageCropper().cropImage(

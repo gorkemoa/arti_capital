@@ -51,6 +51,14 @@ class GeneralService {
     final parsed = GetCompanyTypesResponse.fromJson(body, code);
     return parsed.types;
   }
+
+  Future<List<DocumentTypeItem>> getDocumentTypes() async {
+    final Response resp = await ApiClient.getJson(AppConstants.getDocumentTypes);
+    final body = resp.data as Map<String, dynamic>;
+    final code = resp.statusCode;
+    final parsed = GetDocumentTypesResponse.fromJson(body, code);
+    return parsed.types;
+  }
 }
 
 

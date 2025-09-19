@@ -234,4 +234,50 @@ class UpdateCompanyRequest {
   };
 }
 
+class DocumentTypeItem {
+  final int documentID;
+  final String documentName;
+
+  DocumentTypeItem({
+    required this.documentID,
+    required this.documentName,
+  });
+
+  factory DocumentTypeItem.fromJson(Map<String, dynamic> json) {
+    return DocumentTypeItem(
+      documentID: json['documentID'] as int? ?? 0,
+      documentName: json['documentName'] as String? ?? '',
+    );
+  }
+}
+
+class GetDocumentTypesResponse {
+  final bool error;
+  final bool success;
+  final List<DocumentTypeItem> types;
+  final String? errorMessage;
+  final int? statusCode;
+
+  GetDocumentTypesResponse({
+    required this.error,
+    required this.success,
+    required this.types,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory GetDocumentTypesResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final typesList = data?['types'] as List<dynamic>? ?? [];
+    
+    return GetDocumentTypesResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      types: typesList.map((item) => DocumentTypeItem.fromJson(item as Map<String, dynamic>)).toList(),
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
 

@@ -613,4 +613,30 @@ class UserService {
       );
     }
   }
+
+  Future<bool> addCompanyDocument({
+    required String userToken,
+    required int compId,
+    required int documentType,
+    required String dataUrl,
+  }) async {
+    try {
+      final endpoint = AppConstants.addCompanyDocument;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+        'documentType': documentType,
+        'file': dataUrl,
+      };
+      AppLogger.i('POST $endpoint', tag: 'ADD_DOCUMENT');
+      AppLogger.i(payload.toString(), tag: 'ADD_DOCUMENT_REQ');
+      final resp = await ApiClient.postJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      final success = body['success'] as bool? ?? false;
+      return success;
+    } catch (e) {
+      AppLogger.e('Add document error: $e', tag: 'ADD_DOCUMENT');
+      return false;
+    }
+  }
 }
