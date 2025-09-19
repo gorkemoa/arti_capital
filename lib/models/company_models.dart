@@ -12,6 +12,7 @@ class CompanyItem {
   final String? compType;
   final String compLogo; // data url veya http url
   final String createdate;
+  final List<CompanyDocumentItem> documents;
 
   CompanyItem({
     required this.compID,
@@ -27,6 +28,7 @@ class CompanyItem {
     this.compType,
     required this.compLogo,
     required this.createdate,
+    this.documents = const [],
   });
 
   factory CompanyItem.fromJson(Map<String, dynamic> json) => CompanyItem(
@@ -43,6 +45,33 @@ class CompanyItem {
         compType: json['compType'] as String?,
         compLogo: json['compLogo'] as String? ?? '',
         createdate: json['createdate'] as String? ?? '',
+        documents: ((json['documents'] as List<dynamic>?) ?? const [])
+            .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+class CompanyDocumentItem {
+  final int documentID;
+  final int documentTypeID;
+  final String documentType;
+  final String documentURL;
+  final String createDate;
+
+  CompanyDocumentItem({
+    required this.documentID,
+    required this.documentTypeID,
+    required this.documentType,
+    required this.documentURL,
+    required this.createDate,
+  });
+
+  factory CompanyDocumentItem.fromJson(Map<String, dynamic> json) => CompanyDocumentItem(
+        documentID: (json['documentID'] as num?)?.toInt() ?? 0,
+        documentTypeID: (json['documentTypeID'] as num?)?.toInt() ?? 0,
+        documentType: json['documentType'] as String? ?? '',
+        documentURL: json['documentURL'] as String? ?? '',
+        createDate: json['createDate'] as String? ?? '',
       );
 }
 

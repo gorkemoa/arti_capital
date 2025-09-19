@@ -1,6 +1,7 @@
 // removed unused io/storage imports
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:flutter/services.dart' as services;
 // removed unused file_picker import
 
 import '../models/company_models.dart';
@@ -8,6 +9,7 @@ import '../services/user_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
+import 'document_preview_view.dart';
 
 class CompanyDetailView extends StatefulWidget {
   const CompanyDetailView({super.key, required this.compId});
@@ -27,6 +29,8 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     super.initState();
     _load();
   }
+
+  // eski bağlantı dialogu kaldırıldı; artık dokümanlar önizleme sayfasında açılıyor
 
   Future<void> _load() async {
     setState(() { _loading = true; });
@@ -126,6 +130,46 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 16),
+                              if (_company!.documents.isNotEmpty)
+                                Expanded(
+                                  child: _Panel(
+                                    title: 'Belgeler',
+                                    icon: Icons.insert_drive_file_outlined,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          for (final doc in _company!.documents) ListTile(
+                                            dense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                            leading: const Icon(Icons.description_outlined),
+                                            title: Text(doc.documentType),
+                                            subtitle: Text(doc.createDate),
+                                            trailing: IconButton(
+                                              icon: const Icon(Icons.copy_all_outlined),
+                                              tooltip: 'Bağlantıyı kopyala',
+                                              onPressed: () async {
+                                                await services.Clipboard.setData(services.ClipboardData(text: doc.documentURL));
+                                                if (!mounted) return;
+                                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bağlantı kopyalandı')));
+                                              },
+                                            ),
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) => DocumentPreviewView(
+                                                    url: doc.documentURL,
+                                                    title: doc.documentType,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           )
                         else ...[
@@ -147,6 +191,44 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                               _InfoRow(label: 'Adres', value: _company!.compAddress),
                             ],
                           ),
+                          const SizedBox(height: 16),
+                          if (_company!.documents.isNotEmpty)
+                            _Panel(
+                              title: 'Belgeler',
+                              icon: Icons.insert_drive_file_outlined,
+                              children: [
+                                Column(
+                                  children: [
+                                    for (final doc in _company!.documents) ListTile(
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const Icon(Icons.description_outlined),
+                                      title: Text(doc.documentType),
+                                      subtitle: Text(doc.createDate),
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.copy_all_outlined),
+                                        tooltip: 'Bağlantıyı kopyala',
+                                        onPressed: () async {
+                                          await services.Clipboard.setData(services.ClipboardData(text: doc.documentURL));
+                                          if (!mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bağlantı kopyalandı')));
+                                        },
+                                      ),
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => DocumentPreviewView(
+                                              url: doc.documentURL,
+                                              title: doc.documentType,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                         ],
                       ],
                     );
