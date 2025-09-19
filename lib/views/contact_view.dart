@@ -50,7 +50,6 @@ class _ContactViewState extends State<ContactView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    // ignore: deprecated_member_use
     final subtleBorder = theme.colorScheme.outline.withOpacity(0.12);
 
     return Scaffold(

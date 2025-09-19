@@ -237,30 +237,7 @@ class _EditCompanyViewState extends State<EditCompanyView> {
         children: [
           Text('Firma Logosu', style: theme.textTheme.titleMedium),
           const SizedBox(height: 12),
-          if (_logoBase64.isEmpty)
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
-              ),
-              child: Icon(Icons.apartment_outlined, size: 40, color: theme.colorScheme.outline),
-            )
-          else
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(base64Decode(_logoBase64.split(',').last), fit: BoxFit.contain),
-              ),
-            ),
+          _buildLogoPreview(theme),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -269,6 +246,55 @@ class _EditCompanyViewState extends State<EditCompanyView> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLogoPreview(ThemeData theme) {
+    final borderColor = theme.colorScheme.outline.withOpacity(0.3);
+    if (_logoBase64.isEmpty) {
+      return Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        child: Icon(Icons.apartment_outlined, size: 40, color: theme.colorScheme.outline),
+      );
+    }
+
+    Widget imageWidget;
+    try {
+      if (_logoBase64.startsWith('data:image/')) {
+        final parts = _logoBase64.split(',');
+        if (parts.length == 2) {
+          final bytes = base64Decode(parts[1]);
+          imageWidget = Image.memory(bytes, fit: BoxFit.contain);
+        } else {
+          imageWidget = const Icon(Icons.apartment_outlined);
+        }
+      } else if (_logoBase64.startsWith('http://') || _logoBase64.startsWith('https://')) {
+        imageWidget = Image.network(_logoBase64, fit: BoxFit.contain);
+      } else {
+        // Unknown format fallback
+        imageWidget = const Icon(Icons.apartment_outlined);
+      }
+    } catch (_) {
+      imageWidget = const Icon(Icons.apartment_outlined);
+    }
+
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: FittedBox(fit: BoxFit.contain, child: imageWidget),
       ),
     );
   }

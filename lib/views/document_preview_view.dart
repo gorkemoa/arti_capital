@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' show Offset, Rect;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -31,7 +32,14 @@ class _DocumentPreviewViewState extends State<DocumentPreviewView> {
   }
 
   Future<void> _share() async {
-    await Share.share(widget.url);
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = (box != null)
+        ? (box.localToGlobal(Offset.zero) & box.size)
+        : const Rect.fromLTWH(0, 0, 1, 1);
+    await Share.share(
+      widget.url,
+      sharePositionOrigin: origin,
+    );
   }
 
   Future<void> _download() async {

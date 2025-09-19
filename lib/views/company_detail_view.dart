@@ -1,11 +1,12 @@
-// removed unused io/storage imports
-import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:flutter/services.dart' as services;
-// removed unused file_picker import
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../models/company_models.dart';
 import '../services/user_service.dart';
+import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
@@ -32,6 +33,90 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
 
   // eski bağlantı dialogu kaldırıldı; artık dokümanlar önizleme sayfasında açılıyor
 
+  // uzun basış menüsü kaldırıldı; aksiyonlar doğrudan listede
+
+  Future<void> _updateDocument(CompanyDocumentItem doc) async {
+    final token = await StorageService.getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+      return;
+    }
+
+    // Yeni dosya seç
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final String? path = file.path;
+    final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
+    if (bytes == null) return;
+
+    // MIME türü tahmini
+    String mime = 'application/octet-stream';
+    final name = (file.name).toLowerCase();
+    if (name.endsWith('.pdf')) mime = 'application/pdf';
+    else if (name.endsWith('.png')) mime = 'image/png';
+    else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mime = 'image/jpeg';
+    else if (name.endsWith('.docx')) mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+
+    final ok = await UserService().updateCompanyDocument(
+      userToken: token,
+      compId: widget.compId,
+      documentId: doc.documentID,
+      documentType: doc.documentTypeID,
+      dataUrl: dataUrl,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Belge güncellendi.' : 'Belge güncellenemedi')),
+    );
+    if (ok) _load();
+  }
+
+  Future<void> _deleteDocument(CompanyDocumentItem doc) async {
+    final token = await StorageService.getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Belgeyi Sil'),
+        content: Text('${doc.documentType} belgesini silmek istediğinizden emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final ok = await UserService().deleteCompanyDocument(
+      userToken: token,
+      compId: widget.compId,
+      documentId: doc.documentID,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Belge silindi.' : 'Belge silinemedi')),
+    );
+    if (ok) _load();
+  }
+
   Future<void> _load() async {
     setState(() { _loading = true; });
     final comp = await UserService().getCompanyDetail(widget.compId);
@@ -42,11 +127,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     });
   }
 
-  // Belge türleri artık ayrı sayfada yükleniyor
 
-  // Duplicate removed
-
-  // AppBar'dan belge türü seçimi kaldırıldığı için picker fonksiyonu da kaldırıldı
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +195,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   icon: Icons.apartment_outlined,
                                   children: [
                                     _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
-                                    _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? '-'),
+                                    _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalaceID?.toString() ?? '-'),
                                     _InfoRow(label: 'MERSİS', value: _company!.compMersisNo ?? '-'),
                                   ],
                                 ),
@@ -145,14 +226,20 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                             leading: const Icon(Icons.description_outlined),
                                             title: Text(doc.documentType),
                                             subtitle: Text(doc.createDate),
-                                            trailing: IconButton(
-                                              icon: const Icon(Icons.copy_all_outlined),
-                                              tooltip: 'Bağlantıyı kopyala',
-                                              onPressed: () async {
-                                                await services.Clipboard.setData(services.ClipboardData(text: doc.documentURL));
-                                                if (!mounted) return;
-                                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bağlantı kopyalandı')));
-                                              },
+                                            trailing: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                IconButton(
+                                                  icon: const Icon(Icons.edit_outlined),
+                                                  tooltip: 'Güncelle',
+                                                  onPressed: () => _updateDocument(doc),
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete_outline),
+                                                  tooltip: 'Sil',
+                                                  onPressed: () => _deleteDocument(doc),
+                                                ),
+                                              ],
                                             ),
                                             onTap: () {
                                               Navigator.of(context).push(
@@ -205,14 +292,20 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                       leading: const Icon(Icons.description_outlined),
                                       title: Text(doc.documentType),
                                       subtitle: Text(doc.createDate),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.copy_all_outlined),
-                                        tooltip: 'Bağlantıyı kopyala',
-                                        onPressed: () async {
-                                          await services.Clipboard.setData(services.ClipboardData(text: doc.documentURL));
-                                          if (!mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bağlantı kopyalandı')));
-                                        },
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_outlined),
+                                            tooltip: 'Güncelle',
+                                            onPressed: () => _updateDocument(doc),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_outline),
+                                            tooltip: 'Sil',
+                                            onPressed: () => _deleteDocument(doc),
+                                          ),
+                                        ],
                                       ),
                                       onTap: () {
                                         Navigator.of(context).push(

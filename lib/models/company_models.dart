@@ -7,6 +7,7 @@ class CompanyItem {
   final int compDistrictID;
   final String compAddress;
   final String? compTaxNo;
+  final int? compTaxPalaceID; 
   final String? compTaxPalace;
   final String? compMersisNo;
   final String? compType;
@@ -24,6 +25,7 @@ class CompanyItem {
     required this.compAddress,
     this.compTaxNo,
     this.compTaxPalace,
+    this.compTaxPalaceID,
     this.compMersisNo,
     this.compType,
     required this.compLogo,
@@ -41,6 +43,7 @@ class CompanyItem {
         compAddress: json['compAddress'] as String? ?? '',
         compTaxNo: json['compTaxNo'] as String?,
         compTaxPalace: json['compTaxPalace'] as String?,
+        compTaxPalaceID: (json['compTaxPalaceID'] as num?)?.toInt(),
         compMersisNo: json['compMersisNo'] as String?,
         compType: json['compType'] as String?,
         compLogo: json['compLogo'] as String? ?? '',
@@ -105,9 +108,10 @@ class GetCompaniesResponse {
 
 class AddCompanyRequest {
   final String userToken;
+  final String userIdentityNo;
   final String compName;
   final String compTaxNo;
-  final String compTaxPalace;
+  final int compTaxPalace;
   final String compKepAddress;
   final String compMersisNo;
   final int compType;
@@ -118,6 +122,7 @@ class AddCompanyRequest {
 
   AddCompanyRequest({
     required this.userToken,
+    required this.userIdentityNo,
     required this.compName,
     required this.compTaxNo,
     required this.compTaxPalace,
@@ -132,6 +137,7 @@ class AddCompanyRequest {
 
   Map<String, dynamic> toJson() => {
     'userToken': userToken,
+    'userIdentityNo': userIdentityNo,
     'compName': compName,
     'compTaxNo': compTaxNo,
     'compTaxPalace': compTaxPalace,
@@ -303,6 +309,49 @@ class GetDocumentTypesResponse {
       error: json['error'] as bool? ?? false,
       success: json['success'] as bool? ?? false,
       types: typesList.map((item) => DocumentTypeItem.fromJson(item as Map<String, dynamic>)).toList(),
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+class TaxPalaceItem {
+  final int palaceID;
+  final String palaceName;
+
+  TaxPalaceItem({
+    required this.palaceID,
+    required this.palaceName,
+  });
+
+  factory TaxPalaceItem.fromJson(Map<String, dynamic> json) => TaxPalaceItem(
+        palaceID: (json['palaceID'] as num).toInt(),
+        palaceName: json['palaceName'] as String? ?? '',
+      );
+}
+
+class GetTaxPalacesResponse {
+  final bool error;
+  final bool success;
+  final List<TaxPalaceItem> palaces;
+  final String? errorMessage;
+  final int? statusCode;
+
+  GetTaxPalacesResponse({
+    required this.error,
+    required this.success,
+    required this.palaces,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory GetTaxPalacesResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final list = (data != null ? data['palaces'] as List<dynamic>? : null) ?? [];
+    return GetTaxPalacesResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      palaces: list.map((e) => TaxPalaceItem.fromJson(e as Map<String, dynamic>)).toList(),
       errorMessage: json['error_message'] as String?,
       statusCode: code,
     );

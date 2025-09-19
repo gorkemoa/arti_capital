@@ -45,8 +45,11 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   
   List<CityItem> _cities = const [];
   List<DistrictItem> _districts = const [];
+  List<TaxPalaceItem> _taxPalaces = const [];
   CityItem? _selectedCity;
   DistrictItem? _selectedDistrict;
+  TaxPalaceItem? _selectedTaxPalace;
+  int? _selectedCompanyTypeId;
   bool _loading = false; // submit için
   bool _loadingMeta = true; // şehir/ilçe yükleme için
   String _logoBase64 = '';
@@ -100,6 +103,27 @@ class _AddCompanyViewState extends State<AddCompanyView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('İlçe listesi alınamadı')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() { _loadingMeta = false; });
+      }
+    }
+  }
+
+  Future<void> _loadTaxPalaces(int cityNo) async {
+    setState(() { _loadingMeta = true; });
+    try {
+      final taxPalaces = await _generalService.getTaxPalaces(cityNo);
+      setState(() {
+        _taxPalaces = taxPalaces;
+        _selectedTaxPalace = null; // Yeni şehir seçildiğinde vergi dairesi sıfırla
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vergi dairesi listesi alınamadı')),
         );
       }
     } finally {
@@ -216,7 +240,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           final String tempPath = pickedFilePath;
           final CroppedFile? cropped = await ImageCropper().cropImage(
             sourcePath: tempPath,
-            compressFormat: ImageCompressFormat.png,
+            compressFormat: ImageCompressFormat.jpg,
             uiSettings: [
               AndroidUiSettings(
                 toolbarTitle: 'Görseli Düzenle',
@@ -249,13 +273,14 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             final img.Image? original = img.decodeImage(finalBytes);
             if (original != null) {
               final img.Image resized = img.copyResizeCropSquare(original, size: 600);
-              finalBytes = Uint8List.fromList(img.encodePng(resized));
+              // JPEG ile sıkıştır (daha küçük boyut için)
+              finalBytes = Uint8List.fromList(img.encodeJpg(resized, quality: 80));
             }
           } catch (_) {}
 
           final base64String = base64Encode(finalBytes);
           // Dosya tipini belirle
-          String mimeType = 'image/png';
+          String mimeType = 'image/jpeg';
           
           setState(() {
             _logoBase64 = 'data:$mimeType;base64,$base64String';
@@ -311,14 +336,31 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         throw Exception('Token bulunamadı');
       }
 
+      // userIdentityNo çek (bulunamazsa boş gönder)
+      String identityNo = '';
+      final userData = StorageService.getUserData();
+      if (userData != null) {
+        try {
+          final dynamic parsed = jsonDecode(userData);
+          if (parsed is Map<String, dynamic>) identityNo = (parsed['userIdentityNo'] as String?)?.trim() ?? '';
+        } catch (_) {
+          final match = RegExp(r'userIdentityNo[:=]\s*([^,}\s]+)').firstMatch(userData);
+          identityNo = (match != null ? match.group(1) : '') ?? '';
+        }
+      }
+
+      // Vergi dairesi ID'si (seçilen vergi dairesinden)
+      final int compTaxPalaceInt = _selectedTaxPalace?.palaceID ?? 0;
+
       final request = AddCompanyRequest(
         userToken: token,
+        userIdentityNo: identityNo,
         compName: _compNameController.text.trim(),
         compTaxNo: _compTaxNoController.text.trim(),
-        compTaxPalace: _compTaxPalaceController.text.trim(),
+        compTaxPalace: compTaxPalaceInt,
         compKepAddress: _compKepAddressController.text.trim(),
         compMersisNo: _compMersisNoController.text.trim(),
-        compType: 1,
+        compType: _selectedCompanyTypeId ?? 1,
         compCity: _selectedCity!.cityNo,
         compDistrict: _selectedDistrict!.districtNo,
         compAddress: _compAddressController.text.trim(),
@@ -684,11 +726,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 16),
-        _buildTextField(
-          name: 'compTaxPalace',
-          label: 'Vergi Dairesi',
-        ),
-        const SizedBox(height: 16),
+        // Vergi dairesi artık dropdown olarak konum bölümünde
         _buildTextField(
           name: 'compMersisNo',
           label: 'MERSİS No',
@@ -711,6 +749,8 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         _buildCityDropdown(Theme.of(context)),
         const SizedBox(height: 16),
         _buildDistrictDropdown(Theme.of(context)),
+        const SizedBox(height: 16),
+        _buildTaxPalaceDropdown(Theme.of(context)),
       ],
     );
   }
@@ -902,9 +942,9 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             border: Border.all(color: Colors.grey.shade300),
           ),
           child: DropdownButtonHideUnderline(
-            child: DropdownButton<CompanyTypeItem>(
+            child: DropdownButton<int>(
               isExpanded: true,
-              value: null,
+              value: _selectedCompanyTypeId,
               hint: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -920,8 +960,8 @@ class _AddCompanyViewState extends State<AddCompanyView> {
                 ),
               ),
               items: types.map((type) {
-                return DropdownMenuItem<CompanyTypeItem>(
-                  value: type,
+                return DropdownMenuItem<int>(
+                  value: type.typeID,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
@@ -933,9 +973,10 @@ class _AddCompanyViewState extends State<AddCompanyView> {
                   ),
                 );
               }).toList(),
-              onChanged: (CompanyTypeItem? type) {
+              onChanged: (int? typeId) {
                 setState(() {
-                  // Seçimi state'e bağlamak istersen ekleyebiliriz
+                  _selectedCompanyTypeId = typeId;
+                  _hasUnsavedChanges = true;
                 });
               },
             ),
@@ -1115,6 +1156,100 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
 
 
+  Widget _buildTaxPalaceDropdown(ThemeData theme) {
+    if (_selectedCity == null) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Text(
+                'Önce il seçin',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_loadingMeta && _taxPalaces.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<TaxPalaceItem>(
+          isExpanded: true,
+          value: _selectedTaxPalace,
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'Vergi Dairesi',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          items: _taxPalaces.map((palace) {
+            return DropdownMenuItem<TaxPalaceItem>(
+              value: palace,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  palace.palaceName,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (TaxPalaceItem? palace) {
+            setState(() {
+              _selectedTaxPalace = palace;
+              _hasUnsavedChanges = true;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildCityDropdown(ThemeData theme) {
     if (_loadingMeta && _cities.isEmpty) {
     return Container(
@@ -1179,6 +1314,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
             });
             if (city != null) {
               _loadDistricts(city.cityNo);
+              _loadTaxPalaces(city.cityNo);
             }
             },
           ),

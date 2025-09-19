@@ -639,4 +639,54 @@ class UserService {
       return false;
     }
   }
+
+  Future<bool> updateCompanyDocument({
+    required String userToken,
+    required int compId,
+    required int documentId,
+    required int documentType,
+    required String dataUrl,
+  }) async {
+    try {
+      final endpoint = AppConstants.updateCompanyDocument;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+        'documentID': documentId,
+        'documentType': documentType,
+        'file': dataUrl,
+      };
+      AppLogger.i('POST $endpoint', tag: 'UPDATE_DOCUMENT');
+      AppLogger.i(payload.toString(), tag: 'UPDATE_DOCUMENT_REQ');
+      final resp = await ApiClient.postJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      return body['success'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.e('Update document error: $e', tag: 'UPDATE_DOCUMENT');
+      return false;
+    }
+  }
+
+  Future<bool> deleteCompanyDocument({
+    required String userToken,
+    required int compId,
+    required int documentId,
+  }) async {
+    try {
+      final endpoint = AppConstants.deleteCompanyDocument;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+        'documentID': documentId,
+      };
+      AppLogger.i('DELETE $endpoint', tag: 'DELETE_DOCUMENT');
+      AppLogger.i(payload.toString(), tag: 'DELETE_DOCUMENT_REQ');
+      final resp = await ApiClient.deleteJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      return body['success'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.e('Delete document error: $e', tag: 'DELETE_DOCUMENT');
+      return false;
+    }
+  }
 }

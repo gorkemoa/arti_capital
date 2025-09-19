@@ -22,12 +22,15 @@ class AppConstants {
   static const String addCompany = '/service/user/account/company/add';
   static const String updateCompany = '/service/user/account/company/update';
   static const String addCompanyDocument = '/service/user/account/company/documentAdd';
+  static const String updateCompanyDocument = '/service/user/account/company/documentUpdate';
+  static const String deleteCompanyDocument = '/service/user/account/company/documentDelete';
 
   static const String getAllServices = '/service/general/general/services/all';
   static const String getCities = '/service/general/general/cities/all';
   static const String getCompanyTypes = '/service/general/general/companyTypes/all';
   static const String getDocumentTypes = '/service/general/general/documentsTypes/all';
   static String getDistrictsFor(int cityNo) => '/service/general/general/$cityNo/districts';
+  static String getTaxPalacesFor(int cityNo) => '/service/general/general/$cityNo/taxPalaces';
   static String getServiceDetail(int id) => '/service/general/general/services/$id';
   // Company detail uses same base with ID path
   
