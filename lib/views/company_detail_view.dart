@@ -1,15 +1,13 @@
-import 'dart:io';
-
-import 'package:arti_capital/services/storage_service.dart';
+// removed unused io/storage imports
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:file_picker/file_picker.dart';
+// removed unused file_picker import
 
 import '../models/company_models.dart';
 import '../services/user_service.dart';
-import '../services/general_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
+import 'add_company_document_view.dart';
 
 class CompanyDetailView extends StatefulWidget {
   const CompanyDetailView({super.key, required this.compId});
@@ -22,6 +20,7 @@ class CompanyDetailView extends StatefulWidget {
 class _CompanyDetailViewState extends State<CompanyDetailView> {
   CompanyItem? _company;
   bool _loading = true;
+  // Belge türü ve seçim durumu artık ayrı sayfada yönetiliyor
 
   @override
   void initState() {
@@ -39,6 +38,12 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     });
   }
 
+  // Belge türleri artık ayrı sayfada yükleniyor
+
+  // Duplicate removed
+
+  // AppBar'dan belge türü seçimi kaldırıldığı için picker fonksiyonu da kaldırıldı
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,7 +56,16 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
           IconButton(
             icon: const Icon(Icons.upload_file),
             tooltip: 'Belge Ekle',
-            onPressed: _onAddDocument,
+            onPressed: () async {
+              final res = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                ),
+              );
+              if (res == true) {
+                _load();
+              }
+            },
           ),
           if (!_loading && _company != null)
             IconButton(
@@ -138,51 +152,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                     );
                   },
                 ),
-    );
-  }
-}
-
-extension on _CompanyDetailViewState {
-  Future<void> _onAddDocument() async {
-    final token = await StorageService.getToken();
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-      return;
-    }
-    // Belge türü seçim (şimdilik 1: Genel)
-    final int documentType = 1;
-
-    // Dosya seç
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return;
-
-    final file = result.files.first;
-    final String? path = file.path;
-    final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
-    if (bytes == null) return;
-
-    // MIME türü tahmini
-    String mime = 'application/octet-stream';
-    final name = (file.name).toLowerCase();
-    if (name.endsWith('.pdf')) mime = 'application/pdf';
-    else if (name.endsWith('.png')) mime = 'image/png';
-    else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mime = 'image/jpeg';
-    else if (name.endsWith('.docx')) mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-
-    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
-
-    final ok = await UserService().addCompanyDocument(
-      userToken: token,
-      compId: widget.compId,
-      documentType: documentType,
-      dataUrl: dataUrl,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? 'Belge başarıyla eklendi.' : 'Belge eklenemedi')),
     );
   }
 }
