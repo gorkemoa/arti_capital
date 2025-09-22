@@ -239,6 +239,7 @@ class CompanyService {
     required int documentId,
     required int documentType,
     required String dataUrl,
+    int? partnerID,
   }) async {
     try {
       final endpoint = AppConstants.updateCompanyDocument;
@@ -248,6 +249,7 @@ class CompanyService {
         'documentID': documentId,
         'documentType': documentType,
         'file': dataUrl,
+        'partnerID': partnerID ?? 0,
       };
       AppLogger.i('POST $endpoint', tag: 'UPDATE_DOCUMENT');
       AppLogger.i(payload.toString(), tag: 'UPDATE_DOCUMENT_REQ');
@@ -264,6 +266,7 @@ class CompanyService {
     required String userToken,
     required int compId,
     required int documentId,
+    int? partnerID,
   }) async {
     try {
       final endpoint = AppConstants.deleteCompanyDocument;
@@ -271,6 +274,7 @@ class CompanyService {
         'userToken': userToken,
         'compID': compId,
         'documentID': documentId,
+        'partnerID': partnerID ?? 0,
       };
       AppLogger.i('DELETE $endpoint', tag: 'DELETE_DOCUMENT');
       AppLogger.i(payload.toString(), tag: 'DELETE_DOCUMENT_REQ');

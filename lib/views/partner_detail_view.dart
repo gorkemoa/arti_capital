@@ -84,6 +84,7 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
       documentId: doc.documentID,
       documentType: doc.documentTypeID,
       dataUrl: dataUrl,
+      partnerID: _partner?.partnerID,
     );
 
     if (!mounted) return;
@@ -119,6 +120,7 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
       userToken: token,
       compId: widget.compId,
       documentId: doc.documentID,
+      partnerID: _partner?.partnerID,
     );
 
     if (!mounted) return;
