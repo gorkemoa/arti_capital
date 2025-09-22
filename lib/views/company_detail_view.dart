@@ -12,6 +12,7 @@ import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
 import 'document_preview_view.dart';
 import 'add_company_partner_view.dart';
+import 'edit_company_partner_view.dart';
 
 class CompanyDetailView extends StatefulWidget {
   const CompanyDetailView({super.key, required this.compId});
@@ -251,6 +252,16 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                                   Text('Tutar: ${p.partnerSharePrice}')
                                                 ],
                                               ),
+                                              onTap: () async {
+                                                final res = await Navigator.of(context).push<bool>(
+                                                  MaterialPageRoute(
+                                                    builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
+                                                  ),
+                                                );
+                                                if (res == true) {
+                                                  _load();
+                                                }
+                                              },
                                             ),
                                         ],
                                       ),
@@ -346,6 +357,16 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                             Text('Tutar: ${p.partnerSharePrice}')
                                           ],
                                         ),
+                                        onTap: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
                                       ),
                                   ],
                                 ),
