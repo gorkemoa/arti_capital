@@ -187,14 +187,12 @@ class _ProfileEditViewState extends State<ProfileEditView> {
                     controller: fullnameCtrl,
                     label: 'Ad Soyad',
                     icon: Icons.account_circle_outlined,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
                   ),
                   _InputField(
                     controller: emailCtrl,
                     label: 'E-posta',
                     icon: Icons.alternate_email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    validator: (v) => (v == null || !v.contains('@')) ? 'Geçerli e-posta giriniz' : null,
                   ),
                   _InputField(
                     controller: birthdayCtrl,

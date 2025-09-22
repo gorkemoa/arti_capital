@@ -167,10 +167,10 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
               }
             },
             cells: [
-              DataCell(Text(p.partnerFullname.isNotEmpty ? p.partnerFullname : p.partnerName)),
+              DataCell(Text((p.partnerFullname.isNotEmpty ? p.partnerFullname : p.partnerName).toUpperCase())),
               DataCell(Text(p.partnerIdentityNo.isNotEmpty ? p.partnerIdentityNo : '-')),
               DataCell(Text(p.partnerBirthday.isNotEmpty ? p.partnerBirthday : '-')),
-              DataCell(Text(p.partnerTitle.isNotEmpty ? p.partnerTitle : '-')),
+              DataCell(Text(p.partnerTitle.isNotEmpty ? p.partnerTitle.toUpperCase() : '-')),
               DataCell(Text('${p.partnerCity}/${p.partnerDistrict}')),
               DataCell(Text(p.partnerTaxPalace)),
               DataCell(Text('${p.partnerShareRatio}%')),

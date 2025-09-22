@@ -189,13 +189,13 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
                         title: 'Ortak Bilgileri',
                         icon: Icons.person_outlined,
                         children: [
-                          _InfoRow('Ad Soyad', _partner!.partnerFullname.isNotEmpty ? _partner!.partnerFullname : _partner!.partnerName),
+                          _InfoRow('Ad Soyad', (_partner!.partnerFullname.isNotEmpty ? _partner!.partnerFullname : _partner!.partnerName).toUpperCase()),
                           if (_partner!.partnerIdentityNo.isNotEmpty)
                             _InfoRow('T.C. No', _partner!.partnerIdentityNo),
                           if (_partner!.partnerBirthday.isNotEmpty)
                             _InfoRow('Doğum Tarihi', _partner!.partnerBirthday),
                           if (_partner!.partnerTitle.isNotEmpty)
-                            _InfoRow('Unvan', _partner!.partnerTitle),
+                            _InfoRow('Unvan', _partner!.partnerTitle.toUpperCase()),
                           if (_partner!.partnerTaxNo.isNotEmpty)
                             _InfoRow('Vergi No', _partner!.partnerTaxNo),
                           _InfoRow('Vergi Dairesi', _partner!.partnerTaxPalace),

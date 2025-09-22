@@ -471,7 +471,10 @@ class GetTaxPalacesResponse {
 class AddPartnerRequest {
   final String userToken;
   final int compID;
-  final String partnerFullname;
+  final String partnerFirstname;
+  final String partnerLastname;
+  final String partnerIdentityNo;
+  final String partnerBirthday;
   final String partnerTitle;
   final String partnerTaxNo;
   final int partnerDistrict;
@@ -484,7 +487,10 @@ class AddPartnerRequest {
   AddPartnerRequest({
     required this.userToken,
     required this.compID,
-    required this.partnerFullname,
+    this.partnerFirstname = '',
+    this.partnerLastname = '',
+    this.partnerIdentityNo = '',
+    this.partnerBirthday = '',
     this.partnerTitle = '',
     this.partnerTaxNo = '',
     this.partnerDistrict = 0,
@@ -498,7 +504,10 @@ class AddPartnerRequest {
   Map<String, dynamic> toJson() => {
         'userToken': userToken,
         'compID': compID,
-        'partnerFullname': partnerFullname,
+        'partnerFirstname': partnerFirstname,
+        'partnerLastname': partnerLastname,
+        'partnerIdentityNo': partnerIdentityNo,
+        'partnerBirthday': partnerBirthday,
         'partnerTitle': partnerTitle,
         'partnerTaxNo': partnerTaxNo,
         'partnerCity': partnerCity,
