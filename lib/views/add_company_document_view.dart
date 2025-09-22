@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../models/company_models.dart';
 import '../services/general_service.dart';
 import '../services/storage_service.dart';
-import '../services/user_service.dart';
+import '../services/company_service.dart';
 import '../theme/app_colors.dart';
 
 class AddCompanyDocumentView extends StatefulWidget {
@@ -77,7 +77,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
       final mime = _guessMime(file.name);
       final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
 
-      final ok = await UserService().addCompanyDocument(
+      final ok = await const CompanyService().addCompanyDocument(
         userToken: token,
         compId: widget.compId,
         documentType: _selectedType!.documentID,

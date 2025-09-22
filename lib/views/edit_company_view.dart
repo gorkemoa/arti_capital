@@ -10,7 +10,7 @@ import '../models/location_models.dart';
 import '../services/general_service.dart';
 import '../services/logger.dart';
 import '../services/storage_service.dart';
-import '../services/user_service.dart';
+import '../services/company_service.dart';
 import '../theme/app_colors.dart';
 
 class EditCompanyView extends StatefulWidget {
@@ -31,7 +31,7 @@ class _EditCompanyViewState extends State<EditCompanyView> {
   final _compAddressController = TextEditingController();
 
   final GeneralService _generalService = GeneralService();
-  final UserService _userService = UserService();
+  final CompanyService _userService = const CompanyService();
 
   List<CityItem> _cities = const [];
   List<DistrictItem> _districts = const [];

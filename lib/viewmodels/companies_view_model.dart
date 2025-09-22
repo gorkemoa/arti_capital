@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/company_models.dart';
-import '../services/user_service.dart';
+import '../services/company_service.dart';
 import '../services/app_group_service.dart';
 
 class CompaniesViewModel extends ChangeNotifier {
-  final UserService _userService = UserService();
+  final CompanyService _companyService = const CompanyService();
 
   List<CompanyItem> _companies = [];
   bool _loading = true;
@@ -23,7 +23,7 @@ class CompaniesViewModel extends ChangeNotifier {
     try {
       _loading = true;
       notifyListeners();
-      final resp = await _userService.getCompanies();
+      final resp = await _companyService.getCompanies();
       if (resp.success) {
         _companies = resp.companies;
         _errorMessage = null;

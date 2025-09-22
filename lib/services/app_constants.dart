@@ -24,6 +24,7 @@ class AppConstants {
   static const String addCompanyDocument = '/service/user/account/company/documentAdd';
   static const String updateCompanyDocument = '/service/user/account/company/documentUpdate';
   static const String deleteCompanyDocument = '/service/user/account/company/documentDelete';
+  static const String addCompanyPartner = '/service/user/account/company/partnerAdd';
 
   static const String getAllServices = '/service/general/general/services/all';
   static const String getCities = '/service/general/general/cities/all';

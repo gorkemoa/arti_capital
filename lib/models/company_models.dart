@@ -359,3 +359,70 @@ class GetTaxPalacesResponse {
 }
 
 
+class AddPartnerRequest {
+  final String userToken;
+  final int compID;
+  final String partnerFullname;
+  final String partnerTitle;
+  final String partnerTaxNo;
+  final int partnerTaxPalace;
+  final String partnerAddress;
+  final String partnerShareRatio;
+  final String partnerSharePrice;
+
+  AddPartnerRequest({
+    required this.userToken,
+    required this.compID,
+    required this.partnerFullname,
+    this.partnerTitle = '',
+    this.partnerTaxNo = '',
+    this.partnerTaxPalace = 0,
+    this.partnerAddress = '',
+    this.partnerShareRatio = '',
+    this.partnerSharePrice = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+        'compID': compID,
+        'partnerFullname': partnerFullname,
+        'partnerTitle': partnerTitle,
+        'partnerTaxNo': partnerTaxNo,
+        'partnerTaxPalace': partnerTaxPalace,
+        'partnerAddress': partnerAddress,
+        'partnerShareRatio': partnerShareRatio,
+        'partnerSharePrice': partnerSharePrice,
+      };
+}
+
+class AddPartnerResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final int? partnerID;
+  final String? errorMessage;
+  final int? statusCode;
+
+  AddPartnerResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.partnerID,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory AddPartnerResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return AddPartnerResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      partnerID: data != null ? (data['partnerID'] as num?)?.toInt() : null,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+

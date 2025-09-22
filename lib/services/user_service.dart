@@ -420,6 +420,7 @@ class UserService {
     }
   }
 
+  @Deprecated('Use CompanyService.getCompanies')
   Future<GetCompaniesResponse> getCompanies() async {
     try {
       final token = StorageService.getToken();
@@ -458,6 +459,7 @@ class UserService {
     }
   }
 
+  @Deprecated('Use CompanyService.getCompanyDetail')
   Future<CompanyItem?> getCompanyDetail(int compId) async {
     try {
       final token = StorageService.getToken();
@@ -484,6 +486,7 @@ class UserService {
     }
   }
 
+  @Deprecated('Use CompanyService.addCompany')
   Future<AddCompanyResponse> addCompany(AddCompanyRequest request) async {
     try {
       final endpoint = AppConstants.addCompany;
@@ -549,6 +552,7 @@ class UserService {
     }
   }
 
+  @Deprecated('Use CompanyService.updateCompany')
   Future<AddCompanyResponse> updateCompany(UpdateCompanyRequest request) async {
     try {
       final endpoint = AppConstants.updateCompany;
@@ -614,6 +618,7 @@ class UserService {
     }
   }
 
+  @Deprecated('Use CompanyService.addCompanyDocument')
   Future<bool> addCompanyDocument({
     required String userToken,
     required int compId,
@@ -640,6 +645,7 @@ class UserService {
     }
   }
 
+  @Deprecated('Use CompanyService.updateCompanyDocument')
   Future<bool> updateCompanyDocument({
     required String userToken,
     required int compId,
@@ -667,6 +673,7 @@ class UserService {
     }
   }
 
+  @Deprecated('Use CompanyService.deleteCompanyDocument')
   Future<bool> deleteCompanyDocument({
     required String userToken,
     required int compId,
@@ -687,6 +694,72 @@ class UserService {
     } catch (e) {
       AppLogger.e('Delete document error: $e', tag: 'DELETE_DOCUMENT');
       return false;
+    }
+  }
+
+  @Deprecated('Use CompanyService.addCompanyPartner')
+  Future<AddPartnerResponse> addCompanyPartner(AddPartnerRequest request) async {
+    try {
+      final endpoint = AppConstants.addCompanyPartner;
+
+      AppLogger.i('POST $endpoint', tag: 'ADD_PARTNER');
+      AppLogger.i(request.toJson().toString(), tag: 'ADD_PARTNER_REQ');
+
+      final resp = await ApiClient.postJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_PARTNER');
+          return AddPartnerResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+            errorMessage: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'ADD_PARTNER');
+        return AddPartnerResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+          errorMessage: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_PARTNER');
+      AppLogger.i(body.toString(), tag: 'ADD_PARTNER_RES');
+
+      final addPartnerResp = AddPartnerResponse.fromJson(body, resp.statusCode);
+      return addPartnerResp;
+    } on ApiException catch (e) {
+      AppLogger.e('Add partner error ${e.statusCode} ${e.message}', tag: 'ADD_PARTNER');
+      return AddPartnerResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Bir hata oluştu',
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in addCompanyPartner: $e', tag: 'ADD_PARTNER');
+      return AddPartnerResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+        errorMessage: 'Beklenmeyen bir hata oluştu',
+      );
     }
   }
 }
