@@ -11,8 +11,9 @@ import '../services/company_service.dart';
 import '../theme/app_colors.dart';
 
 class AddCompanyDocumentView extends StatefulWidget {
-  const AddCompanyDocumentView({super.key, required this.compId});
+  const AddCompanyDocumentView({super.key, required this.compId, this.partnerID});
   final int compId;
+  final int? partnerID;
 
   @override
   State<AddCompanyDocumentView> createState() => _AddCompanyDocumentViewState();
@@ -82,14 +83,15 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
         compId: widget.compId,
         documentType: _selectedType!.documentID,
         dataUrl: dataUrl,
+        partnerID: widget.partnerID,
       );
 
       if (!mounted) return;
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge başarıyla eklendi.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.partnerID != null ? 'Ortak belgesi başarıyla eklendi.' : 'Şirket belgesi başarıyla eklendi.')));
         Navigator.of(context).pop(true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge eklenemedi')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.partnerID != null ? 'Ortak belgesi eklenemedi' : 'Şirket belgesi eklenemedi')));
       }
     } catch (e) {
       if (!mounted) return;
@@ -103,7 +105,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Belge Ekle'),
+        title: Text(widget.partnerID != null ? 'Ortak Belgesi Ekle' : 'Şirket Belgesi Ekle'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,

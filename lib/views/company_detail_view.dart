@@ -13,6 +13,7 @@ import 'add_company_document_view.dart';
 import 'document_preview_view.dart';
 import 'add_company_partner_view.dart';
 import 'edit_company_partner_view.dart';
+import 'partner_detail_view.dart';
 
 class CompanyDetailView extends StatefulWidget {
   const CompanyDetailView({super.key, required this.compId});
@@ -247,7 +248,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                               onTap: () async {
                                                 final res = await Navigator.of(context).push<bool>(
                                                   MaterialPageRoute(
-                                                    builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
+                                                    builder: (_) => PartnerDetailView(compId: widget.compId, partner: p),
                                                   ),
                                                 );
                                                 if (res == true) {
@@ -398,6 +399,16 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                         leading: const Icon(Icons.person_outline),
                                         title: Text(p.partnerName),
                                         subtitle: Text('${p.partnerTitle.isNotEmpty ? p.partnerTitle + ' • ' : ''}${p.partnerCity}/${p.partnerDistrict} • ${p.partnerTaxPalace}'),
+                                        onTap: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => PartnerDetailView(compId: widget.compId, partner: p),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
