@@ -700,7 +700,7 @@ class UserService {
   @Deprecated('Use CompanyService.addCompanyPartner')
   Future<AddPartnerResponse> addCompanyPartner(AddPartnerRequest request) async {
     try {
-      final endpoint = AppConstants.addCompanyPartner;
+      final endpoint = AppConstants.addPartner;
 
       AppLogger.i('POST $endpoint', tag: 'ADD_PARTNER');
       AppLogger.i(request.toJson().toString(), tag: 'ADD_PARTNER_REQ');

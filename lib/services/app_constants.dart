@@ -24,7 +24,6 @@ class AppConstants {
   static const String addCompanyDocument = '/service/user/account/company/documentAdd';
   static const String updateCompanyDocument = '/service/user/account/company/documentUpdate';
   static const String deleteCompanyDocument = '/service/user/account/company/documentDelete';
-  static const String addCompanyPartner = '/service/user/account/company/partnerAdd';
 
   static const String getAllServices = '/service/general/general/services/all';
   static const String getCities = '/service/general/general/cities/all';
@@ -34,7 +33,10 @@ class AppConstants {
   static String getTaxPalacesFor(int cityNo) => '/service/general/general/$cityNo/taxPalaces';
   static String getServiceDetail(int id) => '/service/general/general/services/$id';
   // Company detail uses same base with ID path
-  
+  static const String addPartner = '/service/user/account/company/partnerAdd';
+  static const String updatePartner = '/service/user/account/company/partnerUpdate';
+  static const String deletePartner = '/service/user/account/company/partnerDelete';
+
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/notifications';
   static String updateUserFor(int userId) => '$updateUserBase/$userId/account';

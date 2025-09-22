@@ -365,6 +365,8 @@ class AddPartnerRequest {
   final String partnerFullname;
   final String partnerTitle;
   final String partnerTaxNo;
+  final int partnerDistrict;
+  final int partnerCity;
   final int partnerTaxPalace;
   final String partnerAddress;
   final String partnerShareRatio;
@@ -376,6 +378,8 @@ class AddPartnerRequest {
     required this.partnerFullname,
     this.partnerTitle = '',
     this.partnerTaxNo = '',
+    this.partnerDistrict = 0,
+    this.partnerCity = 0,
     this.partnerTaxPalace = 0,
     this.partnerAddress = '',
     this.partnerShareRatio = '',
@@ -388,6 +392,8 @@ class AddPartnerRequest {
         'partnerFullname': partnerFullname,
         'partnerTitle': partnerTitle,
         'partnerTaxNo': partnerTaxNo,
+        'partnerCity': partnerCity,
+        'partnerDistrict': partnerDistrict,
         'partnerTaxPalace': partnerTaxPalace,
         'partnerAddress': partnerAddress,
         'partnerShareRatio': partnerShareRatio,
@@ -419,6 +425,77 @@ class AddPartnerResponse {
       success: json['success'] as bool? ?? false,
       message: json['message'] as String? ?? '',
       partnerID: data != null ? (data['partnerID'] as num?)?.toInt() : null,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+class UpdatePartnerRequest {
+  final String userToken;
+  final int compID;
+  final int partnerID;
+  final String partnerFullname;
+  final String partnerTitle;
+  final String partnerTaxNo;
+  final int partnerTaxPalace;
+  final int partnerCity;
+  final int partnerDistrict;
+  final String partnerAddress;
+  final String partnerShareRatio;
+  final String partnerSharePrice;
+
+  UpdatePartnerRequest({
+    required this.userToken,
+    required this.compID,
+    required this.partnerID,
+    required this.partnerFullname,
+    this.partnerTitle = '',
+    this.partnerTaxNo = '',
+    this.partnerTaxPalace = 0,
+    this.partnerCity = 0,
+    this.partnerDistrict = 0,
+    this.partnerAddress = '',
+    this.partnerShareRatio = '',
+    this.partnerSharePrice = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+        'compID': compID,
+        'partnerID': partnerID,
+        'partnerFullname': partnerFullname,
+        'partnerTitle': partnerTitle,
+        'partnerTaxNo': partnerTaxNo,
+        'partnerTaxPalace': partnerTaxPalace,
+        'partnerCity': partnerCity,
+        'partnerDistrict': partnerDistrict,
+        'partnerAddress': partnerAddress,
+        'partnerShareRatio': partnerShareRatio,
+        'partnerSharePrice': partnerSharePrice,
+      };
+}
+
+class UpdatePartnerResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final String? errorMessage;
+  final int? statusCode;
+
+  UpdatePartnerResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory UpdatePartnerResponse.fromJson(Map<String, dynamic> json, int? code) {
+    return UpdatePartnerResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
       errorMessage: json['error_message'] as String?,
       statusCode: code,
     );

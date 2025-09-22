@@ -7,11 +7,11 @@ import 'package:file_picker/file_picker.dart';
 import '../models/company_models.dart';
 import '../services/company_service.dart';
 import '../services/storage_service.dart';
-import '../services/general_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
 import 'document_preview_view.dart';
+import 'add_company_partner_view.dart';
 
 class CompanyDetailView extends StatefulWidget {
   const CompanyDetailView({super.key, required this.compId});
@@ -128,154 +128,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     });
   }
 
-  Future<void> _showAddPartnerDialog() async {
-    final theme = Theme.of(context);
-    final fullnameController = TextEditingController();
-    final titleController = TextEditingController();
-    final taxNoController = TextEditingController();
-    final addressController = TextEditingController();
-    final shareRatioController = TextEditingController();
-    final sharePriceController = TextEditingController();
-
-    int? selectedTaxPalaceId;
-    List<TaxPalaceItem> palaces = [];
-    bool loadingPalaces = true;
-    String? errorText;
-
-    // İl vergi dairelerini çek
-    final cityId = _company?.compCityID;
-    if (cityId != null && cityId > 0) {
-      try {
-        palaces = await GeneralService().getTaxPalaces(cityId);
-      } catch (_) {}
-    }
-    loadingPalaces = false;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return AlertDialog(
-              title: const Text('Ortak Ekle'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: fullnameController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(labelText: 'Ad Soyad *'),
-                    ),
-                    TextField(
-                      controller: titleController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(labelText: 'Ünvan'),
-                    ),
-                    TextField(
-                      controller: taxNoController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(labelText: 'Vergi No / TC No'),
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Vergi Dairesi', style: theme.textTheme.bodySmall),
-                    ),
-                    const SizedBox(height: 4),
-                    loadingPalaces
-                        ? const LinearProgressIndicator(minHeight: 2)
-                        : DropdownButtonFormField<int>(
-                            value: selectedTaxPalaceId,
-                            items: palaces
-                                .map((p) => DropdownMenuItem<int>(
-                                      value: p.palaceID,
-                                      child: Text(p.palaceName),
-                                    ))
-                                .toList(),
-                            onChanged: (v) {
-                              setState(() {
-                                selectedTaxPalaceId = v;
-                              });
-                            },
-                            isExpanded: true,
-                          ),
-                    TextField(
-                      controller: addressController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(labelText: 'Adres'),
-                    ),
-                    TextField(
-                      controller: shareRatioController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(labelText: 'Hisse Oranı (%)'),
-                    ),
-                    TextField(
-                      controller: sharePriceController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Hisse Tutarı'),
-                    ),
-                    if (errorText != null) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(errorText!, style: TextStyle(color: theme.colorScheme.error)),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('İptal'),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    final fullname = fullnameController.text.trim();
-                    if (fullname.isEmpty) {
-                      setState(() { errorText = 'Ad Soyad zorunludur.'; });
-                      return;
-                    }
-                    final token = await StorageService.getToken();
-                    if (token == null) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-                      return;
-                    }
-                    final req = AddPartnerRequest(
-                      userToken: token,
-                      compID: widget.compId,
-                      partnerFullname: fullname,
-                      partnerTitle: titleController.text.trim(),
-                      partnerTaxNo: taxNoController.text.trim(),
-                      partnerTaxPalace: selectedTaxPalaceId ?? 0,
-                      partnerAddress: addressController.text.trim(),
-                      partnerShareRatio: shareRatioController.text.trim(),
-                      partnerSharePrice: sharePriceController.text.trim(),
-                    );
-                    final resp = await const CompanyService().addCompanyPartner(req);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(resp.success ? (resp.message.isNotEmpty ? resp.message : 'Ortak eklendi') : (resp.errorMessage ?? resp.message))),
-                    );
-                    if (resp.success) {
-                      Navigator.of(ctx).pop();
-                      _load();
-                    } else {
-                      setState(() { errorText = resp.errorMessage ?? resp.message; });
-                    }
-                  },
-                  child: const Text('Ekle'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
+  
 
 
   @override
@@ -304,7 +157,16 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
           IconButton(
             icon: const Icon(Icons.person_add_alt),
             tooltip: 'Ortak Ekle',
-            onPressed: _showAddPartnerDialog,
+            onPressed: () async {
+              final res = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                ),
+              );
+              if (res == true) {
+                _load();
+              }
+            },
           ),
           if (!_loading && _company != null)
             IconButton(
