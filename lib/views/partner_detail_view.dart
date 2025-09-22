@@ -84,7 +84,7 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
       documentId: doc.documentID,
       documentType: doc.documentTypeID,
       dataUrl: dataUrl,
-      partnerID: _partner?.partnerID,
+      partnerID: _partner?.partnerID ?? 0,
     );
 
     if (!mounted) return;
@@ -120,7 +120,7 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
       userToken: token,
       compId: widget.compId,
       documentId: doc.documentID,
-      partnerID: _partner?.partnerID,
+      partnerID: _partner?.partnerID ?? 0,
     );
 
     if (!mounted) return;
@@ -189,7 +189,11 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
                         title: 'Ortak Bilgileri',
                         icon: Icons.person_outlined,
                         children: [
-                          _InfoRow('Ad Soyad', _partner!.partnerName),
+                          _InfoRow('Ad Soyad', _partner!.partnerFullname.isNotEmpty ? _partner!.partnerFullname : _partner!.partnerName),
+                          if (_partner!.partnerIdentityNo.isNotEmpty)
+                            _InfoRow('T.C. No', _partner!.partnerIdentityNo),
+                          if (_partner!.partnerBirthday.isNotEmpty)
+                            _InfoRow('Doğum Tarihi', _partner!.partnerBirthday),
                           if (_partner!.partnerTitle.isNotEmpty)
                             _InfoRow('Unvan', _partner!.partnerTitle),
                           if (_partner!.partnerTaxNo.isNotEmpty)
@@ -198,8 +202,8 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
                           _InfoRow('Şehir/İlçe', '${_partner!.partnerCity}/${_partner!.partnerDistrict}'),
                           if (_partner!.partnerAddress.isNotEmpty)
                             _InfoRow('Adres', _partner!.partnerAddress),
-                          _InfoRow('Hisse Oranı', '${_partner!.partnerShareRatio}%'),
-                          _InfoRow('Hisse Tutarı', _partner!.partnerSharePrice.toString()),
+                          _InfoRow('Hisse Oranı', _partner!.partnerShareRatio),
+                          _InfoRow('Hisse Tutarı', _partner!.partnerSharePrice),
                         ],
                       ),
                       

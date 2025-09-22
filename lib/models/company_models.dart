@@ -117,6 +117,11 @@ class CompanyDocumentItem {
 class PartnerItem {
   final int partnerID;
   final String partnerName;
+  final String partnerFirstname;
+  final String partnerLastname;
+  final String partnerFullname;
+  final String partnerIdentityNo;
+  final String partnerBirthday;
   final String partnerTitle;
   final String partnerTaxNo;
   final int partnerTaxPalaceID;
@@ -126,14 +131,19 @@ class PartnerItem {
   final int partnerDistrictID;
   final String partnerDistrict;
   final String partnerAddress;
-  final num partnerShareRatio;
-  final num partnerSharePrice;
+  final String partnerShareRatio;
+  final String partnerSharePrice;
   final String createDate;
   final List<CompanyDocumentItem> documents;
 
   PartnerItem({
     required this.partnerID,
     required this.partnerName,
+    this.partnerFirstname = '',
+    this.partnerLastname = '',
+    this.partnerFullname = '',
+    this.partnerIdentityNo = '',
+    this.partnerBirthday = '',
     this.partnerTitle = '',
     this.partnerTaxNo = '',
     this.partnerTaxPalaceID = 0,
@@ -143,15 +153,22 @@ class PartnerItem {
     this.partnerDistrictID = 0,
     this.partnerDistrict = '',
     this.partnerAddress = '',
-    this.partnerShareRatio = 0,
-    this.partnerSharePrice = 0,
+    this.partnerShareRatio = '',
+    this.partnerSharePrice = '',
     this.createDate = '',
     this.documents = const [],
   });
 
   factory PartnerItem.fromJson(Map<String, dynamic> json) => PartnerItem(
         partnerID: (json['partnerID'] as num?)?.toInt() ?? 0,
-        partnerName: json['partnerName'] as String? ?? '',
+        partnerName: (json['partnerName'] as String?)
+                ?? (json['partnerFullname'] as String?)
+                ?? '',
+        partnerFirstname: json['partnerFirstname'] as String? ?? '',
+        partnerLastname: json['partnerLastname'] as String? ?? '',
+        partnerFullname: json['partnerFullname'] as String? ?? '',
+        partnerIdentityNo: json['partnerIdentityNo'] as String? ?? '',
+        partnerBirthday: json['partnerBirthday'] as String? ?? '',
         partnerTitle: json['partnerTitle'] as String? ?? '',
         partnerTaxNo: json['partnerTaxNo'] as String? ?? '',
         partnerTaxPalaceID: (json['partnerTaxPalaceID'] as num?)?.toInt() ?? 0,
@@ -161,8 +178,8 @@ class PartnerItem {
         partnerDistrictID: (json['partnerDistrictID'] as num?)?.toInt() ?? 0,
         partnerDistrict: json['partnerDistrict'] as String? ?? '',
         partnerAddress: json['partnerAddress'] as String? ?? '',
-        partnerShareRatio: (json['partnerShareRatio'] as num?) ?? 0,
-        partnerSharePrice: (json['partnerSharePrice'] as num?) ?? 0,
+        partnerShareRatio: (json['partnerShareRatio'] as String?) ?? '',
+        partnerSharePrice: (json['partnerSharePrice'] as String?) ?? '',
         createDate: json['createDate'] as String? ?? '',
         documents: ((json['documents'] as List<dynamic>?) ?? const [])
             .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))
