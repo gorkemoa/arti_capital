@@ -336,7 +336,7 @@ class UpdateCompanyRequest {
   final int compID;
   final String compName;
   final String compTaxNo;
-  final String compTaxPalace;
+  final int compTaxPalace;
   final String compKepAddress;
   final String compMersisNo;
   final int compType;

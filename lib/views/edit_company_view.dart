@@ -35,8 +35,10 @@ class _EditCompanyViewState extends State<EditCompanyView> {
 
   List<CityItem> _cities = const [];
   List<DistrictItem> _districts = const [];
+  List<TaxPalaceItem> _palaces = const [];
   CityItem? _selectedCity;
   DistrictItem? _selectedDistrict;
+  TaxPalaceItem? _selectedPalace;
   bool _loading = false;
   bool _loadingMeta = true;
   String _logoBase64 = '';
@@ -62,10 +64,17 @@ class _EditCompanyViewState extends State<EditCompanyView> {
       final city = cities.firstWhere((c) => c.cityNo == widget.company.compCityID, orElse: () => cities.first);
       _selectedCity = city;
       final d = await _generalService.getDistricts(city.cityNo);
-      setState(() { _districts = d; });
+      final p = await _generalService.getTaxPalaces(city.cityNo);
+      setState(() { _districts = d; _palaces = p; });
       // İlçeyi seçili getir
       try {
         _selectedDistrict = d.firstWhere((x) => x.districtNo == widget.company.compDistrictID);
+      } catch (_) {}
+      // Vergi dairesini seçili getir
+      try {
+        if (widget.company.compTaxPalaceID != null) {
+          _selectedPalace = p.firstWhere((x) => x.palaceID == widget.company.compTaxPalaceID);
+        }
       } catch (_) {}
     } catch (e) {
       if (mounted) {
@@ -118,6 +127,10 @@ class _EditCompanyViewState extends State<EditCompanyView> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şehir/ilçe seçiniz')));
       return;
     }
+    if (_selectedPalace == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vergi dairesi seçiniz')));
+      return;
+    }
     setState(() { _loading = true; });
     try {
       final token = StorageService.getToken();
@@ -142,7 +155,7 @@ class _EditCompanyViewState extends State<EditCompanyView> {
         compID: widget.company.compID,
         compName: _compNameController.text.trim(),
         compTaxNo: _compTaxNoController.text.trim(),
-        compTaxPalace: _compTaxPalaceController.text.trim(),
+        compTaxPalace: _selectedPalace!.palaceID,
         compKepAddress: _compKepAddressController.text.trim(),
         compMersisNo: _compMersisNoController.text.trim(),
         compType: 1,
@@ -175,6 +188,7 @@ class _EditCompanyViewState extends State<EditCompanyView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Firmayı Düzenle'),
         centerTitle: true,
@@ -186,42 +200,102 @@ class _EditCompanyViewState extends State<EditCompanyView> {
           : Form(
               key: _formKey,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _buildSectionTitle(context, 'Logo'),
+                    const SizedBox(height: 16),
                     _buildLogoSection(theme),
                     const SizedBox(height: 24),
-                    _buildTextField(controller: _compNameController, label: 'Firma Adı *', validator: (v){ if(v==null||v.trim().isEmpty) return 'Gerekli'; return null; }),
+
+                    _buildSectionTitle(context, 'Şirket Bilgileri'),
                     const SizedBox(height: 16),
-                    _buildTextField(controller: _compTaxNoController, label: 'Vergi No *', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], validator: (v){ if(v==null||v.trim().isEmpty) return 'Gerekli'; if(v.trim().length!=10) return '10 haneli olmalı'; return null; }),
+                    _styledTextField(controller: _compNameController, label: 'Firma Adı *', validator: (v){ if(v==null||v.trim().isEmpty) return 'Gerekli'; return null; }),
                     const SizedBox(height: 16),
-                    _buildTextField(controller: _compTaxPalaceController, label: 'Vergi Dairesi *', validator: (v){ if(v==null||v.trim().isEmpty) return 'Gerekli'; return null; }),
-                    const SizedBox(height: 16),
-                    _buildCityDropdown(theme),
-                    const SizedBox(height: 16),
-                    _buildDistrictDropdown(theme),
-                    const SizedBox(height: 16),
-                    _buildTextField(controller: _compAddressController, label: 'Adres', maxLines: 3),
-                    const SizedBox(height: 16),
-                    _buildTextField(controller: _compKepAddressController, label: 'KEP Adresi', keyboardType: TextInputType.emailAddress),
-                    const SizedBox(height: 16),
-                    _buildTextField(controller: _compMersisNoController, label: 'MERSIS No', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                    _styledTextField(controller: _compTaxNoController, label: 'Vergi No *', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], validator: (v){ if(v==null||v.trim().isEmpty) return 'Gerekli'; if(v.trim().length!=10) return '10 haneli olmalı'; return null; }),
+                    // Vergi dairesi text alanı kaldırıldı; aşağıda dropdown mevcut
+
                     const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _loading ? null : _submitForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: Text(_loading ? 'Kaydediliyor...' : 'Kaydet', style: theme.textTheme.titleMedium?.copyWith(color: AppColors.onPrimary)),
-                    ),
+                    _buildSectionTitle(context, 'Konum Bilgileri'),
+                    const SizedBox(height: 16),
+                    _styledCityDropdown(theme),
+                    const SizedBox(height: 16),
+                    _styledDistrictDropdown(theme),
+                    const SizedBox(height: 16),
+                    _styledTaxPalaceDropdown(theme),
+                    const SizedBox(height: 16),
+                    _styledTextField(controller: _compAddressController, label: 'Adres', maxLines: 3),
+
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'Diğer'),
+                    const SizedBox(height: 16),
+                    _styledTextField(controller: _compKepAddressController, label: 'KEP Adresi', keyboardType: TextInputType.emailAddress),
+                    const SizedBox(height: 16),
+                    _styledTextField(controller: _compMersisNoController, label: 'MERSIS No', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
             ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _loading ? null : _submitForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: _loading
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Kaydediliyor...',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppColors.onPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        'Kaydet',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: AppColors.onPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -299,7 +373,43 @@ class _EditCompanyViewState extends State<EditCompanyView> {
     );
   }
 
-  Widget _buildTextField({
+  
+
+  // Styled components (match add_company_view aesthetics)
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+    );
+  }
+
+  InputDecoration _styledDecoration(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.onSurface.withOpacity(0.6),
+            ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        filled: true,
+        fillColor: AppColors.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      );
+
+  Widget _styledTextField({
     required TextEditingController controller,
     required String label,
     String? Function(String?)? validator,
@@ -309,40 +419,84 @@ class _EditCompanyViewState extends State<EditCompanyView> {
   }) {
     return TextFormField(
       controller: controller,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-      ).copyWith(labelText: label, filled: true, fillColor: Colors.grey.shade50),
+      decoration: _styledDecoration(label),
       validator: validator,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       maxLines: maxLines,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppColors.onSurface,
+          ),
     );
   }
 
-  Widget _buildCityDropdown(ThemeData theme) {
+  Widget _styledCityDropdown(ThemeData theme) {
     if (_loadingMeta && _cities.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
     }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(4),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<CityItem>(
           isExpanded: true,
           value: _selectedCity,
-          hint: const Text('Şehir Seçin *'),
-          items: _cities.map((city) => DropdownMenuItem(value: city, child: Text(city.cityName))).toList(),
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'İl',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.6),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          items: _cities
+              .map((city) => DropdownMenuItem(
+                    value: city,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        city.cityName,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.onSurface,
+                            ),
+                      ),
+                    ),
+                  ))
+              .toList(),
           onChanged: (CityItem? city) async {
-            setState(() { _selectedCity = city; _selectedDistrict = null; });
+            setState(() { _selectedCity = city; _selectedDistrict = null; _selectedPalace = null; _palaces = const []; });
             if (city != null) {
               setState(() { _loadingMeta = true; _districts = const []; });
               try {
                 final d = await _generalService.getDistricts(city.cityNo);
-                if (mounted) setState(() { _districts = d; });
+                final p = await _generalService.getTaxPalaces(city.cityNo);
+                if (mounted) setState(() { _districts = d; _palaces = p; });
               } catch (_) {}
               if (mounted) setState(() { _loadingMeta = false; });
             }
@@ -352,23 +506,65 @@ class _EditCompanyViewState extends State<EditCompanyView> {
     );
   }
 
-  Widget _buildDistrictDropdown(ThemeData theme) {
+  Widget _styledDistrictDropdown(ThemeData theme) {
     if (_loadingMeta && _selectedCity != null && _districts.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
     }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        border: Border.all(color: theme.colorScheme.outline),
-        borderRadius: BorderRadius.circular(4),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<DistrictItem>(
           isExpanded: true,
           value: _selectedDistrict,
-          hint: const Text('İlçe Seçin *'),
-          items: _districts.map((d) => DropdownMenuItem(value: d, child: Text(d.districtName))).toList(),
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'İlçe',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.6),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          items: _districts
+              .map((d) => DropdownMenuItem(
+                    value: d,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        d.districtName,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.onSurface,
+                            ),
+                      ),
+                    ),
+                  ))
+              .toList(),
           onChanged: _districts.isEmpty ? null : (DistrictItem? district) {
             setState(() { _selectedDistrict = district; });
           },
@@ -376,6 +572,77 @@ class _EditCompanyViewState extends State<EditCompanyView> {
       ),
     );
   }
+
+  Widget _styledTaxPalaceDropdown(ThemeData theme) {
+    if (_loadingMeta && _selectedCity != null && _palaces.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<TaxPalaceItem>(
+          isExpanded: true,
+          value: _selectedPalace,
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'Vergi Dairesi',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.6),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          items: _palaces
+              .map((p) => DropdownMenuItem(
+                    value: p,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        p.palaceName,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.onSurface,
+                            ),
+                      ),
+                    ),
+                  ))
+              .toList(),
+          onChanged: _palaces.isEmpty ? null : (TaxPalaceItem? v) {
+            setState(() { _selectedPalace = v; });
+          },
+        ),
+      ),
+    );
+  }
+
+  
+
+  
 }
 
 
