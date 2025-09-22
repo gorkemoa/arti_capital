@@ -14,6 +14,7 @@ class CompanyItem {
   final String compLogo; // data url veya http url
   final String createdate;
   final List<CompanyDocumentItem> documents;
+  final List<PartnerItem>partners;
 
   CompanyItem({
     required this.compID,
@@ -31,6 +32,7 @@ class CompanyItem {
     required this.compLogo,
     required this.createdate,
     this.documents = const [],
+    this.partners = const [],
   });
 
   factory CompanyItem.fromJson(Map<String, dynamic> json) => CompanyItem(
@@ -50,6 +52,9 @@ class CompanyItem {
         createdate: json['createdate'] as String? ?? '',
         documents: ((json['documents'] as List<dynamic>?) ?? const [])
             .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        partners: ((json['partners'] as List<dynamic>?) ?? const [])
+            .map((e) => PartnerItem.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }
@@ -75,6 +80,62 @@ class CompanyDocumentItem {
         documentType: json['documentType'] as String? ?? '',
         documentURL: json['documentURL'] as String? ?? '',
         createDate: json['createDate'] as String? ?? '',
+      );
+}
+
+class PartnerItem {
+  final int partnerID;
+  final String partnerName;
+  final String partnerTitle;
+  final String partnerTaxNo;
+  final int partnerTaxPalaceID;
+  final String partnerTaxPalace;
+  final int partnerCityID;
+  final String partnerCity;
+  final int partnerDistrictID;
+  final String partnerDistrict;
+  final String partnerAddress;
+  final num partnerShareRatio;
+  final num partnerSharePrice;
+  final String createDate;
+  final List<CompanyDocumentItem> documents;
+
+  PartnerItem({
+    required this.partnerID,
+    required this.partnerName,
+    this.partnerTitle = '',
+    this.partnerTaxNo = '',
+    this.partnerTaxPalaceID = 0,
+    this.partnerTaxPalace = '',
+    this.partnerCityID = 0,
+    this.partnerCity = '',
+    this.partnerDistrictID = 0,
+    this.partnerDistrict = '',
+    this.partnerAddress = '',
+    this.partnerShareRatio = 0,
+    this.partnerSharePrice = 0,
+    this.createDate = '',
+    this.documents = const [],
+  });
+
+  factory PartnerItem.fromJson(Map<String, dynamic> json) => PartnerItem(
+        partnerID: (json['partnerID'] as num?)?.toInt() ?? 0,
+        partnerName: json['partnerName'] as String? ?? '',
+        partnerTitle: json['partnerTitle'] as String? ?? '',
+        partnerTaxNo: json['partnerTaxNo'] as String? ?? '',
+        partnerTaxPalaceID: (json['partnerTaxPalaceID'] as num?)?.toInt() ?? 0,
+        partnerTaxPalace: json['partnerTaxPalace'] as String? ?? '',
+        partnerCityID: (json['partnerCityID'] as num?)?.toInt() ?? 0,
+        partnerCity: json['partnerCity'] as String? ?? '',
+        partnerDistrictID: (json['partnerDistrictID'] as num?)?.toInt() ?? 0,
+        partnerDistrict: json['partnerDistrict'] as String? ?? '',
+        partnerAddress: json['partnerAddress'] as String? ?? '',
+        partnerShareRatio: (json['partnerShareRatio'] as num?) ?? 0,
+        partnerSharePrice: (json['partnerSharePrice'] as num?) ?? 0,
+        createDate: json['createDate'] as String? ?? '',
+        documents: ((json['documents'] as List<dynamic>?) ?? const [])
+            .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }
 

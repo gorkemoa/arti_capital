@@ -228,6 +228,35 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                 ),
                               ),
                               const SizedBox(width: 16),
+                              if ((_company!.partners).isNotEmpty)
+                                Expanded(
+                                  child: _Panel(
+                                    title: 'Ortaklar',
+                                    icon: Icons.group_outlined,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          for (final p in _company!.partners)
+                                            ListTile(
+                                              dense: true,
+                                              contentPadding: EdgeInsets.zero,
+                                              leading: const Icon(Icons.person_outline),
+                                              title: Text(p.partnerName),
+                                              subtitle: Text('${p.partnerTitle.isNotEmpty ? p.partnerTitle + ' • ' : ''}${p.partnerCity}/${p.partnerDistrict} • ${p.partnerTaxPalace}'),
+                                              trailing: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Text('Hisse: ${p.partnerShareRatio}%'),
+                                                  Text('Tutar: ${p.partnerSharePrice}')
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               if (_company!.documents.isNotEmpty)
                                 Expanded(
                                   child: _Panel(
@@ -294,6 +323,35 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                               _InfoRow(label: 'Adres', value: _company!.compAddress),
                             ],
                           ),
+                          if ((_company!.partners).isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            _Panel(
+                              title: 'Ortaklar',
+                              icon: Icons.group_outlined,
+                              children: [
+                                Column(
+                                  children: [
+                                    for (final p in _company!.partners)
+                                      ListTile(
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        leading: const Icon(Icons.person_outline),
+                                        title: Text(p.partnerName),
+                                        subtitle: Text('${p.partnerTitle.isNotEmpty ? p.partnerTitle + ' • ' : ''}${p.partnerCity}/${p.partnerDistrict} • ${p.partnerTaxPalace}'),
+                                        trailing: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text('Hisse: ${p.partnerShareRatio}%'),
+                                            Text('Tutar: ${p.partnerSharePrice}')
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           if (_company!.documents.isNotEmpty)
                             _Panel(
