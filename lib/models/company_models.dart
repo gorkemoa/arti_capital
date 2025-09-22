@@ -74,13 +74,44 @@ class CompanyDocumentItem {
     required this.createDate,
   });
 
-  factory CompanyDocumentItem.fromJson(Map<String, dynamic> json) => CompanyDocumentItem(
-        documentID: (json['documentID'] as num?)?.toInt() ?? 0,
-        documentTypeID: (json['documentTypeID'] as num?)?.toInt() ?? 0,
-        documentType: json['documentType'] as String? ?? '',
-        documentURL: json['documentURL'] as String? ?? '',
-        createDate: json['createDate'] as String? ?? '',
-      );
+  factory CompanyDocumentItem.fromJson(Map<String, dynamic> json) {
+    int resolveInt(dynamic v) {
+      if (v is num) return v.toInt();
+      if (v is String) {
+        final parsed = int.tryParse(v);
+        if (parsed != null) return parsed;
+      }
+      return 0;
+    }
+
+    final id = json.containsKey('documentID')
+        ? resolveInt(json['documentID'])
+        : json.containsKey('id')
+            ? resolveInt(json['id'])
+            : json.containsKey('docID')
+                ? resolveInt(json['docID'])
+                : json.containsKey('partnerDocumentID')
+                    ? resolveInt(json['partnerDocumentID'])
+                    : 0;
+
+    final typeId = json.containsKey('documentTypeID')
+        ? resolveInt(json['documentTypeID'])
+        : json.containsKey('typeID')
+            ? resolveInt(json['typeID'])
+            : 0;
+
+    final typeName = (json['documentType'] as String?) ?? (json['typeName'] as String?) ?? '';
+    final url = (json['documentURL'] as String?) ?? (json['documentUrl'] as String?) ?? (json['url'] as String?) ?? '';
+    final created = (json['createDate'] as String?) ?? (json['createdAt'] as String?) ?? '';
+
+    return CompanyDocumentItem(
+      documentID: id,
+      documentTypeID: typeId,
+      documentType: typeName,
+      documentURL: url,
+      createDate: created,
+    );
+  }
 }
 
 class PartnerItem {
