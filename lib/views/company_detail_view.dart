@@ -244,14 +244,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                               leading: const Icon(Icons.person_outline),
                                               title: Text(p.partnerName),
                                               subtitle: Text('${p.partnerTitle.isNotEmpty ? p.partnerTitle + ' • ' : ''}${p.partnerCity}/${p.partnerDistrict} • ${p.partnerTaxPalace}'),
-                                              trailing: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment: CrossAxisAlignment.end,
-                                                children: [
-                                                  Text('Hisse: ${p.partnerShareRatio}%'),
-                                                  Text('Tutar: ${p.partnerSharePrice}')
-                                                ],
-                                              ),
                                               onTap: () async {
                                                 final res = await Navigator.of(context).push<bool>(
                                                   MaterialPageRoute(
@@ -262,6 +254,63 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                                   _load();
                                                 }
                                               },
+                                              trailing: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                                    children: [
+                                                      Text('Hisse: ${p.partnerShareRatio}%'),
+                                                      Text('Tutar: ${p.partnerSharePrice}')
+                                                    ],
+                                                  ),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.edit_outlined),
+                                                    tooltip: 'Düzenle',
+                                                    onPressed: () async {
+                                                      final res = await Navigator.of(context).push<bool>(
+                                                        MaterialPageRoute(
+                                                          builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
+                                                        ),
+                                                      );
+                                                      if (res == true) _load();
+                                                    },
+                                                  ),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                    tooltip: 'Sil',
+                                                    onPressed: () async {
+                                                      final token = await StorageService.getToken();
+                                                      if (token == null) {
+                                                        if (!mounted) return;
+                                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                                                        return;
+                                                      }
+                                                      final confirm = await showDialog<bool>(
+                                                        context: context,
+                                                        builder: (context) => AlertDialog(
+                                                          title: const Text('Ortak Sil'),
+                                                          content: Text('${p.partnerName} adlı ortağı silmek istediğinize emin misiniz?'),
+                                                          actions: [
+                                                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                                                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                                                          ],
+                                                        ),
+                                                      );
+                                                      if (confirm != true) return;
+                                                      final ok = await const CompanyService().deleteCompanyPartner(
+                                                        userToken: token,
+                                                        compId: widget.compId,
+                                                        partnerId: p.partnerID,
+                                                      );
+                                                      if (!mounted) return;
+                                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Ortak silindi.' : 'Ortak silinemedi')));
+                                                      if (ok) _load();
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                         ],
                                       ),
@@ -349,24 +398,63 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                         leading: const Icon(Icons.person_outline),
                                         title: Text(p.partnerName),
                                         subtitle: Text('${p.partnerTitle.isNotEmpty ? p.partnerTitle + ' • ' : ''}${p.partnerCity}/${p.partnerDistrict} • ${p.partnerTaxPalace}'),
-                                        trailing: Column(
+                                        trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
-                                            Text('Hisse: ${p.partnerShareRatio}%'),
-                                            Text('Tutar: ${p.partnerSharePrice}')
+                                            Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text('Hisse: ${p.partnerShareRatio}%'),
+                                                Text('Tutar: ${p.partnerSharePrice}')
+                                              ],
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.edit_outlined),
+                                              tooltip: 'Düzenle',
+                                              onPressed: () async {
+                                                final res = await Navigator.of(context).push<bool>(
+                                                  MaterialPageRoute(
+                                                    builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
+                                                  ),
+                                                );
+                                                if (res == true) _load();
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                              tooltip: 'Sil',
+                                              onPressed: () async {
+                                                final token = await StorageService.getToken();
+                                                if (token == null) {
+                                                  if (!mounted) return;
+                                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                                                  return;
+                                                }
+                                                final confirm = await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) => AlertDialog(
+                                                    title: const Text('Ortak Sil'),
+                                                    content: Text('${p.partnerName} adlı ortağı silmek istediğinize emin misiniz?'),
+                                                    actions: [
+                                                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                                                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                                                    ],
+                                                  ),
+                                                );
+                                                if (confirm != true) return;
+                                                final ok = await const CompanyService().deleteCompanyPartner(
+                                                  userToken: token,
+                                                  compId: widget.compId,
+                                                  partnerId: p.partnerID,
+                                                );
+                                                if (!mounted) return;
+                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Ortak silindi.' : 'Ortak silinemedi')));
+                                                if (ok) _load();
+                                              },
+                                            ),
                                           ],
                                         ),
-                                        onTap: () async {
-                                          final res = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
-                                            ),
-                                          );
-                                          if (res == true) {
-                                            _load();
-                                          }
-                                        },
                                       ),
                                   ],
                                 ),

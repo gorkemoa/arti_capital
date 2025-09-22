@@ -410,6 +410,29 @@ class CompanyService {
       );
     }
   }
+
+  Future<bool> deleteCompanyPartner({
+    required String userToken,
+    required int compId,
+    required int partnerId,
+  }) async {
+    try {
+      final endpoint = AppConstants.deletePartner;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+        'partnerID': partnerId,
+      };
+      AppLogger.i('DELETE $endpoint', tag: 'DELETE_PARTNER');
+      AppLogger.i(payload.toString(), tag: 'DELETE_PARTNER_REQ');
+      final Response resp = await ApiClient.deleteJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      return body['success'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.e('Delete partner error: $e', tag: 'DELETE_PARTNER');
+      return false;
+    }
+  }
 }
 
 
