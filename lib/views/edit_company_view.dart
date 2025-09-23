@@ -145,7 +145,7 @@ class _EditCompanyViewState extends State<EditCompanyView> {
         if (parsed is Map<String, dynamic>) identityNo = parsed['userIdentityNo'] as String?;
       } catch (_) {
         final match = RegExp(r'userIdentityNo[:=]\s*([^,}\s]+)').firstMatch(userData);
-        identityNo = match != null ? match.group(1) : null;
+        identityNo = match?.group(1);
       }
       if (identityNo == null || identityNo.isEmpty) throw Exception('Kimlik numarası bulunamadı');
 
@@ -155,7 +155,7 @@ class _EditCompanyViewState extends State<EditCompanyView> {
         compID: widget.company.compID,
         compName: _compNameController.text.trim(),
         compTaxNo: _compTaxNoController.text.trim(),
-        compTaxPalace: _selectedPalace!.palaceID,
+        compTaxPalace: _selectedPalace!.palaceID.toString(),
         compKepAddress: _compKepAddressController.text.trim(),
         compMersisNo: _compMersisNoController.text.trim(),
         compType: 1,

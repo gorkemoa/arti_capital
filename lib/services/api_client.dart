@@ -130,9 +130,24 @@ class ApiClient {
         final status = e.response?.statusCode;
         final body = e.response?.data;
         String? msg;
-        if (status == 417 && body is Map<String, dynamic>) {
-          // Backend'in gönderdiği error_message'ı çıkar
-          msg = body['error_message'] as String?;
+        Map<String, dynamic>? mapBody;
+        if (body is Map<String, dynamic>) {
+          mapBody = body;
+        } else if (body is String) {
+          try {
+            final parsed = jsonDecode(body);
+            if (parsed is Map<String, dynamic>) {
+              mapBody = parsed;
+            } else {
+              msg = body; // Düz metni mesaj olarak kullan
+            }
+          } catch (_) {
+            msg = body; // JSON değilse düz metni mesaj yap
+          }
+        }
+        if (mapBody != null) {
+          // Öncelik: error_message, sonra message
+          msg = mapBody['error_message'] as String? ?? mapBody['message'] as String? ?? msg;
         }
         throw ApiException(
           statusCode: status,
@@ -162,9 +177,23 @@ class ApiClient {
         final status = e.response?.statusCode;
         final body = e.response?.data;
         String? msg;
-        if (status == 417 && body is Map<String, dynamic>) {
-          // Backend'in gönderdiği error_message'ı çıkar
-          msg = body['error_message'] as String?;
+        Map<String, dynamic>? mapBody;
+        if (body is Map<String, dynamic>) {
+          mapBody = body;
+        } else if (body is String) {
+          try {
+            final parsed = jsonDecode(body);
+            if (parsed is Map<String, dynamic>) {
+              mapBody = parsed;
+            } else {
+              msg = body;
+            }
+          } catch (_) {
+            msg = body;
+          }
+        }
+        if (mapBody != null) {
+          msg = mapBody['error_message'] as String? ?? mapBody['message'] as String? ?? msg;
         }
         throw ApiException(
           statusCode: status,
@@ -192,9 +221,23 @@ class ApiClient {
         final status = e.response?.statusCode;
         final body = e.response?.data;
         String? msg;
-        if (status == 417 && body is Map<String, dynamic>) {
-          // Backend'in gönderdiği error_message'ı çıkar
-          msg = body['error_message'] as String?;
+        Map<String, dynamic>? mapBody;
+        if (body is Map<String, dynamic>) {
+          mapBody = body;
+        } else if (body is String) {
+          try {
+            final parsed = jsonDecode(body);
+            if (parsed is Map<String, dynamic>) {
+              mapBody = parsed;
+            } else {
+              msg = body;
+            }
+          } catch (_) {
+            msg = body;
+          }
+        }
+        if (mapBody != null) {
+          msg = mapBody['error_message'] as String? ?? mapBody['message'] as String? ?? msg;
         }
         throw ApiException(
           statusCode: status,
@@ -224,8 +267,23 @@ class ApiClient {
         final status = e.response?.statusCode;
         final body = e.response?.data;
         String? msg;
-        if (status == 417 && body is Map<String, dynamic>) {
-          msg = body['error_message'] as String?;
+        Map<String, dynamic>? mapBody;
+        if (body is Map<String, dynamic>) {
+          mapBody = body;
+        } else if (body is String) {
+          try {
+            final parsed = jsonDecode(body);
+            if (parsed is Map<String, dynamic>) {
+              mapBody = parsed;
+            } else {
+              msg = body;
+            }
+          } catch (_) {
+            msg = body;
+          }
+        }
+        if (mapBody != null) {
+          msg = mapBody['error_message'] as String? ?? mapBody['message'] as String? ?? msg;
         }
         throw ApiException(
           statusCode: status,

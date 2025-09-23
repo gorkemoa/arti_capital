@@ -206,6 +206,7 @@ class _AddCompanyPartnerViewState extends State<AddCompanyPartnerView> {
                     label: 'T.C. Kimlik No',
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    maxLength: 11,
                   ),
                   const SizedBox(height: 16),
                   
@@ -395,12 +396,14 @@ class _AddCompanyPartnerViewState extends State<AddCompanyPartnerView> {
     required String label,
     TextInputType? keyboardType,
     int maxLines = 1,
+    int? maxLength,
     ValueChanged<String>? onChanged,
     List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
+      maxLength: maxLength,
       keyboardType: keyboardType,
       onChanged: onChanged,
       inputFormatters: inputFormatters,

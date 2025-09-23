@@ -27,7 +27,7 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
   final GeneralService _generalService = GeneralService();
   final CompanyService _companyService = const CompanyService();
 
-  List<CityItem> _cities = const [];
+  final List<CityItem> _cities = const [];
   List<DistrictItem> _districts = const [];
   List<TaxPalaceItem> _palaces = const [];
   CityItem? _selectedCity;
@@ -257,5 +257,7 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
     );
   }
 }
+
+
 
 

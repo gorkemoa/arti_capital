@@ -147,7 +147,7 @@ class CompanyService {
       AppLogger.i('POST $endpoint', tag: 'UPDATE_COMPANY');
       AppLogger.i(request.toJson().toString(), tag: 'UPDATE_COMPANY_REQ');
 
-      final Response resp = await ApiClient.postJson(
+      final Response resp = await ApiClient.putJson(
         endpoint,
         data: request.toJson(),
       );

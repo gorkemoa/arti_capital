@@ -142,6 +142,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
+        showCheckboxColumn: false,
         columns: const [
           DataColumn(label: Text('Ad Soyad')),
           DataColumn(label: Text('T.C. No')),
@@ -173,7 +174,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
               DataCell(Text(p.partnerTitle.isNotEmpty ? p.partnerTitle.toUpperCase() : '-')),
               DataCell(Text('${p.partnerCity}/${p.partnerDistrict}')),
               DataCell(Text(p.partnerTaxPalace)),
-              DataCell(Text('${p.partnerShareRatio}%')),
+              DataCell(Text(p.partnerShareRatio)),
               DataCell(Text(p.partnerSharePrice)),
               DataCell(Row(
                 mainAxisSize: MainAxisSize.min,
