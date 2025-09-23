@@ -812,6 +812,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
                 Text(
                   'Adres Tipi',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    // ignore: deprecated_member_use
                     color: AppColors.onSurface.withOpacity(0.6),
                   ),
                 ),

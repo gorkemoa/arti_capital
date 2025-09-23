@@ -59,7 +59,6 @@ class _AddCompanyPartnerViewState extends State<AddCompanyPartnerView> {
       final company = await _companyService.getCompanyDetail(widget.compId);
       final int? targetCityId = company?.compCityID;
       final int? targetDistrictId = company?.compDistrictID;
-      final int? targetPalaceId = company?.compTaxPalaceID;
 
       // 3) Şehir seçimini yap
       if (cities.isNotEmpty) {
@@ -89,21 +88,15 @@ class _AddCompanyPartnerViewState extends State<AddCompanyPartnerView> {
           initialDistrict = districts.isNotEmpty ? districts.first : null;
         }
 
+        // Vergi dairesi UI'da "Seçiniz" olarak gelsin
         TaxPalaceItem? initialPalace;
-        if (targetPalaceId != null && targetPalaceId != 0) {
-          final match = palaces.where((p) => p.palaceID == targetPalaceId);
-          initialPalace = match.isNotEmpty
-              ? match.first
-              : (palaces.isNotEmpty ? palaces.first : null);
-        } else {
-          initialPalace = palaces.isNotEmpty ? palaces.first : null;
-        }
+        initialPalace = null;
 
         setState(() {
           _districts = districts;
           _selectedDistrict = initialDistrict;
           _palaces = palaces;
-          _selectedPalace = initialPalace;
+          _selectedPalace = initialPalace; // null: kullanıcı manuel seçecek
         });
       }
     } catch (_) {
@@ -600,7 +593,7 @@ class _AddCompanyPartnerViewState extends State<AddCompanyPartnerView> {
                     _districts = d;
                     _selectedDistrict = d.isNotEmpty ? d.first : null;
                     _palaces = p;
-                    _selectedPalace = p.isNotEmpty ? p.first : null;
+                    _selectedPalace = null; // kullanıcı manuel seçecek
                   });
                 }
               } catch (_) {}
@@ -660,7 +653,7 @@ class _AddCompanyPartnerViewState extends State<AddCompanyPartnerView> {
                       if (mounted) {
                         setState(() {
                           _palaces = p;
-                          _selectedPalace = p.isNotEmpty ? p.first : null;
+                          _selectedPalace = null; // kullanıcı manuel seçecek
                         });
                       }
                     }
@@ -688,7 +681,7 @@ class _AddCompanyPartnerViewState extends State<AddCompanyPartnerView> {
             child: Row(
               children: [
                 Text(
-                  'Vergi Dairesi',
+                  'Vergi Dairesi (Seçiniz)',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.onSurface.withOpacity(0.6),
                       ),

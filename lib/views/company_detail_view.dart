@@ -450,54 +450,70 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              if ((_company!.partners).isNotEmpty)
-                                Expanded(
-                                  child: _Panel(
-                                    title: 'Ortaklar',
-                                    icon: Icons.group_outlined,
-                                    actions: [
-                                      IconButton(
-                                        icon: const Icon(Icons.person_add_alt),
-                                        tooltip: 'Ortak Ekle',
-                                        onPressed: () async {
-                                          final res = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => AddCompanyPartnerView(compId: widget.compId),
-                                            ),
-                                          );
-                                          if (res == true) {
-                                            _load();
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                    children: [
+                              Expanded(
+                                child: _Panel(
+                                  title: 'Ortaklar',
+                                  icon: Icons.group_outlined,
+                                  actions: [
+                                    IconButton(
+                                      icon: const Icon(Icons.person_add_alt),
+                                      tooltip: 'Ortak Ekle',
+                                      onPressed: () async {
+                                        final res = await Navigator.of(context).push<bool>(
+                                          MaterialPageRoute(
+                                            builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                                          ),
+                                        );
+                                        if (res == true) {
+                                          _load();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                  children: [
+                                    if (_company!.partners.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        child: Text(
+                                          'Hiç ortak yok',
+                                          style: Theme.of(context).textTheme.bodyMedium,
+                                        ),
+                                      )
+                                    else
                                       _buildPartnersTable(_company!.partners),
-                                    ],
-                                  ),
+                                  ],
                                 ),
-                              if (_company!.documents.isNotEmpty)
-                                Expanded(
-                                  child: _Panel(
-                                    title: 'Belgeler',
-                                    icon: Icons.insert_drive_file_outlined,
-                                    actions: [
-                                      IconButton(
-                                        icon: const Icon(Icons.upload_file),
-                                        tooltip: 'Belge Ekle',
-                                        onPressed: () async {
-                                          final res = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => AddCompanyDocumentView(compId: widget.compId),
-                                            ),
-                                          );
-                                          if (res == true) {
-                                            _load();
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                    children: [
+                              ),
+                              Expanded(
+                                child: _Panel(
+                                  title: 'Belgeler',
+                                  icon: Icons.insert_drive_file_outlined,
+                                  actions: [
+                                    IconButton(
+                                      icon: const Icon(Icons.upload_file),
+                                      tooltip: 'Belge Ekle',
+                                      onPressed: () async {
+                                        final res = await Navigator.of(context).push<bool>(
+                                          MaterialPageRoute(
+                                            builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                                          ),
+                                        );
+                                        if (res == true) {
+                                          _load();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                  children: [
+                                    if (_company!.documents.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        child: Text(
+                                          'Hiç belge yok',
+                                          style: Theme.of(context).textTheme.bodyMedium,
+                                        ),
+                                      )
+                                    else
                                       Column(
                                         children: [
                                           for (final doc in _company!.documents) ListTile(
@@ -534,9 +550,9 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
+                              ),
                             ],
                           )
                         else ...[
@@ -606,70 +622,85 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             ],
                             children: _addressRows(),
                           ),
-                          if ((_company!.partners).isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            _Panel(
-                              title: 'Ortaklar',
-                              icon: Icons.group_outlined,
-                              actions: [
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.person_add_alt, size: 12),
-                                  label: const Text('Ortak Ekle'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    side: BorderSide(color: AppColors.primary),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                  ),
-                                  onPressed: () async {
-                                    final res = await Navigator.of(context).push<bool>(
-                                      MaterialPageRoute(
-                                        builder: (_) => AddCompanyPartnerView(compId: widget.compId),
-                                      ),
-                                    );
-                                    if (res == true) {
-                                      _load();
-                                    }
-                                  },
-                                ),
-                              ],
-                              children: [
-                                _buildPartnersTable(_company!.partners),
-                              ],
-                            ),
-                          ],
                           const SizedBox(height: 16),
-                          if (_company!.documents.isNotEmpty)
-                            _Panel(
-                              title: 'Belgeler',
-                              icon: Icons.insert_drive_file_outlined,
-                              actions: [
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.upload_file, size: 12),
-                                  label: const Text('Belge Ekle'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    side: BorderSide(color: AppColors.primary),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                  ),
-                                  onPressed: () async {
-                                    final res = await Navigator.of(context).push<bool>(
-                                      MaterialPageRoute(
-                                        builder: (_) => AddCompanyDocumentView(compId: widget.compId),
-                                      ),
-                                    );    
-                                    if (res == true) {
-                                      _load();
-                                    }
-                                  },
+                          _Panel(
+                            title: 'Ortaklar',
+                            icon: Icons.group_outlined,
+                            actions: [
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.person_add_alt, size: 12),
+                                label: const Text('Ortak Ekle'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  side: BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                                 ),
-                              ],
-                              children: [
+                                onPressed: () async {
+                                  final res = await Navigator.of(context).push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                                    ),
+                                  );
+                                  if (res == true) {
+                                    _load();
+                                  }
+                                },
+                              ),
+                            ],
+                            children: [
+                              if (_company!.partners.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    'Hiç ortak yok',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                )
+                              else
+                                _buildPartnersTable(_company!.partners),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _Panel(
+                            title: 'Belgeler',
+                            icon: Icons.insert_drive_file_outlined,
+                            actions: [
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.upload_file, size: 12),
+                                label: const Text('Belge Ekle'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  side: BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                ),
+                                onPressed: () async {
+                                  final res = await Navigator.of(context).push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                                    ),
+                                  );    
+                                  if (res == true) {
+                                    _load();
+                                  }
+                                },
+                              ),
+                            ],
+                            children: [
+                              if (_company!.documents.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    'Hiç belge yok',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                )
+                              else
                                 Column(
                                   children: [
                                     for (final doc in _company!.documents) ListTile(
@@ -706,8 +737,8 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                            ],
+                          ),
                         ],
                       ],
                     );
