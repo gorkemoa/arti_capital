@@ -14,6 +14,8 @@ import 'document_preview_view.dart';
 import 'add_company_partner_view.dart';
 import 'edit_company_partner_view.dart';
 import 'partner_detail_view.dart';
+import 'add_company_address_view.dart';
+import 'edit_company_address_view.dart';
 
 class CompanyDetailView extends StatefulWidget {
   const CompanyDetailView({super.key, required this.compId});
@@ -32,6 +34,136 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  List<Widget> _addressRows() {
+    if (_company == null) return const [];
+    final addresses = _company!.addresses;
+    if (addresses.isEmpty) {
+      return [
+        _InfoRow(label: 'İl / İlçe', value: '${_company!.compCity} / ${_company!.compDistrict}'),
+        _InfoRow(label: 'Adres', value: _company!.compAddress),
+      ];
+    }
+
+    return [
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: addresses.map((a) {
+          final theme = Theme.of(context);
+          // ignore: deprecated_member_use
+          final border = theme.colorScheme.outline.withOpacity(0.12);
+          final type = a.addressType ?? 'Adres';
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      type,
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: theme.textTheme.bodyMedium?.fontSize,
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            final res = await Navigator.of(context).push<bool>(
+                              MaterialPageRoute(
+                                builder: (_) => EditCompanyAddressView(compId: widget.compId, address: a),
+                              ),
+                            );
+                            if (res == true) _load();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () async {
+                            final token = await StorageService.getToken();
+                            if (token == null) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                              return;
+                            }
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Adresi Sil'),
+                                content: Text('${a.addressType ?? 'Adres'} kaydını silmek istediğinize emin misiniz?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                                ],
+                              ),
+                            );
+                            if (confirm != true) return;
+                            final ok = await const CompanyService().deleteCompanyAddress(
+                              userToken: token,
+                              compId: widget.compId,
+                              addressId: a.addressID,
+                            );
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(ok ? 'Adres silindi.' : 'Adres silinemedi')),
+                            );
+                            if (ok) _load();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: theme.textTheme.bodyMedium?.height),
+                Text(
+                  '${a.addressAddress ?? '-'}',
+                  style: TextStyle(
+                    fontSize: theme.textTheme.bodyMedium?.fontSize,
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    height: theme.textTheme.bodyMedium?.height,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    ];
   }
 
   // eski bağlantı dialogu kaldırıldı; artık dokümanlar önizleme sayfasında açılıyor
@@ -298,10 +430,23 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                 child: _Panel(
                                   title: 'Adres',
                                   icon: Icons.location_on_outlined,
-                                  children: [
-                                    _InfoRow(label: 'İl / İlçe', value: '${_company!.compCity} / ${_company!.compDistrict}'),
-                                    _InfoRow(label: 'Adres', value: _company!.compAddress),
+                                  actions: [
+                                    IconButton(
+                                      icon: const Icon(Icons.add_location_alt_outlined),
+                                      tooltip: 'Adres Ekle',
+                                      onPressed: () async {
+                                        final res = await Navigator.of(context).push<bool>(
+                                          MaterialPageRoute(
+                                            builder: (_) => AddCompanyAddressView(compId: widget.compId),
+                                          ),
+                                        );
+                                        if (res == true) {
+                                          _load();
+                                        }
+                                      },
+                                    ),
                                   ],
+                                  children: _addressRows(),
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -435,10 +580,31 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                           _Panel(
                             title: 'Adres',
                             icon: Icons.location_on_outlined,
-                            children: [
-                              _InfoRow(label: 'İl / İlçe', value: '${_company!.compCity} / ${_company!.compDistrict}'),
-                              _InfoRow(label: 'Adres', value: _company!.compAddress),
+                            actions: [
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.add_location_alt_outlined, size: 12),
+                                label: const Text('Adres Ekle'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  side: BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                ),
+                                onPressed: () async {
+                                  final res = await Navigator.of(context).push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => AddCompanyAddressView(compId: widget.compId),
+                                    ),
+                                  );
+                                  if (res == true) {
+                                    _load();
+                                  }
+                                },
+                              ),
                             ],
+                            children: _addressRows(),
                           ),
                           if ((_company!.partners).isNotEmpty) ...[
                             const SizedBox(height: 16),

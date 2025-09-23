@@ -67,6 +67,14 @@ class GeneralService {
     final parsed = GetTaxPalacesResponse.fromJson(body, code);
     return parsed.palaces;
   }
+
+  Future<List<AddressTypeItem>> getAddressTypes() async {
+    final Response resp = await ApiClient.getJson(AppConstants.getAddressTypes);
+    final body = resp.data as Map<String, dynamic>;
+    final code = resp.statusCode;
+    final parsed = GetAddressTypesResponse.fromJson(body, code);
+    return parsed.types;
+  }
 }
 
 

@@ -439,6 +439,147 @@ class CompanyService {
       return false;
     }
   }
+
+  Future<AddCompanyAddressResponse> addCompanyAddress(AddCompanyAddressRequest request) async {
+    try {
+      final endpoint = AppConstants.addCompanyAddress;
+      AppLogger.i('POST $endpoint', tag: 'ADD_ADDRESS');
+      AppLogger.i(request.toJson().toString(), tag: 'ADD_ADDRESS_REQ');
+
+      final Response resp = await ApiClient.postJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_ADDRESS');
+          return AddCompanyAddressResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+            errorMessage: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'ADD_ADDRESS');
+        return AddCompanyAddressResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+          errorMessage: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_ADDRESS');
+      AppLogger.i(body.toString(), tag: 'ADD_ADDRESS_RES');
+
+      return AddCompanyAddressResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Add address error ${e.statusCode} ${e.message}', tag: 'ADD_ADDRESS');
+      return AddCompanyAddressResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Bir hata oluştu',
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in addCompanyAddress: $e', tag: 'ADD_ADDRESS');
+      return AddCompanyAddressResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+        errorMessage: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  Future<UpdateCompanyAddressResponse> updateCompanyAddress(UpdateCompanyAddressRequest request) async {
+    try {
+      final endpoint = AppConstants.updateCompanyAddress;
+      AppLogger.i('POST $endpoint', tag: 'UPDATE_ADDRESS');
+      AppLogger.i(request.toJson().toString(), tag: 'UPDATE_ADDRESS_REQ');
+
+      final Response resp = await ApiClient.putJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_ADDRESS');
+          return UpdateCompanyAddressResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+            errorMessage: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'UPDATE_ADDRESS');
+        return UpdateCompanyAddressResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+          errorMessage: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_ADDRESS');
+      AppLogger.i(body.toString(), tag: 'UPDATE_ADDRESS_RES');
+
+      return UpdateCompanyAddressResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Update address error ${e.statusCode} ${e.message}', tag: 'UPDATE_ADDRESS');
+      return UpdateCompanyAddressResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Bir hata oluştu',
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in updateCompanyAddress: $e', tag: 'UPDATE_ADDRESS');
+      return UpdateCompanyAddressResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+        errorMessage: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  Future<bool> deleteCompanyAddress({
+    required String userToken,
+    required int compId,
+    required int addressId,
+  }) async {
+    try {
+      final endpoint = AppConstants.deleteCompanyAddress;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+        'addressID': addressId,
+      };
+      AppLogger.i('DELETE $endpoint', tag: 'DELETE_ADDRESS');
+      AppLogger.i(payload.toString(), tag: 'DELETE_ADDRESS_REQ');
+      final Response resp = await ApiClient.deleteJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      return body['success'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.e('Delete address error: $e', tag: 'DELETE_ADDRESS');
+      return false;
+    }
+  }
 }
 
 

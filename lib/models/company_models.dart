@@ -1,65 +1,237 @@
 class CompanyItem {
   final int compID;
   final String compName;
-  final String compCity;
-  final String compDistrict;
-  final int compCityID;
-  final int compDistrictID;
-  final String compAddress;
   final String? compTaxNo;
-  final int? compTaxPalaceID; 
+  final int? compTaxPalaceID;
   final String? compTaxPalace;
   final String? compMersisNo;
   final String? compKepAddress;
   final String? compType;
   final String compLogo; // data url veya http url
   final String createdate;
+  final List<CompanyAddressItem> addresses;
   final List<CompanyDocumentItem> documents;
-  final List<PartnerItem>partners;
+  final List<PartnerItem> partners;
 
   CompanyItem({
     required this.compID,
     required this.compName,
-    required this.compCity,
-    required this.compDistrict,
-    required this.compCityID,
-    required this.compDistrictID,
-    required this.compAddress,
     this.compTaxNo,
-    this.compTaxPalace,
     this.compTaxPalaceID,
+    this.compTaxPalace,
     this.compMersisNo,
     this.compKepAddress,
     this.compType,
     required this.compLogo,
     required this.createdate,
+    this.addresses = const [],
     this.documents = const [],
     this.partners = const [],
   });
 
-  factory CompanyItem.fromJson(Map<String, dynamic> json) => CompanyItem(
-        compID: (json['compID'] as num).toInt(),
-        compName: json['compName'] as String? ?? '',
-        compCity: json['compCity'] as String? ?? '',
-        compDistrict: json['compDistrict'] as String? ?? '',
-        compCityID: (json['compCityID'] as num?)?.toInt() ?? 0,
-        compDistrictID: (json['compDistrictID'] as num?)?.toInt() ?? 0,
-        compAddress: json['compAddress'] as String? ?? '',
-        compTaxNo: json['compTaxNo'] as String?,
-        compTaxPalace: json['compTaxPalace'] as String?,
-        compTaxPalaceID: (json['compTaxPalaceID'] as num?)?.toInt(),
-        compMersisNo: json['compMersisNo'] as String?,
-        compKepAddress: json['compKepAddress'] as String?,
-        compType: json['compType'] as String?,
-        compLogo: json['compLogo'] as String? ?? '',
-        createdate: json['createdate'] as String? ?? '',
-        documents: ((json['documents'] as List<dynamic>?) ?? const [])
-            .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        partners: ((json['partners'] as List<dynamic>?) ?? const [])
-            .map((e) => PartnerItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
+  // Geriye dönük uyumluluk için birincil adres kısa yolları
+  String get compCity => addresses.isNotEmpty ? (addresses.first.addressCity ?? '') : '';
+  String get compDistrict => addresses.isNotEmpty ? (addresses.first.addressDistrict ?? '') : '';
+  int get compCityID => addresses.isNotEmpty ? (addresses.first.addressCityID ?? 0) : 0;
+  int get compDistrictID => addresses.isNotEmpty ? (addresses.first.addressDistrictID ?? 0) : 0;
+  String get compAddress => addresses.isNotEmpty ? (addresses.first.addressAddress ?? '') : '';
+
+  factory CompanyItem.fromJson(Map<String, dynamic> json) {
+    // Yeni response: fields + addresses/documents/partners
+    // Eski response ile uyum için adres alanlarını da kontrol ediyoruz
+    final addressesJson = (json['addresses'] as List<dynamic>?) ?? const [];
+    final addresses = addressesJson
+        .map((e) => CompanyAddressItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    // Eski responsedan tekil adres verileri varsa bir AddressItem üretelim
+    if (addresses.isEmpty && (
+      json.containsKey('compCity') ||
+      json.containsKey('compDistrict') ||
+      json.containsKey('compAddress')
+    )) {
+      addresses.add(CompanyAddressItem(
+        addressID: 0,
+        addressTypeID: null,
+        addressType: null,
+        addressCityID: (json['compCityID'] as num?)?.toInt(),
+        addressCity: json['compCity'] as String?,
+        addressDistrictID: (json['compDistrictID'] as num?)?.toInt(),
+        addressDistrict: json['compDistrict'] as String?,
+        addressAddress: json['compAddress'] as String?,
+      ));
+    }
+
+    return CompanyItem(
+      compID: (json['compID'] as num).toInt(),
+      compName: json['compName'] as String? ?? '',
+      compTaxNo: json['compTaxNo'] as String?,
+      compTaxPalace: json['compTaxPalace'] as String?,
+      compTaxPalaceID: (json['compTaxPalaceID'] as num?)?.toInt(),
+      compMersisNo: json['compMersisNo'] as String?,
+      compKepAddress: json['compKepAddress'] as String?,
+      compType: json['compType'] as String?,
+      compLogo: json['compLogo'] as String? ?? '',
+      createdate: json['createdate'] as String? ?? '',
+      addresses: addresses,
+      documents: ((json['documents'] as List<dynamic>?) ?? const [])
+          .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      partners: ((json['partners'] as List<dynamic>?) ?? const [])
+          .map((e) => PartnerItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class CompanyAddressItem {
+  final int addressID;
+  final int? addressTypeID;
+  final String? addressType;
+  final int? addressCityID;
+  final String? addressCity;
+  final int? addressDistrictID;
+  final String? addressDistrict;
+  final String? addressAddress;
+
+  CompanyAddressItem({
+    required this.addressID,
+    this.addressTypeID,
+    this.addressType,
+    this.addressCityID,
+    this.addressCity,
+    this.addressDistrictID,
+    this.addressDistrict,
+    this.addressAddress,
+  });
+
+  factory CompanyAddressItem.fromJson(Map<String, dynamic> json) => CompanyAddressItem(
+        addressID: (json['addressID'] as num?)?.toInt() ?? 0,
+        addressTypeID: (json['addressTypeID'] as num?)?.toInt(),
+        addressType: json['addressType'] as String?,
+        addressCityID: (json['addressCityID'] as num?)?.toInt(),
+        addressCity: json['addressCity'] as String?,
+        addressDistrictID: (json['addressDistrictID'] as num?)?.toInt(),
+        addressDistrict: json['addressDistrict'] as String?,
+        addressAddress: json['addressAddress'] as String?,
       );
+}
+
+class AddCompanyAddressRequest {
+  final String userToken;
+  final int compID;
+  final int addressType;
+  final int addressCity;
+  final int addressDistrict;
+  final String addressAddress;
+
+  AddCompanyAddressRequest({
+    required this.userToken,
+    required this.compID,
+    required this.addressType,
+    required this.addressCity,
+    required this.addressDistrict,
+    this.addressAddress = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+        'compID': compID,
+        'addressType': addressType,
+        'addressCity': addressCity,
+        'addressDistrict': addressDistrict,
+        'addressAddress': addressAddress,
+      };
+}
+
+class AddCompanyAddressResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final int? addressID;
+  final String? errorMessage;
+  final int? statusCode;
+
+  AddCompanyAddressResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.addressID,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory AddCompanyAddressResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return AddCompanyAddressResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      addressID: data != null ? (data['addressID'] as num?)?.toInt() : null,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+class UpdateCompanyAddressRequest {
+  final String userToken;
+  final int compID;
+  final int addressID;
+  final int addressType;
+  final int addressCity;
+  final int addressDistrict;
+  final String addressAddress;
+
+  UpdateCompanyAddressRequest({
+    required this.userToken,
+    required this.compID,
+    required this.addressID,
+    required this.addressType,
+    required this.addressCity,
+    required this.addressDistrict,
+    required this.addressAddress,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'userToken': userToken,
+        'compID': compID,
+        'addressID': addressID,
+        'addressType': addressType,
+        'addressCity': addressCity,
+        'addressDistrict': addressDistrict,
+        'addressAddress': addressAddress,
+      };
+}
+
+class UpdateCompanyAddressResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final int? addressID;
+  final String? errorMessage;
+  final int? statusCode;
+
+  UpdateCompanyAddressResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.addressID,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory UpdateCompanyAddressResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return UpdateCompanyAddressResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      addressID: data != null ? (data['addressID'] as num?)?.toInt() : null,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
 }
 
 class CompanyDocumentItem {
@@ -303,6 +475,46 @@ class CompanyTypeItem {
         typeID: (json['typeID'] as num).toInt(),
         typeName: json['typeName'] as String? ?? '',
       );
+}
+
+class AddressTypeItem {
+  final int typeID;
+  final String typeName;
+
+  AddressTypeItem({required this.typeID, required this.typeName});
+
+  factory AddressTypeItem.fromJson(Map<String, dynamic> json) => AddressTypeItem(
+        typeID: (json['typeID'] as num).toInt(),
+        typeName: json['typeName'] as String? ?? '',
+      );
+}
+
+class GetAddressTypesResponse {
+  final bool error;
+  final bool success;
+  final List<AddressTypeItem> types;
+  final String? errorMessage;
+  final int? statusCode;
+
+  GetAddressTypesResponse({
+    required this.error,
+    required this.success,
+    required this.types,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory GetAddressTypesResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final list = (data != null ? data['types'] as List<dynamic>? : null) ?? [];
+    return GetAddressTypesResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      types: list.map((e) => AddressTypeItem.fromJson(e as Map<String, dynamic>)).toList(),
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
 }
 
 class GetCompanyTypesResponse {

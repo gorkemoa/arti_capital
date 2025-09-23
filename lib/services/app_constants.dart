@@ -24,11 +24,15 @@ class AppConstants {
   static const String addCompanyDocument = '/service/user/account/company/documentAdd';
   static const String updateCompanyDocument = '/service/user/account/company/documentUpdate';
   static const String deleteCompanyDocument = '/service/user/account/company/documentDelete';
+  static const String addCompanyAddress = '/service/user/account/company/addressAdd';
+  static const String updateCompanyAddress = '/service/user/account/company/addressUpdate';
+  static const String deleteCompanyAddress = '/service/user/account/company/addressDelete';
 
   static const String getAllServices = '/service/general/general/services/all';
   static const String getCities = '/service/general/general/cities/all';
   static const String getCompanyTypes = '/service/general/general/companyTypes/all';
   static const String getDocumentTypes = '/service/general/general/documentsTypes/all';
+  static const String getAddressTypes = '/service/general/general/addressTypes/all';
   static String getDistrictsFor(int cityNo) => '/service/general/general/$cityNo/districts';
   static String getTaxPalacesFor(int cityNo) => '/service/general/general/$cityNo/taxPalaces';
   static String getServiceDetail(int id) => '/service/general/general/services/$id';
