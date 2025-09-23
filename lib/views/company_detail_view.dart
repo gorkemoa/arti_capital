@@ -271,96 +271,129 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
   }
 
   Widget _buildPartnersTable(List<PartnerItem> partners) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        showCheckboxColumn: false,
-        columns: const [
-          DataColumn(label: Text('Ad Soyad')),
-          DataColumn(label: Text('T.C. No')),
-          DataColumn(label: Text('Doğum Tarihi')),
-          DataColumn(label: Text('Ünvan')),
-          DataColumn(label: Text('Konum')),
-          DataColumn(label: Text('Vergi Dairesi')),
-          DataColumn(label: Text('Hisse')),
-          DataColumn(label: Text('Tutar')),
-          DataColumn(label: Text('Aksiyonlar')),
-        ],
-        rows: partners.map((PartnerItem p) {
-          return DataRow(
-            onSelectChanged: (selected) async {
-              if (selected != true) return;
-              final res = await Navigator.of(context).push<bool>(
-                MaterialPageRoute(
-                  builder: (_) => PartnerDetailView(compId: widget.compId, partner: p),
-                ),
-              );
-              if (res == true) {
-                _load();
-              }
-            },
-            cells: [
-              DataCell(Text((p.partnerFullname.isNotEmpty ? p.partnerFullname : p.partnerName).toUpperCase())),
-              DataCell(Text(p.partnerIdentityNo.isNotEmpty ? p.partnerIdentityNo : '-')),
-              DataCell(Text(p.partnerBirthday.isNotEmpty ? p.partnerBirthday : '-')),
-              DataCell(Text(p.partnerTitle.isNotEmpty ? p.partnerTitle.toUpperCase() : '-')),
-              DataCell(Text('${p.partnerCity}/${p.partnerDistrict}')),
-              DataCell(Text(p.partnerTaxPalace)),
-              DataCell(Text(p.partnerShareRatio)),
-              DataCell(Text(p.partnerSharePrice)),
-              DataCell(Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    tooltip: 'Düzenle',
-                    onPressed: () async {
-                      final res = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
-                        ),
-                      );
-                      if (res == true) _load();
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                    tooltip: 'Sil',
-                    onPressed: () async {
-                      final token = await StorageService.getToken();
-                      if (token == null) {
+    return Row(
+      children: [
+        // Yatay kaydırılabilir tablo kısmı
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              showCheckboxColumn: false,
+              columns: const [
+                DataColumn(label: Text('Ad Soyad')),
+                DataColumn(label: Text('T.C. No')),
+                DataColumn(label: Text('Doğum Tarihi')),
+                DataColumn(label: Text('Ünvan')),
+                DataColumn(label: Text('Konum')),
+                DataColumn(label: Text('Vergi Dairesi')),
+                DataColumn(label: Text('Hisse')),
+                DataColumn(label: Text('Tutar')),
+              ],
+              rows: partners.map((PartnerItem p) {
+                return DataRow(
+                  onSelectChanged: (selected) async {
+                    if (selected != true) return;
+                    final res = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => PartnerDetailView(compId: widget.compId, partner: p),
+                      ),
+                    );
+                    if (res == true) {
+                      _load();
+                    }
+                  },
+                  cells: [
+                    DataCell(Text((p.partnerFullname.isNotEmpty ? p.partnerFullname : p.partnerName).toUpperCase())),
+                    DataCell(Text(p.partnerIdentityNo.isNotEmpty ? p.partnerIdentityNo : '-')),
+                    DataCell(Text(p.partnerBirthday.isNotEmpty ? p.partnerBirthday : '-')),
+                    DataCell(Text(p.partnerTitle.isNotEmpty ? p.partnerTitle.toUpperCase() : '-')),
+                    DataCell(Text('${p.partnerCity}/${p.partnerDistrict}')),
+                    DataCell(Text(p.partnerTaxPalace)),
+                    DataCell(Text(p.partnerShareRatio)),
+                    DataCell(Text(p.partnerSharePrice)),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        // Sağda sabit duran aksiyonlar
+        Container(
+          width: 44,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Her satır için aksiyon butonları
+              ...partners.map((PartnerItem p) {
+                return Container(
+                  height: 48, // DataRow yüksekliği
+                  alignment: Alignment.centerRight,
+                  child: PopupMenuButton<String>(
+                    tooltip: 'Aksiyonlar',
+                    icon: const Icon(Icons.more_vert),
+                    iconSize: 20,
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        final res = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
+                          ),
+                        );
+                        if (res == true) _load();
+                      } else if (value == 'delete') {
+                        final token = await StorageService.getToken();
+                        if (token == null) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                          return;
+                        }
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Ortak Sil'),
+                            content: Text('${p.partnerName} adlı ortağı silmek istediğinize emin misiniz?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                            ],
+                          ),
+                        );
+                        if (confirm != true) return;
+                        final ok = await const CompanyService().deleteCompanyPartner(
+                          userToken: token,
+                          compId: widget.compId,
+                          partnerId: p.partnerID,
+                        );
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-                        return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(ok ? 'Ortak silindi.' : 'Ortak silinemedi')),
+                        );
+                        if (ok) _load();
                       }
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Ortak Sil'),
-                          content: Text('${p.partnerName} adlı ortağı silmek istediğinize emin misiniz?'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
-                          ],
-                        ),
-                      );
-                      if (confirm != true) return;
-                      final ok = await const CompanyService().deleteCompanyPartner(
-                        userToken: token,
-                        compId: widget.compId,
-                        partnerId: p.partnerID,
-                      );
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Ortak silindi.' : 'Ortak silinemedi')));
-                      if (ok) _load();
                     },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Düzenle'),
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                          title: Text('Sil'),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              )),
+                );
+              }).toList(),
             ],
-          );
-        }).toList(),
-      ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -470,6 +503,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                       },
                                     ),
                                   ],
+                                  contentPadding: const EdgeInsets.only(left: 14, right: 0, top: 10, bottom: 10),
                                   children: [
                                     if (_company!.partners.isEmpty)
                                       Padding(
@@ -650,6 +684,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                 },
                               ),
                             ],
+                            contentPadding: const EdgeInsets.only(left: 14, right: 0, top: 10, bottom: 10),
                             children: [
                               if (_company!.partners.isEmpty)
                                 Padding(
@@ -850,11 +885,12 @@ class _HeaderCard extends StatelessWidget {
 
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.title, required this.icon, required this.children, this.actions});
+  const _Panel({required this.title, required this.icon, required this.children, this.actions, this.contentPadding});
   final String title;
   final IconData icon;
   final List<Widget> children;
   final List<Widget>? actions;
+  final EdgeInsetsGeometry? contentPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -899,7 +935,7 @@ class _Panel extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: contentPadding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Column(
               children: [
                 for (int i = 0; i < children.length; i++) ...[

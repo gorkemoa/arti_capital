@@ -771,7 +771,10 @@ class UpdatePartnerRequest {
   final String userToken;
   final int compID;
   final int partnerID;
-  final String partnerFullname;
+  final String partnerFirstname;
+  final String partnerLastname;
+  final String partnerIdentityNo;
+  final String partnerBirthday;
   final String partnerTitle;
   final String partnerTaxNo;
   final int partnerTaxPalace;
@@ -785,7 +788,10 @@ class UpdatePartnerRequest {
     required this.userToken,
     required this.compID,
     required this.partnerID,
-    required this.partnerFullname,
+    this.partnerFirstname = '',
+    this.partnerLastname = '',
+    this.partnerIdentityNo = '',
+    this.partnerBirthday = '',
     this.partnerTitle = '',
     this.partnerTaxNo = '',
     this.partnerTaxPalace = 0,
@@ -800,7 +806,10 @@ class UpdatePartnerRequest {
         'userToken': userToken,
         'compID': compID,
         'partnerID': partnerID,
-        'partnerFullname': partnerFullname,
+        'partnerFirstname': partnerFirstname,
+        'partnerLastname': partnerLastname,
+        'partnerIdentityNo': partnerIdentityNo,
+        'partnerBirthday': partnerBirthday,
         'partnerTitle': partnerTitle,
         'partnerTaxNo': partnerTaxNo,
         'partnerTaxPalace': partnerTaxPalace,
