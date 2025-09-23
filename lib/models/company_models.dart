@@ -402,6 +402,7 @@ class AddCompanyRequest {
   final int compCity;
   final int compDistrict;
   final String compAddress;
+  final int compAddressType;
   final String compLogo;
 
   AddCompanyRequest({
@@ -416,6 +417,7 @@ class AddCompanyRequest {
     required this.compCity,
     required this.compDistrict,
     this.compAddress = '',
+    this.compAddressType = 1,
     this.compLogo = '',
   });
 
@@ -431,6 +433,7 @@ class AddCompanyRequest {
     'compCity': compCity,
     'compDistrict': compDistrict,
     'compAddress': compAddress,
+    'compAddressType': compAddressType,
     'compLogo': compLogo,
   };
 }

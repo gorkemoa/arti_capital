@@ -43,12 +43,20 @@ class CompaniesView extends StatelessWidget {
                           ),
                           child: ListTile(
                             leading: _logoWidget(c.compLogo, theme),
-                            title: Text(c.compName, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-                            subtitle: Text(
-                              '${c.compDistrict} / ${c.compCity}\n${c.compTaxNo}',
-                              style: theme.textTheme.bodySmall,
-                              maxLines: 6,
-                              overflow: TextOverflow.ellipsis,
+                            title: Text(
+                              c.compName,
+                              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 5, 0, 1),
+                              child: Text(
+                                c.compTaxPalace != null ? '${c.compTaxPalace} / ${c.compTaxNo}' : ' ${c.compTaxNo}',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                ),
+                                maxLines: 6,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             onTap: () {
                               Navigator.of(context).push(
@@ -108,12 +116,12 @@ Widget _logoWidget(String logo, ThemeData theme) {
     child = const Icon(Icons.apartment_outlined);
   }
   return Container(
-    width: 48,
-    height: 48,
+    width: 68,
+    height: 68,
     padding: const EdgeInsets.all(6),
     decoration: BoxDecoration(
       color: bg,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       border: Border.all(color: border),
     ),
     child: ClipRRect(

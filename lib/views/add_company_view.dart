@@ -46,9 +46,11 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   List<CityItem> _cities = const [];
   List<DistrictItem> _districts = const [];
   List<TaxPalaceItem> _taxPalaces = const [];
+  List<AddressTypeItem> _addressTypes = const [];
   CityItem? _selectedCity;
   DistrictItem? _selectedDistrict;
   TaxPalaceItem? _selectedTaxPalace;
+  int? _selectedAddressTypeId;
   int? _selectedCompanyTypeId;
   bool _loading = false; // submit için
   bool _loadingMeta = true; // şehir/ilçe yükleme için
@@ -68,6 +70,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   void initState() {
     super.initState();
     _loadCities();
+    _loadAddressTypes();
     // Kişisel alanlar kaldırıldığı için prefill yok
   }
 
@@ -89,6 +92,16 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         setState(() { _loadingMeta = false; });
       }
     }
+  }
+
+  Future<void> _loadAddressTypes() async {
+    try {
+      final types = await _generalService.getAddressTypes();
+      if (!mounted) return;
+      setState(() {
+        _addressTypes = types;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadDistricts(int cityNo) async {
@@ -364,6 +377,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         compCity: _selectedCity!.cityNo,
         compDistrict: _selectedDistrict!.districtNo,
         compAddress: _compAddressController.text.trim(),
+        compAddressType: _selectedAddressTypeId ?? 1,
         compLogo: _logoBase64,
       );
 
@@ -746,12 +760,86 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   Widget _buildLocationInfoFields() {
     return Column(
       children: [
+         _buildAddressTypeDropdown(Theme.of(context)),
+        const SizedBox(height: 16),
         _buildCityDropdown(Theme.of(context)),
         const SizedBox(height: 16),
         _buildDistrictDropdown(Theme.of(context)),
         const SizedBox(height: 16),
+       
         _buildTaxPalaceDropdown(Theme.of(context)),
       ],
+    );
+  }
+
+  Widget _buildAddressTypeDropdown(ThemeData theme) {
+    if (_addressTypes.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          isExpanded: true,
+          value: _selectedAddressTypeId,
+          // Seçim yoksa placeholder görünsün diye `value` null kalmalı
+          hint: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Text(
+                  'Adres Tipi',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          items: _addressTypes.map((type) {
+            return DropdownMenuItem<int>(
+              value: type.typeID,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  type.typeName,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (int? typeId) {
+            setState(() {
+              _selectedAddressTypeId = typeId;
+              _hasUnsavedChanges = true;
+            });
+          },
+        ),
+      ),
     );
   }
 
