@@ -243,51 +243,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_file),
-            tooltip: 'Belge Ekle',
-            onPressed: () async {
-              final res = await Navigator.of(context).push<bool>(
-                MaterialPageRoute(
-                  builder: (_) => AddCompanyDocumentView(compId: widget.compId),
-                ),
-              );
-              if (res == true) {
-                _load();
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_add_alt),
-            tooltip: 'Ortak Ekle',
-            onPressed: () async {
-              final res = await Navigator.of(context).push<bool>(
-                MaterialPageRoute(
-                  builder: (_) => AddCompanyPartnerView(compId: widget.compId),
-                ),
-              );
-              if (res == true) {
-                _load();
-              }
-            },
-          ),
-          if (!_loading && _company != null)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () async {
-                final result = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => EditCompanyView(company: _company!),
-                  ),
-                );
-                if (result == true) {
-                  _load();
-                }
-              },
-              tooltip: 'Düzenle',
-            ),
-        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -313,6 +268,24 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                 child: _Panel(
                                   title: 'Firma Bilgileri',
                                   icon: Icons.apartment_outlined,
+                                  actions: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_outlined),
+                                      tooltip: 'Firma Bilgilerini Düzenle',
+                                      onPressed: (_loading || _company == null)
+                                          ? null
+                                          : () async {
+                                              final result = await Navigator.of(context).push<bool>(
+                                                MaterialPageRoute(
+                                                  builder: (_) => EditCompanyView(company: _company!),
+                                                ),
+                                              );
+                                              if (result == true) {
+                                                _load();
+                                              }
+                                            },
+                                    ),
+                                  ],
                                   children: [
                                     _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
                                     _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalaceID?.toString() ?? '-'),
@@ -337,6 +310,22 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   child: _Panel(
                                     title: 'Ortaklar',
                                     icon: Icons.group_outlined,
+                                    actions: [
+                                      IconButton(
+                                        icon: const Icon(Icons.person_add_alt),
+                                        tooltip: 'Ortak Ekle',
+                                        onPressed: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
+                                      ),
+                                    ],
                                     children: [
                                       _buildPartnersTable(_company!.partners),
                                     ],
@@ -347,6 +336,22 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   child: _Panel(
                                     title: 'Belgeler',
                                     icon: Icons.insert_drive_file_outlined,
+                                    actions: [
+                                      IconButton(
+                                        icon: const Icon(Icons.upload_file),
+                                        tooltip: 'Belge Ekle',
+                                        onPressed: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
+                                      ),
+                                    ],
                                     children: [
                                       Column(
                                         children: [
@@ -393,10 +398,37 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                           _Panel(
                             title: 'Firma Bilgileri',
                             icon: Icons.apartment_outlined,
+                            actions: [
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.edit_outlined, size: 12),
+                                label: const Text('Firma Düzenle'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  side: BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                ),
+                                onPressed: (_loading || _company == null)
+                                    ? null
+                                    : () async {
+                                        final result = await Navigator.of(context).push<bool>(
+                                          MaterialPageRoute(
+                                            builder: (_) => EditCompanyView(company: _company!),
+                                          ),
+                                        );
+                                        if (result == true) {
+                                          _load();
+                                        }
+                                      },
+                              ),
+                            ],
                             children: [
                               _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
                               _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? '-'),
                               _InfoRow(label: 'MERSİS', value: _company!.compMersisNo ?? '-'),
+                              _InfoRow(label: 'Kep Adresi', value: _company!.compKepAddress ?? '-'),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -413,6 +445,30 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             _Panel(
                               title: 'Ortaklar',
                               icon: Icons.group_outlined,
+                              actions: [
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.person_add_alt, size: 12),
+                                  label: const Text('Ortak Ekle'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  ),
+                                  onPressed: () async {
+                                    final res = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                                      ),
+                                    );
+                                    if (res == true) {
+                                      _load();
+                                    }
+                                  },
+                                ),
+                              ],
                               children: [
                                 _buildPartnersTable(_company!.partners),
                               ],
@@ -423,6 +479,30 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             _Panel(
                               title: 'Belgeler',
                               icon: Icons.insert_drive_file_outlined,
+                              actions: [
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.upload_file, size: 12),
+                                  label: const Text('Belge Ekle'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  ),
+                                  onPressed: () async {
+                                    final res = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                                      ),
+                                    );    
+                                    if (res == true) {
+                                      _load();
+                                    }
+                                  },
+                                ),
+                              ],
                               children: [
                                 Column(
                                   children: [
@@ -573,10 +653,11 @@ class _HeaderCard extends StatelessWidget {
 
 
 class _Panel extends StatelessWidget {
-  const _Panel({required this.title, required this.icon, required this.children});
+  const _Panel({required this.title, required this.icon, required this.children, this.actions});
   final String title;
   final IconData icon;
   final List<Widget> children;
+  final List<Widget>? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -614,6 +695,9 @@ class _Panel extends StatelessWidget {
                   title,
                   style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
+                const Spacer(),
+                if (actions != null && actions!.isNotEmpty)
+                  Row(children: actions!),
               ],
             ),
           ),
