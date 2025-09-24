@@ -27,7 +27,8 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
   final TextEditingController _taxNoController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _shareRatioController = TextEditingController();
-  final TextEditingController _sharePriceController = TextEditingController();
+  final TextEditingController _sharePriceWholeController = TextEditingController();
+  final TextEditingController _sharePriceCentsController = TextEditingController();
 
   final GeneralService _generalService = GeneralService();
   final CompanyService _companyService = const CompanyService();
@@ -59,7 +60,40 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
     _taxNoController.text = p.partnerTaxNo;
     _addressController.text = p.partnerAddress;
     _shareRatioController.text = p.partnerShareRatio.toString();
-    _sharePriceController.text = p.partnerSharePrice.toString();
+    String ratioRaw = _shareRatioController.text;
+    String ratioNormalized = ratioRaw.replaceAll(',', '.');
+    ratioNormalized = ratioNormalized.replaceAll(RegExp(r'[^0-9\.]'), '');
+    final ratioParts = ratioNormalized.split('.');
+    if (ratioParts.length > 2) {
+      ratioNormalized = '${ratioParts[0]}.${ratioParts.sublist(1).join()}';
+    }
+    final parsedRatio = double.tryParse(ratioNormalized);
+    if (parsedRatio != null) {
+      double clamped = parsedRatio;
+      if (clamped > 100) clamped = 100;
+      if (clamped < 0) clamped = 0;
+      ratioNormalized = clamped.toString();
+    }
+    _shareRatioController.text = ratioNormalized;
+    final String priceText = p.partnerSharePrice.toString();
+    String whole = '';
+    String cents = '';
+    if (priceText.contains('.')) {
+      final parts = priceText.split('.');
+      whole = parts[0].replaceAll(RegExp(r'[^0-9]'), '');
+      cents = parts.length > 1 ? parts[1].replaceAll(RegExp(r'[^0-9]'), '') : '';
+    } else if (priceText.contains(',')) {
+      final parts = priceText.split(',');
+      whole = parts[0].replaceAll(RegExp(r'[^0-9]'), '');
+      cents = parts.length > 1 ? parts[1].replaceAll(RegExp(r'[^0-9]'), '') : '';
+    } else {
+      whole = priceText.replaceAll(RegExp(r'[^0-9]'), '');
+      cents = '';
+    }
+    if (cents.isEmpty) cents = '00';
+    if (cents.length > 2) cents = cents.substring(0, 2);
+    _sharePriceWholeController.text = whole.isEmpty ? '0' : whole;
+    _sharePriceCentsController.text = cents.padLeft(2, '0');
   }
 
   Future<void> _initMeta() async {
@@ -100,18 +134,27 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
     _taxNoController.dispose();
     _addressController.dispose();
     _shareRatioController.dispose();
-    _sharePriceController.dispose();
+    _sharePriceWholeController.dispose();
+    _sharePriceCentsController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    final token = await StorageService.getToken();
+    final token = StorageService.getToken();
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
       return;
     }
     setState(() { _submitting = true; });
     try {
+      // Hisse tutarı birleştirme (tam.kuruş)
+      String whole = _sharePriceWholeController.text.replaceAll(RegExp(r'[^0-9]'), '');
+      String cents = _sharePriceCentsController.text.replaceAll(RegExp(r'[^0-9]'), '');
+      if (whole.isEmpty) whole = '0';
+      if (cents.isEmpty) cents = '00';
+      if (cents.length > 2) cents = cents.substring(0, 2);
+      cents = cents.padLeft(2, '0');
+
       final req = UpdatePartnerRequest(
         userToken: token,
         compID: widget.compId,
@@ -127,7 +170,7 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
         partnerTaxPalace: _selectedPalace?.palaceID ?? 0,
         partnerAddress: _addressController.text.trim(),
         partnerShareRatio: _shareRatioController.text.trim(),
-        partnerSharePrice: _sharePriceController.text.trim(),
+        partnerSharePrice: '$whole.$cents',
       );
       final resp = await _companyService.updateCompanyPartner(req);
       if (!mounted) return;
@@ -211,7 +254,7 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
                   _buildText(
                     theme,
                     controller: _shareRatioController,
-                    label: 'Hisse Oranı (%)',
+                    label: 'Hisse Oranı',
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     onChanged: (v) {
                       String normalized = v.replaceAll(',', '.');
@@ -233,7 +276,50 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  _buildText(theme, controller: _sharePriceController, label: 'Hisse Tutarı', keyboardType: TextInputType.number),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _buildText(
+                          theme,
+                          controller: _sharePriceWholeController,
+                          label: 'Hisse Tutarı (Tam)',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          onChanged: (v) {
+                            final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (digits != v) {
+                              _sharePriceWholeController.value = _sharePriceWholeController.value.copyWith(
+                                text: digits,
+                                selection: TextSelection.collapsed(offset: digits.length),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: _buildText(
+                          theme,
+                          controller: _sharePriceCentsController,
+                          label: 'Hisse Tutarı (Kuruş)',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          onChanged: (v) {
+                            String digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (digits.length > 2) digits = digits.substring(0, 2);
+                            if (digits != v) {
+                              _sharePriceCentsController.value = _sharePriceCentsController.value.copyWith(
+                                text: digits,
+                                selection: TextSelection.collapsed(offset: digits.length),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                 ],
               ),

@@ -9,6 +9,7 @@ import 'logger.dart';
 import 'storage_service.dart';
 import 'app_group_service.dart';
 import '../models/company_models.dart';
+import '../models/documents_models.dart';
 
 class UserService {
   Future<GetUserResponse> getUser() async {
@@ -456,6 +457,76 @@ class UserService {
       return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: e.message, statusCode: e.statusCode);
     } catch (e) {
       return GetCompaniesResponse(error: true, success: false, companies: const [], errorMessage: 'Beklenmeyen hata');
+    }
+  }
+
+  Future<GetMyDocumentsResponse> getMyDocuments() async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return GetMyDocumentsResponse(
+          error: true,
+          success: false,
+          compDocs: const [],
+          userDocs: const [],
+          errorMessage: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.getMyDocuments;
+      AppLogger.i('GET $endpoint', tag: 'GET_MY_DOCS');
+      final resp = await ApiClient.getJson(endpoint, query: {
+        'userToken': token,
+      });
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_MY_DOCS');
+          return GetMyDocumentsResponse(
+            error: true,
+            success: false,
+            compDocs: const [],
+            userDocs: const [],
+            errorMessage: 'Geçersiz yanıt',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return GetMyDocumentsResponse(
+          error: true,
+          success: false,
+          compDocs: const [],
+          userDocs: const [],
+          errorMessage: 'Beklenmeyen yanıt',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_MY_DOCS');
+      AppLogger.i(body.toString(), tag: 'GET_MY_DOCS_RES');
+      return GetMyDocumentsResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      return GetMyDocumentsResponse(
+        error: true,
+        success: false,
+        compDocs: const [],
+        userDocs: const [],
+        errorMessage: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      return GetMyDocumentsResponse(
+        error: true,
+        success: false,
+        compDocs: const [],
+        userDocs: const [],
+        errorMessage: 'Beklenmeyen hata',
+      );
     }
   }
 

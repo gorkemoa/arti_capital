@@ -1,4 +1,5 @@
 import 'package:arti_capital/views/companies_view.dart';
+import 'package:arti_capital/views/documents_view.dart';
 import 'package:arti_capital/services/storage_service.dart';
 import 'package:arti_capital/views/support_view.dart';
 import 'package:flutter/material.dart';
@@ -89,7 +90,7 @@ class PanelView extends StatelessWidget {
                   icon: Icons.description_outlined,
                   label: 'Belgelerim',
                   routeTitle: 'Belgelerim',
-      
+                  builder: (context) => const DocumentsView(),
                 ),
                 _QuickAction(
                   icon: Icons.folder_outlined,

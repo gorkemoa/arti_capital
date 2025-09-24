@@ -10,6 +10,7 @@ class AppConstants {
   static const String updateUserBase = '/service/user/update';
   static const String updatePassword = '/service/user/update/password';
   static const String deleteUser = '/service/user/account/delete';
+  static const String getMyDocuments = '/service/user/account/myDocuments';
   static const String sendContactMessage = '/service/general/contact/sendMessage';
   static const String getContactSubjects = '/service/general/contact/subjects';
   static const String allReadNotifications = '/service/user/account/notification/allRead';
@@ -65,6 +66,7 @@ class AppConstants {
   static String get authCodeSendUrl => baseUrl + authCodeSend;
   static String get checkCodeUrl => baseUrl + checkCode;
   static String get getCompaniesUrl => baseUrl + getCompanies;
+  static String get getMyDocumentsUrl => baseUrl + getMyDocuments;
 }
 
 
