@@ -74,6 +74,20 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.light(context),
         navigatorKey: ApiClient.navigatorKey,
         locale: const Locale('tr', 'TR'),
+        builder: (context, child) {
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              final currentFocus = FocusManager.instance.primaryFocus;
+              if (currentFocus != null && !currentFocus.hasPrimaryFocus) {
+                currentFocus.unfocus();
+              } else {
+                FocusManager.instance.primaryFocus?.unfocus();
+              }
+            },
+            child: child,
+          );
+        },
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
