@@ -44,14 +44,21 @@ class _RequestsViewState extends State<RequestsView> with TickerProviderStateMix
         iconTheme: IconThemeData(color: colorScheme.onPrimary),
         actions: [
           IconButton(
+            tooltip: 'Bildirimler',
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => NotificationsView(),
-                ),
-              );
+              Navigator.of(context).pushNamed('/notifications');
             },
-            icon: Icon(Icons.notifications_outlined, color: colorScheme.onPrimary),
+            style: IconButton.styleFrom(backgroundColor: Colors.white, 
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.all(8),
+            iconSize: 24,
+            
+            ),
+            icon: Icon(
+              Icons.notifications_none,
+              color: colorScheme.primary,
+              size: theme.textTheme.headlineSmall?.fontSize,
+               ),
           ),
         ],
       ),

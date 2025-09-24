@@ -47,19 +47,23 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onBackground,
         title: Text('Destekler', style: theme.appBarTheme.titleTextStyle),
-        actions: [
+  actions: [
           IconButton(
+            tooltip: 'Bildirimler',
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => NotificationsView(),
-                ),
-              );
+              Navigator.of(context).pushNamed('/notifications');
             },
-            icon: Icon(
-              Icons.notifications_outlined,
-              color: colorScheme.onPrimary,
+            style: IconButton.styleFrom(backgroundColor: Colors.white, 
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.all(8),
+            iconSize: 24,
+            
             ),
+            icon: Icon(
+              Icons.notifications_none,
+              color: colorScheme.primary,
+              size: theme.textTheme.headlineSmall?.fontSize,
+               ),
           ),
         ],
         elevation: 0,

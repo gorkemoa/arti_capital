@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:arti_capital/views/companies_view.dart';
 import 'package:arti_capital/views/documents_view.dart';
 import 'package:arti_capital/services/storage_service.dart';
@@ -31,7 +32,17 @@ class PanelView extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).pushNamed('/notifications');
             },
-            icon: Icon(Icons.notifications_none, color: colorScheme.onPrimary),
+            style: IconButton.styleFrom(backgroundColor: Colors.white, 
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.all(8),
+            iconSize: 24,
+            
+            ),
+            icon: Icon(
+              Icons.notifications_none,
+              color: colorScheme.primary,
+              size: theme.textTheme.headlineSmall?.fontSize,
+               ),
           ),
         ],
       ),
@@ -167,8 +178,8 @@ class _PanelAppBarTitle extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
-          backgroundImage: profilePhoto.startsWith('http') ? NetworkImage(profilePhoto) : null,
-          child: profilePhoto.startsWith('http')
+          backgroundImage: _resolveProfileImage(profilePhoto),
+          child: _resolveProfileImage(profilePhoto) != null
               ? null
               : Text(
                   (userName.isNotEmpty ? userName.trim().characters.first : '?'),
@@ -194,7 +205,27 @@ class _PanelAppBarTitle extends StatelessWidget {
     );
   }
 
-  
+  ImageProvider? _resolveProfileImage(String value) {
+    if (value.isEmpty) return null;
+    // http veya https ise doğrudan NetworkImage kullan
+    if (value.startsWith('http')) {
+      return NetworkImage(value);
+    }
+    // data:image/...;base64,xxxxx formatı
+    if (value.startsWith('data:image')) {
+      final commaIndex = value.indexOf(',');
+      if (commaIndex != -1 && commaIndex + 1 < value.length) {
+        final b64 = value.substring(commaIndex + 1);
+        try {
+          final bytes = base64Decode(b64);
+          return MemoryImage(bytes);
+        } catch (_) {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
 }
 
 String _greetingForNow() {

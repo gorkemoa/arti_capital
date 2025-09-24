@@ -30,17 +30,9 @@ class _DocumentsViewState extends State<DocumentsView> {
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
           iconTheme: IconThemeData(color: theme.colorScheme.onPrimary),
-          title: Text(
-            'Belgelerim',
-            style: TextStyle(
-              color: theme.colorScheme.onPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: theme.textTheme.titleMedium?.fontSize,
-              fontFamily: theme.textTheme.titleMedium?.fontFamily,
-              fontStyle: FontStyle.normal,
-            ),
-          ),
+          title: Text('Belgelerim', style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.w700)),
           bottom: TabBar(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             indicatorColor: theme.colorScheme.onPrimary,
             labelColor: theme.colorScheme.onPrimary,
             unselectedLabelColor: theme.colorScheme.onPrimary.withOpacity(0.7),
@@ -115,6 +107,7 @@ class _GroupPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final border = theme.colorScheme.outline.withOpacity(0.12);
+    final muted = theme.colorScheme.onSurface.withOpacity(0.7);
     final title = group.companyName.isEmpty ? 'Kullanıcı Belgeleri' : group.companyName;
     final subtitle = group.companyType;
     return Container(
@@ -140,19 +133,18 @@ class _GroupPanel extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.apartment_outlined, size: 18),
+                Icon(Icons.apartment_outlined, size: 18, color: muted),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                       if (subtitle.isNotEmpty)
-                        Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                        Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: muted)),
                     ],
                   ),
                 ),
-                _CountChip(count: group.documents.length),
               ],
             ),
           ),
@@ -180,25 +172,7 @@ class _GroupPanel extends StatelessWidget {
   }
 }
 
-class _CountChip extends StatelessWidget {
-  const _CountChip({required this.count});
-  final int count;
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = theme.colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text('$count', style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
-    );
-  }
-}
 
 class _DocumentTile extends StatelessWidget {
   const _DocumentTile({required this.doc});
@@ -209,10 +183,19 @@ class _DocumentTile extends StatelessWidget {
     final theme = Theme.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      title: Text(doc.documentType, style: theme.textTheme.bodyMedium),
+      title: Text(doc.documentType, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
       subtitle: Text(doc.createDate, style: theme.textTheme.bodySmall),
-      leading: const Icon(Icons.description_outlined),
-      trailing: const Icon(Icons.open_in_new),
+      leading: Icon(Icons.description_outlined, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+      trailing: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        alignment: Alignment.center,
+        child: Icon(Icons.open_in_new, color: theme.colorScheme.onPrimary, size: 16),
+      ),
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -238,11 +221,38 @@ class _Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    theme.colorScheme.outline.withOpacity(0.12);
+    final border = theme.colorScheme.outline.withOpacity(0.12);
+    final muted = theme.colorScheme.onSurface.withOpacity(0.7);
     return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (title.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+                border: Border(
+                  bottom: BorderSide(color: border),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, size: 18, color: muted),
+                  const SizedBox(width: 8),
+                  Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Column(children: children),
