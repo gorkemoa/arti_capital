@@ -1,3 +1,4 @@
+import 'package:arti_capital/theme/splash_view.dart';
 import 'package:arti_capital/views/panel_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -119,7 +120,7 @@ class MyApp extends StatelessWidget {
     if (authService.isLoggedIn()) {
       return const _MainNavigation();
     } else {
-      return const LoginView();
+      return const SplashView();
     }
   }
 }
