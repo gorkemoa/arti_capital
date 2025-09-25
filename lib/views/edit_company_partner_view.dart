@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 import '../models/company_models.dart';
@@ -137,6 +138,118 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
     _sharePriceWholeController.dispose();
     _sharePriceCentsController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showCupertinoSelector<T>({
+    required List<T> items,
+    required int initialIndex,
+    required String Function(T) labelBuilder,
+    required ValueChanged<T> onSelected,
+    String title = '',
+  }) async {
+    final FixedExtentScrollController controller =
+        FixedExtentScrollController(initialItem: initialIndex);
+    int currentIndex = initialIndex.clamp(0, items.isNotEmpty ? items.length - 1 : 0);
+
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Vazgeç'),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Seç'),
+                        onPressed: () {
+                          if (items.isNotEmpty) {
+                            onSelected(items[currentIndex]);
+                          }
+                          Navigator.of(ctx).pop();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 36,
+                  scrollController: controller,
+                  onSelectedItemChanged: (index) {
+                    currentIndex = index;
+                  },
+                  children: items.isEmpty
+                      ? [const Text('-')]
+                      : items.map((e) => Center(child: Text(labelBuilder(e)))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCupertinoField({
+    required String placeholder,
+    required String? value,
+    required VoidCallback? onTap,
+    bool enabled = true,
+  }) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                value == null || value.isEmpty ? placeholder : value,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: (value == null || value.isEmpty)
+                          ? AppColors.onSurface.withOpacity(0.6)
+                          : AppColors.onSurface,
+                    ),
+              ),
+            ),
+            Icon(CupertinoIcons.chevron_down, size: 18, color: AppColors.onSurface.withOpacity(0.6)),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -488,179 +601,145 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
   }
 
   Widget _buildCityDropdown(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<CityItem>(
-          isExpanded: true,
-          value: _selectedCity,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'İl',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
-                      ),
-                ),
-              ],
+    if (_loadingMeta && _cities.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          items: _cities
-              .map((c) => DropdownMenuItem(
-                    value: c,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        c.cityName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.onSurface,
-                            ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-          onChanged: (CityItem? city) async {
-            setState(() {
-              _selectedCity = city;
-              _selectedDistrict = null;
-              _palaces = const [];
-              _selectedPalace = null;
-              _loadingMeta = true;
-            });
-            if (city != null) {
-              try {
-                final d = await _generalService.getDistricts(city.cityNo);
-                final p = await _generalService.getTaxPalaces(city.cityNo);
-                if (mounted) {
-                  setState(() {
-                    _districts = d;
-                    _selectedDistrict = d.isNotEmpty ? d.first : null;
-                    _palaces = p;
-                    // Önce mevcut partner vergi dairesi ID'si varsa onu seç
-                    final int savedPalaceId = widget.partner.partnerTaxPalaceID;
-                    final match = p.where((e) => e.palaceID == savedPalaceId).toList();
-                    _selectedPalace = match.isNotEmpty ? match.first : (p.isNotEmpty ? p.first : null);
-                  });
-                }
-              } catch (_) {}
-            }
-            if (mounted) setState(() { _loadingMeta = false; });
-          },
         ),
-      ),
+      );
+    }
+
+    return _buildCupertinoField(
+      placeholder: 'İl',
+      value: _selectedCity?.cityName,
+      onTap: _cities.isEmpty
+          ? null
+          : () async {
+              final currentIndex = _selectedCity == null
+                  ? 0
+                  : _cities.indexWhere((c) => c.cityNo == _selectedCity!.cityNo).clamp(0, _cities.length - 1);
+              await _showCupertinoSelector<CityItem>(
+                items: _cities,
+                initialIndex: currentIndex,
+                labelBuilder: (c) => c.cityName,
+                title: 'İl Seç',
+                onSelected: (city) async {
+                  setState(() { _selectedCity = city; _selectedDistrict = null; _selectedPalace = null; _loadingMeta = true; _districts = const []; _palaces = const []; });
+                  try {
+                    final d = await _generalService.getDistricts(city.cityNo);
+                    final p = await _generalService.getTaxPalaces(city.cityNo);
+                    if (mounted) setState(() { _districts = d; _palaces = p; });
+                  } catch (_) {}
+                  if (mounted) setState(() { _loadingMeta = false; });
+                },
+              );
+            },
     );
   }
 
   Widget _buildDistrictDropdown(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<DistrictItem>(
-          isExpanded: true,
-          value: _selectedDistrict,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'İlçe',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
-                      ),
-                ),
-              ],
+    if (_loadingMeta && _selectedCity != null && _districts.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          items: _districts
-              .map((d) => DropdownMenuItem(
-                    value: d,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        d.districtName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.onSurface,
-                            ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-          onChanged: (_districts.isEmpty)
-              ? null
-              : (DistrictItem? v) async {
-                  setState(() { _selectedDistrict = v; _loadingMeta = true; _palaces = const []; _selectedPalace = null; });
+        ),
+      );
+    }
+
+    return _buildCupertinoField(
+      placeholder: 'İlçe',
+      value: _selectedDistrict?.districtName,
+      onTap: _districts.isEmpty
+          ? null
+          : () async {
+              final currentIndex = _selectedDistrict == null
+                  ? 0
+                  : _districts.indexWhere((d) => d.districtNo == _selectedDistrict!.districtNo).clamp(0, _districts.length - 1);
+              await _showCupertinoSelector<DistrictItem>(
+                items: _districts,
+                initialIndex: currentIndex,
+                labelBuilder: (d) => d.districtName,
+                title: 'İlçe Seç',
+                onSelected: (d) async {
+                  setState(() { _selectedDistrict = d; _loadingMeta = true; _palaces = const []; _selectedPalace = null; });
                   try {
                     if (_selectedCity != null) {
                       final p = await _generalService.getTaxPalaces(_selectedCity!.cityNo);
-                      if (mounted) {
-                        setState(() {
-                          _palaces = p;
-                          // Mevcut partner vergi dairesi ID'sine göre seç, yoksa ilkini seç
-                          final int savedPalaceId = widget.partner.partnerTaxPalaceID;
-                          final match = p.where((e) => e.palaceID == savedPalaceId).toList();
-                          _selectedPalace = match.isNotEmpty ? match.first : (p.isNotEmpty ? p.first : null);
-                        });
-                      }
+                      if (mounted) setState(() { _palaces = p; });
                     }
                   } catch (_) {}
                   if (mounted) setState(() { _loadingMeta = false; });
                 },
-        ),
-      ),
+              );
+            },
     );
   }
 
   Widget _buildPalaceDropdown(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<TaxPalaceItem>(
-          isExpanded: true,
-          value: _selectedPalace,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'Vergi Dairesi (Seçiniz)',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
-                      ),
-                ),
-              ],
+    if (_loadingMeta && _selectedCity != null && _palaces.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          items: _palaces
-              .map((p) => DropdownMenuItem(
-                    value: p,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        p.palaceName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.onSurface,
-                            ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-          onChanged: (_palaces.isEmpty) ? null : (TaxPalaceItem? v) => setState(() { _selectedPalace = v; }),
         ),
-      ),
+      );
+    }
+
+    return _buildCupertinoField(
+      placeholder: 'Vergi Dairesi (Seçiniz)',
+      value: _selectedPalace?.palaceName,
+      onTap: _palaces.isEmpty
+          ? null
+          : () async {
+              final currentIndex = _selectedPalace == null
+                  ? 0
+                  : _palaces.indexWhere((p) => p.palaceID == _selectedPalace!.palaceID).clamp(0, _palaces.length - 1);
+              await _showCupertinoSelector<TaxPalaceItem>(
+                items: _palaces,
+                initialIndex: currentIndex,
+                labelBuilder: (p) => p.palaceName,
+                title: 'Vergi Dairesi Seç',
+                onSelected: (p) { setState(() { _selectedPalace = p; }); },
+              );
+            },
     );
   }
 }
