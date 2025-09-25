@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
@@ -25,6 +27,120 @@ class _ProfileEditViewState extends State<ProfileEditView> {
 
   final _formKey = GlobalKey<FormState>();
   bool _submitting = false;
+
+  Future<void> _showCupertinoSelector<T>({
+    required List<T> items,
+    required int initialIndex,
+    required String Function(T) labelBuilder,
+    required ValueChanged<T> onSelected,
+    String title = '',
+  }) async {
+    final FixedExtentScrollController controller =
+        FixedExtentScrollController(initialItem: initialIndex);
+    int currentIndex = initialIndex.clamp(0, items.isNotEmpty ? items.length - 1 : 0);
+
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Vazgeç'),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Seç'),
+                        onPressed: () {
+                          if (items.isNotEmpty) onSelected(items[currentIndex]);
+                          Navigator.of(ctx).pop();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 36,
+                  scrollController: controller,
+                  onSelectedItemChanged: (index) { currentIndex = index; },
+                  children: items.isEmpty
+                      ? [const Text('-')]
+                      : items.map((e) => Center(child: Text(labelBuilder(e)))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCupertinoField({
+    required String placeholder,
+    required String? value,
+    required VoidCallback? onTap,
+    IconData? leadingIcon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.12)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              if (leadingIcon != null) ...[
+                Icon(leadingIcon, size: 20, color: Theme.of(context).colorScheme.outline),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  (value == null || value.isEmpty) ? placeholder : value,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: (value == null || value.isEmpty)
+                            ? Theme.of(context).colorScheme.onSurface.withOpacity(0.6)
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                ),
+              ),
+              Icon(CupertinoIcons.chevron_down, size: 18, color: Theme.of(context).colorScheme.outline),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -131,15 +247,15 @@ class _ProfileEditViewState extends State<ProfileEditView> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: colorScheme.primary,
-        iconTheme: IconThemeData(color: colorScheme.surface),
         title: const Text('Profili Düzenle'),
-       
+        centerTitle: true,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           children: [
             Center(
               child: Column(
@@ -183,37 +299,152 @@ class _ProfileEditViewState extends State<ProfileEditView> {
               subtleBorder: subtleBorder,
               child: Column(
                 children: [
-                  _InputField(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: TextFormField(
                     controller: fullnameCtrl,
-                    label: 'Ad Soyad',
-                    icon: Icons.account_circle_outlined,
-                  ),
-                  _InputField(
-                    controller: emailCtrl,
-                    label: 'E-posta',
-                    icon: Icons.alternate_email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  _InputField(
-                    controller: birthdayCtrl,
-                    label: 'Doğum Tarihi (GG.AA.YYYY)',
-                    icon: Icons.event_outlined,
+                      decoration: InputDecoration(
+                        labelText: 'Ad Soyad',
+                        prefixIcon: const Icon(Icons.account_circle_outlined),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: DropdownButtonFormField<String>(
-                      value: _genderValue,
-                      decoration: const InputDecoration(
-                        labelText: 'Cinsiyet',
-                        prefixIcon: Icon(Icons.wc_outlined),
+                    child: TextFormField(
+                      controller: emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'E-posta',
+                        prefixIcon: const Icon(Icons.alternate_email_outlined),
                         isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: '1', child: Text('Erkek')),
-                        DropdownMenuItem(value: '2', child: Text('Kadın')),
-                      ],
-                      onChanged: (v) => setState(() => _genderValue = v),
                     ),
+                  ),
+                  // Doğum tarihi - Cupertino picker
+                  _buildCupertinoField(
+                    placeholder: 'Doğum Tarihi (GG.AA.YYYY)',
+                    value: birthdayCtrl.text.trim().isEmpty ? null : birthdayCtrl.text.trim(),
+                    leadingIcon: Icons.event_outlined,
+                    onTap: () async {
+                      FocusScope.of(context).unfocus();
+                      final now = DateTime.now();
+                      DateTime initial = DateTime(now.year - 30, now.month, now.day);
+                      final text = birthdayCtrl.text.trim();
+                      if (RegExp(r'^\d{2}\.\d{2}\.\d{4}$').hasMatch(text)) {
+                        final parts = text.split('.');
+                        final dd = int.tryParse(parts[0]);
+                        final mm = int.tryParse(parts[1]);
+                        final yyyy = int.tryParse(parts[2]);
+                        if (dd != null && mm != null && yyyy != null) {
+                          final candidate = DateTime(yyyy, mm, dd);
+                          if (!candidate.isAfter(now) && yyyy >= 1900) initial = candidate;
+                        }
+                      }
+                      DateTime temp = initial;
+                      await showCupertinoModalPopup<void>(
+                        context: context,
+                        builder: (ctx) {
+                          return Container(
+                            height: 300,
+                            color: Colors.white,
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 44,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      CupertinoButton(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: const Text('İptal'),
+                                        onPressed: () => Navigator.of(ctx).pop(),
+                                      ),
+                                      Text('Doğum Tarihi', style: Theme.of(context).textTheme.titleMedium),
+                                      CupertinoButton(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: const Text('Bitti'),
+                                        onPressed: () {
+                                          final dd = temp.day.toString().padLeft(2, '0');
+                                          final mm = temp.month.toString().padLeft(2, '0');
+                                          final yyyy = temp.year.toString();
+                                          setState(() { birthdayCtrl.text = '$dd.$mm.$yyyy'; });
+                                          Navigator.of(ctx).pop();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: CupertinoDatePicker(
+                                    mode: CupertinoDatePickerMode.date,
+                                    initialDateTime: initial,
+                                    minimumDate: DateTime(1900, 1, 1),
+                                    maximumDate: DateTime(now.year, now.month, now.day),
+                                    onDateTimeChanged: (d) { temp = d; },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  _buildCupertinoField(
+                    placeholder: 'Cinsiyet',
+                    value: _genderValue == null
+                        ? null
+                        : (_genderValue == '2' ? 'Kadın' : 'Erkek'),
+                    leadingIcon: Icons.wc_outlined,
+                    onTap: () async {
+                      final items = const [
+                        ('1', 'Erkek'),
+                        ('2', 'Kadın'),
+                      ];
+                      final currentIndex = _genderValue == null
+                          ? 0
+                          : items.indexWhere((e) => e.$1 == _genderValue).clamp(0, items.length - 1);
+                      await _showCupertinoSelector<(String, String)>(
+                        items: items,
+                        initialIndex: currentIndex,
+                        labelBuilder: (t) => t.$2,
+                        title: 'Cinsiyet Seç',
+                        onSelected: (t) { setState(() { _genderValue = t.$1; }); },
+                      );
+                    },
                   ),
                 ],
               ),
@@ -225,30 +456,121 @@ class _ProfileEditViewState extends State<ProfileEditView> {
               subtleBorder: subtleBorder,
               child: Column(
                 children: [
-                  _InputField(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: TextFormField(
                     controller: phoneCtrl,
-                    label: 'Telefon',
-                    icon: Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Telefon',
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                    ),
                   ),
-                  _InputField(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: TextFormField(
                     controller: addressCtrl,
-                    label: 'Adres',
-                    icon: Icons.home_outlined,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'Adres',
+                        prefixIcon: const Icon(Icons.home_outlined),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
 
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
                 onPressed: _submitting ? null : _submit,
-                icon: _submitting
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.save_outlined),
-                label: Text(_submitting ? 'Kaydediliyor...' : 'Kaydet'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: _submitting
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Kaydediliyor...',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppColors.onPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        'Kaydet',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: AppColors.onPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
               ),
             ),
           ],
