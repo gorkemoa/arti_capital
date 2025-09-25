@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../models/company_models.dart';
 import '../models/location_models.dart';
@@ -131,6 +132,118 @@ class _AddCompanyAddressViewState extends State<AddCompanyAddressView> {
   void dispose() {
     _addressCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _showCupertinoSelector<T>({
+    required List<T> items,
+    required int initialIndex,
+    required String Function(T) labelBuilder,
+    required ValueChanged<T> onSelected,
+    String title = '',
+  }) async {
+    final FixedExtentScrollController controller =
+        FixedExtentScrollController(initialItem: initialIndex);
+    int currentIndex = initialIndex.clamp(0, items.isNotEmpty ? items.length - 1 : 0);
+
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Vazgeç'),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Seç'),
+                        onPressed: () {
+                          if (items.isNotEmpty) {
+                            onSelected(items[currentIndex]);
+                          }
+                          Navigator.of(ctx).pop();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 36,
+                  scrollController: controller,
+                  onSelectedItemChanged: (index) {
+                    currentIndex = index;
+                  },
+                  children: items.isEmpty
+                      ? [const Text('-')]
+                      : items.map((e) => Center(child: Text(labelBuilder(e)))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCupertinoField({
+    required String placeholder,
+    required String? value,
+    required VoidCallback? onTap,
+    bool enabled = true,
+  }) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                value == null || value.isEmpty ? placeholder : value,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: (value == null || value.isEmpty)
+                          ? AppColors.onSurface.withOpacity(0.6)
+                          : AppColors.onSurface,
+                    ),
+              ),
+            ),
+            Icon(CupertinoIcons.chevron_down, size: 18, color: AppColors.onSurface.withOpacity(0.6)),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -283,143 +396,158 @@ class _AddCompanyAddressViewState extends State<AddCompanyAddressView> {
   }
 
   Widget _buildAddressTypeDropdown(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          isExpanded: true,
-          value: _addressType,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'Adres Tipi',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
-                      ),
-                ),
-              ],
+    if (_loadingMeta && _addressTypes.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          items: _addressTypes
-              .map((t) => DropdownMenuItem(
-                    value: t.typeID,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        t.typeName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.onSurface,
-                            ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-          onChanged: _loadingMeta ? null : (int? v) => setState(() => _addressType = v),
         ),
-      ),
+      );
+    }
+
+    final String? currentLabel = _addressType == null
+        ? null
+        : _addressTypes.firstWhere(
+            (t) => t.typeID == _addressType,
+            orElse: () => _addressTypes.isNotEmpty ? _addressTypes.first : AddressTypeItem(typeID: -1, typeName: ''),
+          ).typeName;
+
+    return _buildCupertinoField(
+      placeholder: 'Adres Tipi',
+      value: (currentLabel != null && currentLabel.isNotEmpty) ? currentLabel : null,
+      onTap: _addressTypes.isEmpty
+          ? null
+          : () async {
+              final currentIndex = _addressType == null
+                  ? 0
+                  : _addressTypes.indexWhere((t) => t.typeID == _addressType).clamp(0, _addressTypes.length - 1);
+              await _showCupertinoSelector<AddressTypeItem>(
+                items: _addressTypes,
+                initialIndex: currentIndex,
+                labelBuilder: (t) => t.typeName,
+                title: 'Adres Tipi Seç',
+                onSelected: (t) {
+                  setState(() { _addressType = t.typeID; });
+                },
+              );
+            },
     );
   }
 
   Widget _buildCityDropdown(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          isExpanded: true,
-          value: _cityId,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'İl',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
-                      ),
-                ),
-              ],
+    if (_loadingMeta && _cities.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          items: _cities
-              .map((c) => DropdownMenuItem(
-                    value: c.cityNo,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        c.cityName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.onSurface,
-                            ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-          onChanged: _loadingMeta
-              ? null
-              : (int? v) {
-                  setState(() {
-                    _cityId = v;
-                  });
-                  if (v != null) _loadDistricts(v);
-                },
         ),
-      ),
+      );
+    }
+
+    final String? currentLabel = _cityId == null
+        ? null
+        : _cities.firstWhere(
+            (c) => c.cityNo == _cityId,
+            orElse: () => _cities.isNotEmpty ? _cities.first : CityItem(cityNo: -1, cityName: ''),
+          ).cityName;
+
+    return _buildCupertinoField(
+      placeholder: 'İl',
+      value: (currentLabel != null && currentLabel.isNotEmpty) ? currentLabel : null,
+      onTap: _cities.isEmpty
+          ? null
+          : () async {
+              final currentIndex = _cityId == null
+                  ? 0
+                  : _cities.indexWhere((c) => c.cityNo == _cityId).clamp(0, _cities.length - 1);
+              await _showCupertinoSelector<CityItem>(
+                items: _cities,
+                initialIndex: currentIndex,
+                labelBuilder: (c) => c.cityName,
+                title: 'İl Seç',
+                onSelected: (city) async {
+                  setState(() { _cityId = city.cityNo; _districtId = null; _districts = const []; });
+                  if (city.cityNo != 0) {
+                    await _loadDistricts(city.cityNo);
+                  }
+                },
+              );
+            },
     );
   }
 
   Widget _buildDistrictDropdown(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          isExpanded: true,
-          value: _districtId,
-          hint: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'İlçe',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
-                      ),
-                ),
-              ],
+    if (_loadingMeta && _districts.isEmpty && _cityId != null) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          items: _districts
-              .map((d) => DropdownMenuItem(
-                    value: d.districtNo,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        d.districtName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.onSurface,
-                            ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-          onChanged: (_districts.isEmpty || _loadingMeta)
-              ? null
-              : (int? v) => setState(() => _districtId = v),
         ),
-      ),
+      );
+    }
+
+    final String? currentLabel = _districtId == null
+        ? null
+        : _districts.firstWhere(
+            (d) => d.districtNo == _districtId,
+            orElse: () => _districts.isNotEmpty ? _districts.first : DistrictItem(districtNo: -1, districtName: ''),
+          ).districtName;
+
+    return _buildCupertinoField(
+      placeholder: 'İlçe',
+      value: (currentLabel != null && currentLabel.isNotEmpty) ? currentLabel : null,
+      onTap: (_districts.isEmpty || _loadingMeta)
+          ? null
+          : () async {
+              final currentIndex = _districtId == null
+                  ? 0
+                  : _districts.indexWhere((d) => d.districtNo == _districtId).clamp(0, _districts.length - 1);
+              await _showCupertinoSelector<DistrictItem>(
+                items: _districts,
+                initialIndex: currentIndex,
+                labelBuilder: (d) => d.districtName,
+                title: 'İlçe Seç',
+                onSelected: (d) {
+                  setState(() { _districtId = d.districtNo; });
+                },
+              );
+            },
     );
   }
 }
