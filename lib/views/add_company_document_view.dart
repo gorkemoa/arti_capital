@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../models/company_models.dart';
 import '../services/general_service.dart';
@@ -42,6 +43,81 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
       _documentTypes = types;
       if (types.isNotEmpty) _selectedType = types.first;
     });
+  }
+
+  Future<void> _showCupertinoSelector<T>({
+    required List<T> items,
+    required int initialIndex,
+    required String Function(T) labelBuilder,
+    required ValueChanged<T> onSelected,
+    String title = '',
+  }) async {
+    final FixedExtentScrollController controller =
+        FixedExtentScrollController(initialItem: initialIndex);
+    int currentIndex = initialIndex.clamp(0, items.isNotEmpty ? items.length - 1 : 0);
+
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Vazgeç'),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: const Text('Seç'),
+                        onPressed: () {
+                          if (items.isNotEmpty) {
+                            onSelected(items[currentIndex]);
+                          }
+                          Navigator.of(ctx).pop();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 36,
+                  scrollController: controller,
+                  onSelectedItemChanged: (index) {
+                    currentIndex = index;
+                  },
+                  children: items.isEmpty
+                      ? [const Text('-')]
+                      : items.map((e) => Center(child: Text(labelBuilder(e)))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickFile() async {
@@ -150,45 +226,46 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
             _buildSectionTitle(context, 'Belge Yükleme'),
             const SizedBox(height: 24),
 
-            // Belge türü (styled dropdown)
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<DocumentTypeItem>(
-                  isExpanded: true,
-                  value: _selectedType,
-                  hint: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Belge Türü',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.onSurface.withOpacity(0.6),
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  items: _documentTypes
-                      .map((e) => DropdownMenuItem(
-                            value: e,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                e.documentName,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.onSurface,
-                                    ),
-                              ),
+            // Belge türü (Cupertino picker)
+            GestureDetector(
+              onTap: _documentTypes.isEmpty
+                  ? null
+                  : () async {
+                      final currentIndex = _selectedType == null
+                          ? 0
+                          : _documentTypes.indexWhere((e) => e.documentID == _selectedType!.documentID).clamp(0, _documentTypes.length - 1);
+                      await _showCupertinoSelector<DocumentTypeItem>(
+                        items: _documentTypes,
+                        initialIndex: currentIndex,
+                        labelBuilder: (e) => e.documentName,
+                        title: 'Belge Türü Seç',
+                        onSelected: (e) { setState(() { _selectedType = e; }); },
+                      );
+                    },
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _selectedType?.documentName ?? 'Belge Türü',
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: (_selectedType == null)
+                                  ? AppColors.onSurface.withOpacity(0.6)
+                                  : AppColors.onSurface,
                             ),
-                          ))
-                      .toList(),
-                  onChanged: (v) => setState(() => _selectedType = v),
+                      ),
+                    ),
+                    Icon(CupertinoIcons.chevron_down, size: 18, color: AppColors.onSurface.withOpacity(0.6)),
+                  ],
                 ),
               ),
             ),
