@@ -4,6 +4,7 @@ import Firebase
 import FirebaseMessaging
 import Foundation
 import SwiftUI
+import Photos
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -66,6 +67,49 @@ import SwiftUI
         } else {
           result(FlutterMethodNotImplemented)
         }
+      }
+      // iOS: native downloader => Paylaşım sayfası ile Dosyalar'a kaydetme
+      let downloader = FlutterMethodChannel(name: "native_downloader", binaryMessenger: controller.binaryMessenger)
+      downloader.setMethodCallHandler { call, result in
+        guard call.method == "downloadFile" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        guard let args = call.arguments as? [String: Any],
+              let urlStr = args["url"] as? String,
+              let url = URL(string: urlStr) else {
+          result(FlutterError(code: "ARG_ERROR", message: "url gerekli", details: nil))
+          return
+        }
+        let fileName = (args["fileName"] as? String) ?? url.lastPathComponent
+
+        // URL'den veriyi indir
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+          if let error = error {
+            result(FlutterError(code: "DL_ERROR", message: error.localizedDescription, details: nil))
+            return
+          }
+          guard let data = data else {
+            result(FlutterError(code: "DL_EMPTY", message: "Boş yanıt", details: nil))
+            return
+          }
+          DispatchQueue.main.async {
+            // Paylaşım sayfası aç; kullanıcı Files'a kaydedebilir
+            let tmpUrl = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+            do {
+              try data.write(to: tmpUrl)
+            } catch {
+              result(FlutterError(code: "WRITE_ERROR", message: error.localizedDescription, details: nil))
+              return
+            }
+            let avc = UIActivityViewController(activityItems: [tmpUrl], applicationActivities: nil)
+            avc.completionWithItemsHandler = { _, _, _, _ in
+              result(true)
+            }
+            controller.present(avc, animated: true, completion: nil)
+          }
+        }
+        task.resume()
       }
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

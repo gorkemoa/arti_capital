@@ -1,6 +1,9 @@
 package com.office701.articapital
 
 import android.content.Context
+import android.app.DownloadManager
+import android.net.Uri
+import android.os.Environment
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -14,6 +17,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "app_group_prefs"
+    private val DOWNLOAD_CHANNEL = "native_downloader"
     private var privacyOverlayView: View? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -48,6 +52,41 @@ class MainActivity : FlutterActivity() {
                     } else {
                         val ok = prefs.edit().remove(key).commit()
                         result.success(ok)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DOWNLOAD_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "downloadFile" -> {
+                    val url = call.argument<String>("url")
+                    val fileName = call.argument<String>("fileName") ?: "download"
+                    val title = call.argument<String>("title") ?: fileName
+                    val description = call.argument<String>("description") ?: "İndiriliyor"
+
+                    if (url.isNullOrBlank()) {
+                        result.error("ARG_ERROR", "url gerekli", null)
+                        return@setMethodCallHandler
+                    }
+
+                    try {
+                        val request = DownloadManager.Request(Uri.parse(url))
+                            .setTitle(title)
+                            .setDescription(description)
+                            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                            .setAllowedOverMetered(true)
+                            .setAllowedOverRoaming(true)
+
+                        // Ortak İndirilenler klasörüne kaydet
+                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+
+                        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                        val id = dm.enqueue(request)
+                        result.success(id)
+                    } catch (e: Exception) {
+                        result.error("DL_ERROR", e.localizedMessage, null)
                     }
                 }
                 else -> result.notImplemented()

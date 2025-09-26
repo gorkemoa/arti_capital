@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/company_models.dart';
 import '../services/company_service.dart';
@@ -397,7 +399,93 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     );
   }
 
-  
+  Future<void> _shareDocument(CompanyDocumentItem doc) async {
+    try {
+      final String title = doc.documentType;
+      final String url = doc.documentURL;
+
+      Uint8List bytes;
+      String fileName = 'belge';
+      String? mimeType;
+
+      if (url.startsWith('data:')) {
+        final int commaIndex = url.indexOf(',');
+        final String header = commaIndex > 0 ? url.substring(0, commaIndex) : '';
+        final String b64 = commaIndex > 0 ? url.substring(commaIndex + 1) : '';
+        if (header.contains(';base64')) {
+          mimeType = header.split(':').last.split(';').first;
+        }
+        bytes = base64Decode(b64);
+        // Basit uzantı tahmini
+        if (mimeType == 'application/pdf') {
+          fileName = 'belge.pdf';
+        } else if (mimeType == 'image/png') {
+          fileName = 'belge.png';
+        } else if (mimeType == 'image/jpeg') {
+          fileName = 'belge.jpg';
+        } else if (mimeType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          fileName = 'belge.docx';
+        } else {
+          fileName = 'belge.bin';
+        }
+      } else {
+        final uri = Uri.tryParse(url);
+        if (uri == null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Geçersiz belge bağlantısı')));
+          return;
+        }
+
+        final client = HttpClient();
+        final request = await client.getUrl(uri);
+        final response = await request.close();
+        if (response.statusCode != 200) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge indirilemedi')));
+          return;
+        }
+        final builder = BytesBuilder(copy: false);
+        await for (final chunk in response) {
+          builder.add(chunk);
+        }
+        bytes = builder.takeBytes();
+        mimeType = response.headers.value('content-type');
+
+        // Dosya adı çıkarımı
+        final String lastSeg = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+        if (lastSeg.isNotEmpty) {
+          fileName = lastSeg;
+        } else {
+          if (mimeType == 'application/pdf') {
+            fileName = 'belge.pdf';
+          } else if (mimeType == 'image/png') {
+            fileName = 'belge.png';
+          } else if (mimeType == 'image/jpeg') {
+            fileName = 'belge.jpg';
+          } else if (mimeType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            fileName = 'belge.docx';
+          } else {
+            fileName = 'belge.bin';
+          }
+        }
+      }
+
+      final String tempPath = Directory.systemTemp.path;
+      final File outFile = File('$tempPath/$fileName');
+      await outFile.writeAsBytes(bytes);
+
+      final xfile = XFile(outFile.path, mimeType: mimeType, name: fileName);
+      final box = context.findRenderObject();
+      Rect? origin;
+      if (box is RenderBox) {
+        origin = box.localToGlobal(Offset.zero) & box.size;
+      }
+      await Share.shareXFiles([xfile], subject: title, text: title, sharePositionOrigin: origin);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge paylaşılırken hata oluştu')));
+    }
+  }
 
 
   @override
@@ -556,37 +644,41 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                             leading: const Icon(Icons.description_outlined),
                                             title: Text(doc.documentType),
                                             subtitle: Text(doc.createDate),
-                                            trailing: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                IconButton(
-                                                  icon: const Icon(Icons.edit_outlined),
-                                                  tooltip: 'Güncelle',
-                                                  onPressed: () => _updateDocument(doc),
-                                                  style: IconButton.styleFrom(
-                                                    backgroundColor: AppColors.primary,
-                                                    foregroundColor: AppColors.onPrimary,
-                                                    padding: const EdgeInsets.all(14),
-                                                    minimumSize: const Size(40 ,40),
-                                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                    visualDensity: VisualDensity.compact,
+                                            trailing: PopupMenuButton<String>(
+                                              tooltip: 'Aksiyonlar',
+                                              icon: const Icon(Icons.more_vert),
+                                              onSelected: (value) {
+                                                if (value == 'edit') {
+                                                  _updateDocument(doc);
+                                                } else if (value == 'delete') {
+                                                  _deleteDocument(doc);
+                                                } else if (value == 'share') {
+                                                  _shareDocument(doc);
+                                                }
+                                              },
+                                              itemBuilder: (context) => const [
+                                                PopupMenuItem<String>(
+                                                  value: 'edit',
+                                                  child: ListTile(
+                                                    leading: Icon(Icons.edit_outlined),
+                                                    title: Text('Güncelle'),
                                                   ),
-                                                  iconSize: 16,
                                                 ),
-                                                IconButton(
-                                                  icon: const Icon(Icons.delete_outline),
-                                                  tooltip: 'Sil',
-                                                  onPressed: () => _deleteDocument(doc),
-                                                  style: IconButton.styleFrom(
-                                                    backgroundColor: AppColors.primary,
-                                                    foregroundColor: AppColors.onPrimary,
-                                                    padding: const EdgeInsets.all(4),
-                                                    minimumSize: const Size(40 ,40),
-                                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                    visualDensity: VisualDensity.compact,
+                                                PopupMenuItem<String>(
+                                                  value: 'share',
+                                                  child: ListTile(
+                                                    leading: Icon(Icons.ios_share),
+                                                    title: Text('Paylaş'),
                                                   ),
-                                                  iconSize: 16,
                                                 ),
+                                                PopupMenuItem<String>(
+                                                  value: 'delete',
+                                                  child: ListTile(
+                                                    leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                    title: Text('Sil'),
+                                                  ),
+                                                ),
+                                                
                                               ],
                                             ),
                                             onTap: () {
@@ -762,37 +854,39 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                       leading: const Icon(Icons.description_outlined),
                                       title: Text(doc.documentType),
                                       subtitle: Text(doc.createDate),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.edit_outlined),
-                                            tooltip: 'Güncelle',
-                                            onPressed: () => _updateDocument(doc),
-                                            style: IconButton.styleFrom(
-                                              backgroundColor: AppColors.primary,
-                                              foregroundColor: AppColors.onPrimary,
-                                              padding: const EdgeInsets.all(10),
-                                              minimumSize: const Size(40 ,40),
-                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                              visualDensity: VisualDensity.compact,
+                                      trailing: PopupMenuButton<String>(
+                                        tooltip: 'Aksiyonlar',
+                                        icon: const Icon(Icons.more_vert),
+                                        onSelected: (value) {
+                                          if (value == 'edit') {
+                                            _updateDocument(doc);
+                                          } else if (value == 'delete') {
+                                            _deleteDocument(doc);
+                                          } else if (value == 'share') {
+                                            _shareDocument(doc);
+                                          }
+                                        },
+                                        itemBuilder: (context) => const [
+                                          PopupMenuItem<String>(
+                                            value: 'edit',
+                                            child: ListTile(
+                                              leading: Icon(Icons.edit_outlined),
+                                              title: Text('Güncelle'),
                                             ),
-                                            iconSize: 16,
                                           ),
-                                          const SizedBox(width: 4),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete_outline),
-                                            tooltip: 'Sil',
-                                            onPressed: () => _deleteDocument(doc),
-                                            style: IconButton.styleFrom(
-                                              backgroundColor: AppColors.primary,
-                                              foregroundColor: AppColors.onPrimary,
-                                              padding: const EdgeInsets.all(10),
-                                              minimumSize: const Size(40 ,40),
-                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                              visualDensity: VisualDensity.compact,
+                                          PopupMenuItem<String>(
+                                            value: 'share',
+                                            child: ListTile(
+                                              leading: Icon(Icons.ios_share),
+                                              title: Text('Paylaş'),
                                             ),
-                                            iconSize: 16,
+                                          ),
+                                          PopupMenuItem<String>(
+                                            value: 'delete',
+                                            child: ListTile(
+                                              leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                              title: Text('Sil'),
+                                            ),
                                           ),
                                         ],
                                       ),

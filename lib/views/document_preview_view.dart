@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'dart:ui' show Offset, Rect;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 class DocumentPreviewView extends StatefulWidget {
   const DocumentPreviewView({super.key, required this.url, required this.title});
@@ -17,6 +19,7 @@ class DocumentPreviewView extends StatefulWidget {
 class _DocumentPreviewViewState extends State<DocumentPreviewView> {
   late final WebViewController _controller;
   bool _loading = true;
+  String? _downloadedFilePath;
 
   @override
   void initState() {
@@ -31,27 +34,72 @@ class _DocumentPreviewViewState extends State<DocumentPreviewView> {
       ..loadRequest(Uri.parse(widget.url));
   }
 
+  Future<String> _getLocalSavePath() async {
+    final dir = await getTemporaryDirectory();
+    final fileName = widget.url.split('/').last.split('?').first;
+    return '${dir.path}/$fileName';
+  }
+
+  Future<String> _ensureDownloaded() async {
+    if (_downloadedFilePath != null && await File(_downloadedFilePath!).exists()) {
+      return _downloadedFilePath!;
+    }
+    final savePath = await _getLocalSavePath();
+    final file = File(savePath);
+    if (!await file.exists()) {
+      final dio = Dio();
+      await dio.download(widget.url, savePath);
+    }
+    _downloadedFilePath = savePath;
+    return savePath;
+  }
+
   Future<void> _share() async {
-    final box = context.findRenderObject() as RenderBox?;
-    final origin = (box != null)
-        ? (box.localToGlobal(Offset.zero) & box.size)
-        : const Rect.fromLTWH(0, 0, 1, 1);
-    await Share.share(
-      widget.url,
-      sharePositionOrigin: origin,
-    );
+    try {
+      final path = await _ensureDownloaded();
+      final box = context.findRenderObject() as RenderBox?;
+      final origin = (box != null)
+          ? (box.localToGlobal(Offset.zero) & box.size)
+          : const Rect.fromLTWH(0, 0, 1, 1);
+      await Share.shareXFiles(
+        [XFile(path)],
+        sharePositionOrigin: origin,
+        text: widget.title,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Paylaşım sırasında hata: $e')),
+      );
+    }
   }
 
   Future<void> _download() async {
-    final dir = await getTemporaryDirectory();
+    // Android: DownloadManager, iOS: Paylaşım sayfası ile Files'a kaydetme
+    const channel = MethodChannel('native_downloader');
     final fileName = widget.url.split('/').last.split('?').first;
-    final savePath = '${dir.path}/$fileName';
-    final dio = Dio();
-    await dio.download(widget.url, savePath);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('İndirildi: $fileName')),
-    );
+    try {
+      await channel.invokeMethod('downloadFile', {
+        'url': widget.url,
+        'fileName': fileName,
+        'title': widget.title,
+        'description': 'İndiriliyor...'
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('İndirme başlatıldı: $fileName')),
+      );
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Native indirme hatası: ${e.message}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('İndirme sırasında hata: $e')),
+      );
+    }
   }
 
   @override
