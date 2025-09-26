@@ -5,7 +5,6 @@ import '../services/general_service.dart';
 import '../views/notifications_view.dart';
 
 // Uygulama genelinde erişilebilir destek kategorileri
-const List<String> kSupportCategories = ['Tümü', 'Ar-Ge', 'Ür-Ge', 'İstihdam', 'İhracat'];
 
 class SupportView extends StatefulWidget {
   const SupportView({super.key});
@@ -17,7 +16,6 @@ class SupportView extends StatefulWidget {
 class _SupportViewState extends State<SupportView> with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _tabs = kSupportCategories;
   final GeneralService _generalService = GeneralService();
   List<ServiceItem> _services = <ServiceItem>[];
   bool _isLoading = true;
@@ -26,7 +24,6 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
     _fetchServices();
   }
 
@@ -48,22 +45,24 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
         foregroundColor: colorScheme.onBackground,
         title: Text('Destekler', style: theme.appBarTheme.titleTextStyle),
   actions: [
-          IconButton(
-            tooltip: 'Bildirimler',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/notifications');
-            },
-            style: IconButton.styleFrom(backgroundColor: Colors.white, 
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            padding: const EdgeInsets.all(8),
-            iconSize: 24,
-            
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: IconButton(
+              tooltip: 'Bildirimler',
+              onPressed: () {
+                Navigator.of(context).pushNamed('/notifications');
+              },
+              style: IconButton.styleFrom(backgroundColor: Colors.white, 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.all(1),
+              iconSize: 20,
+              ),
+              icon: Icon(
+                Icons.notifications_none,
+                color: colorScheme.primary,
+                size: theme.textTheme.headlineSmall?.fontSize,
+              ),
             ),
-            icon: Icon(
-              Icons.notifications_none,
-              color: colorScheme.primary,
-              size: theme.textTheme.headlineSmall?.fontSize,
-               ),
           ),
         ],
         elevation: 0,
@@ -114,7 +113,7 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
                 unselectedLabelColor: colorScheme.onSurface.withOpacity(0.7),
                 labelStyle: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 unselectedLabelStyle: theme.textTheme.bodyMedium,
-                tabs: _tabs.map((t) => Tab(text: t)).toList(),
+                tabs: _services.map((service) => Tab(text: service.serviceName)).toList(),
               ),
             ),
           ),
@@ -139,14 +138,14 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
     }
     return TabBarView(
       controller: _tabController,
-      children: _tabs.map((tab) {
-        final filtered = _filteredServices(tab);
+        children: _services.map((tab) {
+        final filtered = _filteredServices(tab.serviceName);
         return _buildServiceList(filtered);
       }).toList(),
     );
   }
 
-  List<ServiceItem> _filteredServices(String tab) {
+  List<ServiceItem> _filteredServices(String serviceName) {
     final query = _searchController.text.trim().toLowerCase();
     Iterable<ServiceItem> items = _services;
     // Kategori şu an API’de yok; taslak olarak tümünde gösteriyoruz.

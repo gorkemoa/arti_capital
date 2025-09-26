@@ -23,7 +23,11 @@ class ProfileView extends StatelessWidget {
               title: const Text('Profil'),
               centerTitle: true,
               actions: [
-            IconButton(
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: IconButton(
+                           tooltip: 'Ayarlar',
+
               onPressed: () {
                 Navigator.of(context).pushNamed('/settings');
               },
@@ -35,8 +39,8 @@ class ProfileView extends StatelessWidget {
             ),
               icon: Icon(Icons.settings_outlined, color: theme.colorScheme.primary, size: theme.textTheme.headlineSmall?.fontSize),
                       ),
-            
-            
+
+              ),
             
               ],
             ),

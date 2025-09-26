@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 // Toolbar ayrı pakette değil; 11.x ile ana pakette. Ayrı importu kaldırıyoruz.
 import 'package:file_picker/file_picker.dart';
@@ -46,6 +47,65 @@ class _ContactViewState extends State<ContactView> {
     _loadSubjects();
   }
 
+  Future<void> _showSubjectPicker() async {
+    if (_subjectItems.isEmpty) return;
+    int initialIndex = 0;
+    if (_selectedRequestType != null) {
+      final idx = _subjectItems.indexWhere((e) => e.subjectTitle == _selectedRequestType);
+      if (idx >= 0) initialIndex = idx;
+    }
+    int currentIndex = initialIndex.clamp(0, _subjectItems.length - 1);
+
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Talep Türü Seçiniz', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Seç'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedRequestType = _subjectItems[currentIndex].subjectTitle;
+                        });
+                        Navigator.of(ctx).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 36,
+                  scrollController: FixedExtentScrollController(initialItem: currentIndex),
+                  onSelectedItemChanged: (idx) { currentIndex = idx; },
+                  children: _subjectItems.isEmpty
+                      ? [const Text('-')]
+                      : _subjectItems.map((e) => Center(child: Text(e.subjectTitle))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -79,10 +139,37 @@ class _ContactViewState extends State<ContactView> {
                
                 // Talep türü seçimi
                 if (_subjectItems.isNotEmpty)
-                  _RequestTypeField(
-                    items: _subjectItems,
-                    value: _selectedRequestType,
-                    onChanged: (v) => setState(() => _selectedRequestType = v),
+                  GestureDetector(
+                    onTap: _showSubjectPicker,
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colorScheme.onSurface.withOpacity(0.12)),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.category_outlined),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _selectedRequestType == null || _selectedRequestType!.isEmpty
+                                  ? 'Talep türü seçiniz'
+                                  : _selectedRequestType!,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: (_selectedRequestType == null || _selectedRequestType!.isEmpty)
+                                    ? colorScheme.onSurface.withOpacity(0.6)
+                                    : colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          Icon(CupertinoIcons.chevron_down, size: 18, color: colorScheme.onSurface.withOpacity(0.6)),
+                        ],
+                      ),
+                    ),
                   )
                 else
                   const Center(child: Padding(
@@ -192,7 +279,7 @@ class _ContactViewState extends State<ContactView> {
       if (resp.success && resp.subjects.isNotEmpty) {
         setState(() {
           _subjectItems = resp.subjects;
-          _selectedRequestType = resp.subjects.first.subjectTitle;
+          _selectedRequestType = null; // Başlangıçta seçili olmasın, placeholder görünsün
         });
       }
     } finally {

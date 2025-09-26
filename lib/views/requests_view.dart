@@ -43,23 +43,29 @@ class _RequestsViewState extends State<RequestsView> with TickerProviderStateMix
         foregroundColor: colorScheme.onPrimary,
         iconTheme: IconThemeData(color: colorScheme.onPrimary),
         actions: [
-          IconButton(
-            tooltip: 'Bildirimler',
-            onPressed: () {
-              Navigator.of(context).pushNamed('/notifications');
-            },
-            style: IconButton.styleFrom(backgroundColor: Colors.white, 
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            padding: const EdgeInsets.all(8),
-            iconSize: 24,
-            
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: IconButton(
+              tooltip: 'Bildirimler',
+              onPressed: () {
+                Navigator.of(context).pushNamed('/notifications');
+              },
+              style: IconButton.styleFrom(backgroundColor: Colors.white, 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.all(1),
+              iconSize: 20,
+              ),
+              icon: Icon(
+                Icons.notifications_none,
+                color: colorScheme.primary,
+                size: theme.textTheme.headlineSmall?.fontSize,
+              ),
             ),
-            icon: Icon(
-              Icons.notifications_none,
-              color: colorScheme.primary,
-              size: theme.textTheme.headlineSmall?.fontSize,
-               ),
           ),
+
+
+
+          
         ],
       ),
       body: Column(

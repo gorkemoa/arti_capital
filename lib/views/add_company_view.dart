@@ -1080,53 +1080,31 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         }
 
         final types = snapshot.data ?? [];
+        final String? currentLabel = _selectedCompanyTypeId == null
+            ? null
+            : (() {
+                try { return types.firstWhere((t) => t.typeID == _selectedCompanyTypeId).typeName; } catch (_) { return null; }
+              })();
 
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-              borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              isExpanded: true,
-              value: _selectedCompanyTypeId,
-              hint: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 12),
-                    Text(
-                      'Şirket Türü',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              items: types.map((type) {
-                return DropdownMenuItem<int>(
-                  value: type.typeID,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      type.typeName,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (int? typeId) {
-                setState(() {
-                  _selectedCompanyTypeId = typeId;
-                  _hasUnsavedChanges = true;
-                });
-              },
-            ),
-          ),
+        return _buildCupertinoField(
+          placeholder: 'Şirket Türü',
+          value: currentLabel,
+          onTap: types.isEmpty
+              ? null
+              : () async {
+                  final currentIndex = _selectedCompanyTypeId == null
+                      ? 0
+                      : types.indexWhere((t) => t.typeID == _selectedCompanyTypeId).clamp(0, types.length - 1);
+                  await _showCupertinoSelector<CompanyTypeItem>(
+                    items: types,
+                    initialIndex: currentIndex,
+                    labelBuilder: (t) => t.typeName,
+                    title: 'Şirket Türü Seç',
+                    onSelected: (t) {
+                      setState(() { _selectedCompanyTypeId = t.typeID; _hasUnsavedChanges = true; });
+                    },
+                  );
+                },
         );
       },
     );

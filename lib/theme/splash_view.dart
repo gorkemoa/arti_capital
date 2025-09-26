@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:arti_capital/services/auth_service.dart';
+import 'package:arti_capital/views/panel_view.dart';
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -14,12 +14,11 @@ class _SplashViewState extends State<SplashView> {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
-      final isLoggedIn = AuthService().isLoggedIn();
-      if (isLoggedIn) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      } else {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const PanelView(userName: '', userVersion: '', profilePhoto: ''),
+        ),
+      );
     });
   }
 
