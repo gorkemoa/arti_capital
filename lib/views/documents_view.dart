@@ -38,7 +38,7 @@ class _DocumentsViewState extends State<DocumentsView> {
             unselectedLabelColor: theme.colorScheme.onPrimary.withOpacity(0.7),
             tabs: const [
               Tab(text: 'Firma Belgeleri'),
-              Tab(text: 'Benim Belgelerim'),
+              Tab(text: 'Ortak Belgeleri'),
             ],
           ),
         ),

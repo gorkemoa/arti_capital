@@ -2,7 +2,6 @@ import 'package:arti_capital/views/support_detail_view.dart';
 import 'package:flutter/material.dart';
 import '../models/support_models.dart';
 import '../services/general_service.dart';
-import '../views/notifications_view.dart';
 
 // Uygulama genelinde erişilebilir destek kategorileri
 
@@ -13,8 +12,7 @@ class SupportView extends StatefulWidget {
   State<SupportView> createState() => _SupportViewState();
 }
 
-class _SupportViewState extends State<SupportView> with TickerProviderStateMixin {
-  late TabController _tabController;
+class _SupportViewState extends State<SupportView> {
   final TextEditingController _searchController = TextEditingController();
   final GeneralService _generalService = GeneralService();
   List<ServiceItem> _services = <ServiceItem>[];
@@ -29,7 +27,6 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -71,54 +68,34 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
         children: [
           // Arama çubuğu
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Container(
               decoration: BoxDecoration(
                 color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: colorScheme.onSurface.withOpacity(0.12)),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: 'Destek ve Yardım Ara',
                   hintStyle: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withOpacity(0.5),
                   ),
                   prefixIcon: Icon(
                     Icons.search,
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withOpacity(0.7),
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 16),
                 ),
               ),
             ),
           ),
           
-          // Tab bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                indicatorSize: TabBarIndicatorSize.label,
-                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                indicatorColor: colorScheme.primary,
-                indicatorWeight: 3,
-                labelColor: colorScheme.primary,
-                unselectedLabelColor: colorScheme.onSurface.withOpacity(0.7),
-                labelStyle: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                unselectedLabelStyle: theme.textTheme.bodyMedium,
-                tabs: _services.map((service) => Tab(text: service.serviceName)).toList(),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 20),
+          const SizedBox(height: 1),
           
           // Destek kartları
           Expanded(
@@ -136,16 +113,11 @@ class _SupportViewState extends State<SupportView> with TickerProviderStateMixin
     if (_errorMessage != null) {
       return Center(child: Text(_errorMessage!));
     }
-    return TabBarView(
-      controller: _tabController,
-        children: _services.map((tab) {
-        final filtered = _filteredServices(tab.serviceName);
-        return _buildServiceList(filtered);
-      }).toList(),
-    );
+    final filtered = _filteredServices();
+    return _buildServiceList(filtered);
   }
 
-  List<ServiceItem> _filteredServices(String serviceName) {
+  List<ServiceItem> _filteredServices() {
     final query = _searchController.text.trim().toLowerCase();
     Iterable<ServiceItem> items = _services;
     // Kategori şu an API’de yok; taslak olarak tümünde gösteriyoruz.

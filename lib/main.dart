@@ -17,6 +17,7 @@ import 'views/notifications_view.dart';
 import 'views/requests_view.dart';
 import 'views/companies_view.dart';
 import 'views/support_view.dart';
+import 'views/calendar_view.dart';
 import 'widgets/app_bottom_nav.dart';
 import 'package:provider/provider.dart';
 import 'viewmodels/login_view_model.dart';
@@ -255,8 +256,10 @@ class _MainNavigationState extends State<_MainNavigation> {
             case 1:
               return const RequestsView();
             case 2:
-              return const SupportView();
+              return const CalendarView();
             case 3:
+              return const SupportView();
+            case 4:
               return const ProfileView();
             default:
               return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '', profilePhoto: homeViewModel.user?.profilePhoto ?? '');

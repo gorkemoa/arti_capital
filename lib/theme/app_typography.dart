@@ -5,19 +5,36 @@ class AppTypography {
   AppTypography._();
 
   static TextTheme textTheme(BuildContext context) {
-    // final base = Theme.of(context).textTheme;
-    
-    // Poppins ailesi, başlık 15, gövde 12
+    // Kurumsal ve ferah tipografi: Poppins yerine Inter önerilir; Poppins kalabilir
+    // Hiyerarşi artırıldı: başlıklar büyütüldü, gövde 14px yapıldı
     return TextTheme(
+      titleLarge: const TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: AppColors.onSurface,
+      ),
       titleMedium: const TextStyle(
         fontFamily: 'Poppins',
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: FontWeight.w600,
+        color: AppColors.onSurface,
+      ),
+      titleSmall: const TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.onSurface,
+      ),
+      bodyLarge: const TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
         color: AppColors.onSurface,
       ),
       bodyMedium: const TextStyle(
         fontFamily: 'Poppins',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: FontWeight.w400,
         color: AppColors.onSurface,
       ),
@@ -25,14 +42,19 @@ class AppTypography {
         fontFamily: 'Poppins',
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        // ignore: deprecated_member_use
-        color: AppColors.onSurface.withOpacity(0.8),
+        color: AppColors.onSurface.withOpacity(0.75),
       ),
       labelLarge: const TextStyle(
         fontFamily: 'Poppins',
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: FontWeight.w600,
         color: AppColors.onPrimary,
+      ),
+      labelMedium: TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: AppColors.onSurface.withOpacity(0.8),
       ),
     ).apply(
       displayColor: AppColors.onSurface,

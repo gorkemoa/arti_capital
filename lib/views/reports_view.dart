@@ -21,21 +21,17 @@ class _ReportsViewState extends State<ReportsView> {
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
+        centerTitle: true,
+        foregroundColor: colorScheme.onPrimary,
         backgroundColor: colorScheme.primary,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Raporlar',
-              style: theme.textTheme.titleLarge?.copyWith(
+              style: theme.textTheme.bodyLarge?.copyWith(
                 color: colorScheme.onPrimary,
                 fontWeight: FontWeight.w700,
-              ),
-            ),
-            Text(
-              'Başvurular, destekler ve ilerleme',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onPrimary.withOpacity(0.8),
               ),
             ),
           ],
@@ -235,11 +231,13 @@ class _ReportsViewState extends State<ReportsView> {
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
+            // Ekran genişliğine göre sabit kolon sayısı ile daha dengeli ızgara
+            final int crossAxisCount = (constraints.maxWidth ~/ 240).clamp(2, 4);
             return GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 220,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.15,
@@ -267,6 +265,7 @@ class _ReportsViewState extends State<ReportsView> {
           ),
         ],
       ),
+      constraints: const BoxConstraints(minHeight: 120),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -282,7 +281,7 @@ class _ReportsViewState extends State<ReportsView> {
           const SizedBox(height: 4),
           Text(
             card.title,
-            style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+            style: theme.textTheme.bodySmall,
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -416,39 +415,20 @@ class _ReportsViewState extends State<ReportsView> {
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            final bool isWide = constraints.maxWidth >= 800;
-            if (isWide) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _buildFinancialCard('Onaylı Destek Toplamı', '₺2.4M', Colors.green, theme),
-                        const SizedBox(height: 12),
-                        _buildFinancialCard('Bekleyen Destek', '₺850K', Colors.orange, theme),
-                        const SizedBox(height: 12),
-                        _buildFinancialCard('Şirket Katkısı', '₺1.2M', Colors.blue, theme),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildFinancialBarPlaceholder(theme)),
-                ],
-              );
-            }
-            // Dar ekran: dikey yerleşim ve Expanded yok
-            return Column(
+            // Tüm ekran boyutlarında 2x2 ızgara (4'lü, 2'ye 2)
+            return GridView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: constraints.maxWidth >= 800 ? 16 : 12,
+                mainAxisSpacing: constraints.maxWidth >= 800 ? 16 : 12,
+                childAspectRatio: constraints.maxWidth >= 800 ? 1.6 : 1.2,
+              ),
               children: [
-                Column(
-                  children: [
-                    _buildFinancialCard('Onaylı Destek Toplamı', '₺2.4M', Colors.green, theme),
-                    const SizedBox(height: 12),
-                    _buildFinancialCard('Bekleyen Destek', '₺850K', Colors.orange, theme),
-                    const SizedBox(height: 12),
-                    _buildFinancialCard('Şirket Katkısı', '₺1.2M', Colors.blue, theme),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                _buildFinancialCard('Onaylı Destek Toplamı', '₺2.4M', Colors.green, theme),
+                _buildFinancialCard('Bekleyen Destek', '₺850K', Colors.orange, theme),
+                _buildFinancialCard('Şirket Katkısı', '₺1.2M', Colors.blue, theme),
                 _buildFinancialBarPlaceholder(theme),
               ],
             );
@@ -496,12 +476,18 @@ class _ReportsViewState extends State<ReportsView> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
+      constraints: const BoxConstraints(minHeight: 110),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(title, style: theme.textTheme.bodySmall),
+          Text(title, style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
           const SizedBox(height: 8),
-          Text(value, style: theme.textTheme.titleLarge?.copyWith(color: color, fontWeight: FontWeight.w700)),
+          Text(
+            value,
+            style: theme.textTheme.titleLarge?.copyWith(color: color, fontWeight: FontWeight.w700),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -510,31 +496,8 @@ class _ReportsViewState extends State<ReportsView> {
   // Grafik placeholder'ını tek bir fonksiyona aldık
   Widget _buildFinancialBarPlaceholder(ThemeData theme) {
     return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          Text('Şirket Katkısı vs Devlet Desteği', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.bar_chart, size: 48, color: theme.colorScheme.primary.withOpacity(0.5)),
-                  const SizedBox(height: 8),
-                  Text('Grafik Burada Görünecek', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.6))),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+            child: _buildFinancialCard('Devlet Desteği', '₺1.2M', Colors.red, theme),
+
     );
   }
 
@@ -548,7 +511,7 @@ class _ReportsViewState extends State<ReportsView> {
           builder: (context, constraints) {
             final bool isWide = constraints.maxWidth >= 800;
             Widget lineChart = Container(
-              height: 180,
+              height: 200,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
@@ -556,9 +519,14 @@ class _ReportsViewState extends State<ReportsView> {
                 border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text('Son 6 Ay Başvuru Adedi', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Son 6 Ay Başvuru Adedi',
+                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: Center(
@@ -576,7 +544,7 @@ class _ReportsViewState extends State<ReportsView> {
               ),
             );
             Widget pieChart = Container(
-              height: 180,
+              height: 200,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
@@ -584,9 +552,14 @@ class _ReportsViewState extends State<ReportsView> {
                 border: Border.all(color: theme.colorScheme.outline.withOpacity(0.1)),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text('Sektör Dağılımı', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Sektör Dağılımı',
+                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: Center(
@@ -634,11 +607,15 @@ class _ReportsViewState extends State<ReportsView> {
             children: [
               Icon(Icons.star, color: theme.colorScheme.primary),
               const SizedBox(width: 12),
-              Text(
-                'En çok destek alınan alan: AR-GE Projeleri (%65)',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  'En çok destek alınan alan: AR-GE Projeleri (%65)',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
               ),
             ],

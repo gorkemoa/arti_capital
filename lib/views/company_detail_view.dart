@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/company_models.dart';
 import '../services/company_service.dart';
 import '../services/storage_service.dart';
+import '../services/pdf_generator_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
@@ -475,15 +476,116 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
       await outFile.writeAsBytes(bytes);
 
       final xfile = XFile(outFile.path, mimeType: mimeType, name: fileName);
-      final box = context.findRenderObject();
-      Rect? origin;
-      if (box is RenderBox) {
-        origin = box.localToGlobal(Offset.zero) & box.size;
-      }
-      await Share.shareXFiles([xfile], subject: title, text: title, sharePositionOrigin: origin);
+      final box = context.findRenderObject() as RenderBox?;
+      await Share.shareXFiles(
+        [xfile], 
+        subject: title, 
+        text: title, 
+        sharePositionOrigin: box != null 
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge paylaşılırken hata oluştu')));
+    }
+  }
+
+  Future<void> _exportCompanyToPdf() async {
+    if (_company == null) return;
+
+    try {
+      // PDF oluşturma işlemi başladığını kullanıcıya göster
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('PDF oluşturuluyor...'),
+            ],
+          ),
+        ),
+      );
+
+      // PDF oluştur
+      final pdfBytes = await PdfGeneratorService.generateCompanyDetailPdf(_company!);
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Loading dialog'unu kapat
+
+      // PDF önizleme ve paylaşma seçenekleri göster
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('${_company!.compName} - PDF Raporu'),
+          content: const Text('PDF başarıyla oluşturuldu. Ne yapmak istiyorsunız?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('İptal'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                
+                // PDF'i doğrudan cihaza kaydet
+                final file = await PdfGeneratorService.savePdfToFile(
+                  pdfBytes, 
+                  '${_company!.compName}_detay_raporu.pdf'
+                );
+                
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('PDF kaydedildi: ${file.path}'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              },
+              child: const Text('Kaydet'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                
+                // PDF'i dosya olarak paylaş
+                final file = await PdfGeneratorService.savePdfToFile(
+                  pdfBytes, 
+                  '${_company!.compName}_detay_raporu.pdf'
+                );
+                
+                final xfile = XFile(
+                  file.path,
+                  mimeType: 'application/pdf',
+                  name: '${_company!.compName}_detay_raporu.pdf',
+                );
+                
+                final box = context.findRenderObject() as RenderBox?;
+                await Share.shareXFiles(
+                  [xfile],
+                  subject: '${_company!.compName} - Firma Detay Raporu',
+                  text: 'Firma detay raporu ekte bulunmaktadır.',
+                  sharePositionOrigin: box != null 
+                    ? box.localToGlobal(Offset.zero) & box.size
+                    : null,
+                );
+              },
+              child: const Text('Paylaş'),
+            ),
+          ],
+        ),
+      );
+
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Loading dialog'unu kapat
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF oluşturulurken hata oluştu')),
+      );
     }
   }
 
@@ -496,6 +598,14 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
+        actions: [
+          if (!_loading && _company != null)
+            IconButton(
+              onPressed: _exportCompanyToPdf,
+              icon: const Icon(Icons.picture_as_pdf),
+              tooltip: 'PDF Olarak Dışa Aktar',
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

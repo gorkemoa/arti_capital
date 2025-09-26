@@ -14,12 +14,14 @@ class AppBottomNav extends StatelessWidget {
       activeIcons: const [
         _ActiveIcon(icon: Icons.dashboard, label: 'Panel'),
         _ActiveIcon(icon: Icons.assignment, label: 'Talepler'),
+        _ActiveIcon(icon: Icons.calendar_month, label: 'Takvim'),
         _ActiveIcon(icon: Icons.assessment, label: 'Destekler'),
         _ActiveIcon(icon: Icons.person, label: 'Profil'),
       ],
       inactiveIcons: const [
         _NavLabel(icon: Icons.dashboard_outlined, label: 'Panel'),
         _NavLabel(icon: Icons.assignment_outlined, label: 'Talepler'),
+        _NavLabel(icon: Icons.calendar_month_outlined, label: 'Takvim'),
         _NavLabel(icon: Icons.assessment, label: 'Destekler'),
         _NavLabel(icon: Icons.person_outline, label: 'Profil'),
       ],

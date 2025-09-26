@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:arti_capital/views/requests_view.dart';
 import 'package:arti_capital/views/messages_view.dart';
 import 'package:arti_capital/views/reports_view.dart';
+import 'package:arti_capital/views/missing_documents_view.dart';
 
 class PanelView extends StatelessWidget {
   const PanelView({super.key, required this.userName, required this.userVersion , required this.profilePhoto});
@@ -115,6 +116,7 @@ class PanelView extends StatelessWidget {
                   icon: Icons.warning_outlined,
                   label: 'Eksik Evraklar',
                   routeTitle: 'Eksik Evraklar',
+                  builder: (context) => const MissingDocumentsView(),
                 ),
               ],
             ),
