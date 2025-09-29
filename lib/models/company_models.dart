@@ -394,10 +394,15 @@ class AddCompanyRequest {
   final String userToken;
   final String userIdentityNo;
   final String compName;
+  final String compEmail;
+  final String compPhone;
+  final String compWebsite;
   final String compTaxNo;
   final int compTaxPalace;
   final String compKepAddress;
   final String compMersisNo;
+  final String compNaceCode;
+  final String ncID;
   final int compType;
   final int compCity;
   final int compDistrict;
@@ -409,10 +414,15 @@ class AddCompanyRequest {
     required this.userToken,
     required this.userIdentityNo,
     required this.compName,
+    this.compEmail = '',
+    this.compPhone = '',
+    this.compWebsite = '',
     required this.compTaxNo,
     required this.compTaxPalace,
     this.compKepAddress = '',
     this.compMersisNo = '',
+    this.compNaceCode = '',
+    this.ncID = '',
     this.compType = 1,
     required this.compCity,
     required this.compDistrict,
@@ -425,10 +435,15 @@ class AddCompanyRequest {
     'userToken': userToken,
     'userIdentityNo': userIdentityNo,
     'compName': compName,
+    'compEmail': compEmail,
+    'compPhone': compPhone,
+    'compWebsite': compWebsite,
     'compTaxNo': compTaxNo,
     'compTaxPalace': compTaxPalace,
     'compKepAddress': compKepAddress,
     'compMersisNo': compMersisNo,
+    'compNaceCode': compNaceCode,
+    'ncID': ncID,
     'compType': compType,
     'compCity': compCity,
     'compDistrict': compDistrict,
@@ -489,6 +504,36 @@ class AddressTypeItem {
   factory AddressTypeItem.fromJson(Map<String, dynamic> json) => AddressTypeItem(
         typeID: (json['typeID'] as num).toInt(),
         typeName: json['typeName'] as String? ?? '',
+      );
+}
+
+class NaceCodeItem {
+  final String ncID;
+  final String sectorCode;
+  final String professionCode;
+  final String naceCode;
+  final String naceDesc;
+  final String sectorDesc;
+  final String professionDesc;
+
+  NaceCodeItem({
+    required this.ncID,
+    required this.sectorCode,
+    required this.professionCode,
+    required this.naceCode,
+    required this.naceDesc,
+    required this.sectorDesc,
+    required this.professionDesc,
+  });
+
+  factory NaceCodeItem.fromJson(Map<String, dynamic> json) => NaceCodeItem(
+        ncID: json['ncID'] as String? ?? '',
+        sectorCode: json['sectorCode'] as String? ?? '',
+        professionCode: json['professionCode'] as String? ?? '',
+        naceCode: json['naceCode'] as String? ?? '',
+        naceDesc: json['naceDesc'] as String? ?? '',
+        sectorDesc: json['sectorDesc'] as String? ?? '',
+        professionDesc: json['professionDesc'] as String? ?? '',
       );
 }
 
@@ -553,10 +598,15 @@ class UpdateCompanyRequest {
   final String userIdentityNo;
   final int compID;
   final String compName;
+  final String compEmail;
+  final String compPhone;
+  final String compWebsite;
   final String compTaxNo;
   final String compTaxPalace;
   final String compKepAddress;
   final String compMersisNo;
+  final String compNaceCode;
+  final String ncID;
   final int compType;
   final int compCity;
   final int compDistrict;
@@ -568,10 +618,15 @@ class UpdateCompanyRequest {
     required this.userIdentityNo,
     required this.compID,
     required this.compName,
+    this.compEmail = '',
+    this.compPhone = '',
+    this.compWebsite = '',
     required this.compTaxNo,
     required this.compTaxPalace,
     this.compKepAddress = '',
     this.compMersisNo = '',
+    this.compNaceCode = '',
+    this.ncID = '',
     this.compType = 1,
     required this.compCity,
     required this.compDistrict,
@@ -584,10 +639,15 @@ class UpdateCompanyRequest {
     'userIdentityNo': userIdentityNo,
     'compID': compID,
     'compName': compName,
+    'compEmail': compEmail,
+    'compPhone': compPhone,
+    'compWebsite': compWebsite,
     'compTaxNo': compTaxNo,
     'compTaxPalace': compTaxPalace,
     'compKepAddress': compKepAddress,
     'compMersisNo': compMersisNo,
+    'compNaceCode': compNaceCode,
+    'ncID': ncID,
     'compType': compType,
     'compCity': compCity,
     'compDistrict': compDistrict,

@@ -18,7 +18,6 @@ class _CalendarViewState extends State<CalendarView> {
   void _goToPrevMonth() {
     setState(() {
       _currentMonth = _firstDayOfMonth(DateTime(_currentMonth.year, _currentMonth.month - 1, 1));
-      // Seçili gün yeni ayda yoksa ay sonuna sabitle
       final last = _lastDayOfMonth(_currentMonth);
       if (_selectedDate.year == _currentMonth.year && _selectedDate.month == _currentMonth.month) {
         // aynı ayda ise dokunma
@@ -69,133 +68,138 @@ class _CalendarViewState extends State<CalendarView> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final days = _buildCalendarDays(_currentMonth);
 
-    final monthTitle = _monthNameTr(_currentMonth.month);
-    final year = _currentMonth.year.toString();
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Takvim', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onPrimary)),
-        centerTitle: true,
-        foregroundColor: theme.colorScheme.primary,
-        iconTheme: IconThemeData(color: theme.colorScheme.primary),
-        backgroundColor: theme.colorScheme.primary,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-            child: Row(
-              children: [
-                IconButton(onPressed: _goToPrevMonth, tooltip: 'Önceki ay', icon: const Icon(Icons.chevron_left)),
-                Expanded(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: _goToPrevMonth,
+                    child: const Icon(
+                      Icons.chevron_left,
+                      size: 28,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  GestureDetector(
                     onTap: _openMonthPicker,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Column(
                       children: [
-                        Text('$monthTitle $year', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                        Text(
+                          _monthNameEn(_currentMonth.month),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          _currentMonth.year.toString(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ),
-                IconButton(onPressed: _goToNextMonth, tooltip: 'Sonraki ay', icon: const Icon(Icons.chevron_right)),
-                const SizedBox(width: 6),
-                TextButton.icon(
-                  onPressed: _goToToday,
-                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                  icon: const Icon(Icons.today, size: 18),
-                  label: const Text('Bugün'),
-                ),
-              ],
+                  GestureDetector(
+                    onTap: _goToNextMonth,
+                    child: const Icon(
+                      Icons.chevron_right,
+                      size: 28,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                _WeekdayLabel('PZT'),
-                _WeekdayLabel('SAL'),
-                _WeekdayLabel('ÇAR'),
-                _WeekdayLabel('PER'),
-                _WeekdayLabel('CUM'),
-                _WeekdayLabel('CMT'),
-                _WeekdayLabel('PAZ'),
-              ],
+            
+            // Weekday headers
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: const [
+                  _WeekdayLabel('Pzt'),
+                  _WeekdayLabel('Salı'),
+                  _WeekdayLabel('Çar'),
+                  _WeekdayLabel('Per'),
+                  _WeekdayLabel('Cum'),
+                  _WeekdayLabel('Cmt'),
+                  _WeekdayLabel('Paz'),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onHorizontalDragEnd: (details) {
-                final v = details.primaryVelocity ?? 0;
-                if (v > 200) {
-                  _goToPrevMonth();
-                } else if (v < -200) {
-                  _goToNextMonth();
-                }
-              },
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-                itemCount: days.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
-                ),
-                itemBuilder: (context, index) {
-                  final day = days[index];
-                  final isCurrentMonth = day.month == _currentMonth.month;
-                  final isToday = _stripTime(day) == _stripTime(DateTime.now());
-                  final isSelected = _stripTime(day) == _selectedDate;
-                  final events = mockEventsFor(day);
-                  final hasEvents = events.isNotEmpty;
+            
+            // Calendar Grid
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GridView.builder(
+                  itemCount: days.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 1.0,
+                  ),
+                  itemBuilder: (context, index) {
+                    final day = days[index];
+                    final isCurrentMonth = day.month == _currentMonth.month;
+                    final isToday = _stripTime(day) == _stripTime(DateTime.now());
+                    final isSelected = _stripTime(day) == _selectedDate;
+                    final events = mockEventsFor(day);
+                    final hasEvents = events.isNotEmpty;
 
-                  Color border = isSelected ? theme.colorScheme.primary : theme.dividerColor.withOpacity(0.25);
-                  Color bg = isSelected
-                      ? theme.colorScheme.primary.withOpacity(0.10)
-                      : isCurrentMonth
-                          ? theme.colorScheme.surface
-                          : theme.colorScheme.surfaceVariant.withOpacity(0.35);
-                  Color txt = isCurrentMonth
-                      ? theme.colorScheme.onSurface
-                      : theme.colorScheme.onSurface.withOpacity(0.6);
+                    Color bg = isSelected
+                        ? const Color(0xFF4285F4)
+                        : Colors.transparent;
+                    Color txt = isSelected
+                        ? Colors.white
+                        : isCurrentMonth
+                            ? Colors.black87
+                            : Colors.black38;
+                    Color border = isToday && !isSelected
+                        ? const Color(0xFF4285F4)
+                        : Colors.transparent;
 
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () {
-                      setState(() {
-                        _selectedDate = _stripTime(day);
-                        _currentMonth = _firstDayOfMonth(day);
-                      });
-                      _openEventsBottomSheet(context, day, events);
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: bg,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: border),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6.0),
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedDate = _stripTime(day);
+                          _currentMonth = _firstDayOfMonth(day);
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: border != Colors.transparent 
+                              ? Border.all(color: border, width: 1) 
+                              : null,
+                        ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Row(
-                              children: [
-                                Text('${day.day}', style: theme.textTheme.bodyMedium?.copyWith(color: txt)),
-                                if (isToday) ...[
-                                  const SizedBox(width: 4),
-                                  Icon(Icons.circle, size: 6, color: theme.colorScheme.secondary),
-                                ],
-                              ],
+                            Text(
+                              '${day.day}',
+                              style: TextStyle(
+                                color: txt,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 16,
+                              ),
                             ),
-                            const Spacer(),
+                            const SizedBox(height: 4),
                             if (hasEvents)
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -204,39 +208,63 @@ class _CalendarViewState extends State<CalendarView> {
                                   (i) => Container(
                                     width: 6,
                                     height: 6,
-                                    margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.secondary,
-                                      borderRadius: BorderRadius.circular(3),
+                                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF4285F4),
+                                      shape: BoxShape.circle,
                                     ),
                                   ),
                                 ),
-                              ),
+                              )
+                            else
+                              const SizedBox(height: 6),
                           ],
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-          _InlineSelectedEvents(
-            date: _selectedDate,
-            events: mockEventsFor(_selectedDate),
-            onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, mockEventsFor(_selectedDate)),
-          ),
-        ],
+            
+            // Bottom Events Section
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(
+                    color: Colors.grey.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: _InlineSelectedEvents(
+                date: _selectedDate,
+                events: mockEventsFor(_selectedDate),
+                onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, mockEventsFor(_selectedDate)),
+              ),
+            ),
+          ],
+        ),
       ),
+      
+      // Floating Action Button
+      floatingActionButton: Container(
+        width: 56,
+        height: 56,
+        decoration: const BoxDecoration(
+          color: Color(0xFF6366F1),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.add,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+      
+      
     );
-  }
-
-  void _goToToday() {
-    setState(() {
-      final now = DateTime.now();
-      _selectedDate = _stripTime(now);
-      _currentMonth = _firstDayOfMonth(now);
-    });
   }
 
   Future<void> _openMonthPicker() async {
@@ -262,7 +290,6 @@ class _CalendarViewState extends State<CalendarView> {
   }
 
   void _openEventsBottomSheet(BuildContext context, DateTime date, List<_CalendarEvent> events) {
-    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -285,17 +312,29 @@ class _CalendarViewState extends State<CalendarView> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                   child: Row(
                     children: [
-                      Icon(Icons.event, color: theme.colorScheme.primary),
+                      const Icon(Icons.event, color: Color(0xFF4285F4)),
                       const SizedBox(width: 8),
-                      Text('Etkinlikler · $title', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        'Etkinlikler · $title', 
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 4),
                 if (events.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                    child: Text('Bu gün için etkinlik yok', style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    child: Text(
+                      'Bu gün için etkinlik yok',
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 16,
+                      ),
+                    ),
                   )
                 else
                   Expanded(
@@ -303,18 +342,41 @@ class _CalendarViewState extends State<CalendarView> {
                       controller: scrollController,
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                       itemCount: events.length,
-                      separatorBuilder: (_, __) => Divider(height: 1, color: theme.dividerColor.withOpacity(0.3)),
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1, 
+                        color: Colors.grey.withOpacity(0.3),
+                      ),
                       itemBuilder: (context, index) {
                         final ev = events[index];
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           leading: CircleAvatar(
                             radius: 18,
-                            backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
-                            child: Icon(Icons.event_note, size: 18, color: theme.colorScheme.primary),
+                            backgroundColor: const Color(0xFF4285F4).withOpacity(0.15),
+                            child: const Icon(
+                              Icons.event_note, 
+                              size: 18, 
+                              color: Color(0xFF4285F4),
+                            ),
                           ),
-                          title: Text(ev.title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                          subtitle: Text(ev.timeRange, style: theme.textTheme.bodySmall),
+                          title: Text(
+                            ev.title, 
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Text(
+                            ev.timeRange,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right, 
+                            color: Colors.black.withOpacity(0.35),
+                          ),
                         );
                       },
                     ),
@@ -327,41 +389,75 @@ class _CalendarViewState extends State<CalendarView> {
     );
   }
 
-  String _monthNameTr(int m) {
+  String _monthNameEn(int m) {
     const names = [
-      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return names[m - 1];
   }
 
-  String formatDateTr(DateTime d) {
+  static String formatDateTr(DateTime d) {
     const months = [
       'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
     ];
     const weekdays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-    int weekdayFromMonday(int weekday) => weekday == DateTime.sunday ? 6 : weekday - 2;
+    int weekdayFromMonday(int weekday) => weekday == DateTime.sunday ? 6 : weekday - 1;
     return '${weekdays[weekdayFromMonday(d.weekday)]}, ${d.day} ${months[d.month - 1]}';
   }
 
   List<_CalendarEvent> mockEventsFor(DateTime d) {
-    final int day = d.day;
-    if (day % 7 == 5) {
+    // Tasarımdaki örneklere göre events
+    if (d.day == 2) { // Seçili gün
       return const [
-        _CalendarEvent('Müşteri Görüşmesi', '10:00 - 11:30'),
-        _CalendarEvent('Teklif Değerlendirme', '14:00 - 15:00'),
+        _CalendarEvent('Design new UX flow for Michael', '10:00-13:00'),
+        _CalendarEvent('Brainstorm with the team', '14:00-15:00'),
+        _CalendarEvent('Workout with Ella', '19:00-20:00'),
       ];
     }
-    if (day % 7 == 1) {
+    if (d.day == 3) {
       return const [
-        _CalendarEvent('Bordro Kontrol', '09:00 - 10:00'),
+        _CalendarEvent('Meeting with client', '10:00-11:00'),
+        _CalendarEvent('Review project', '15:00-16:00'),
       ];
     }
-    if (day % 7 == 3) {
+    if (d.day == 6) {
       return const [
-        _CalendarEvent('Ekip Toplantısı', '16:00 - 17:00'),
-        _CalendarEvent('Rapor Gönderimi', '17:30 - 18:00'),
+        _CalendarEvent('Team standup', '09:00-09:30'),
+      ];
+    }
+    if (d.day == 9) {
+      return const [
+        _CalendarEvent('Project presentation', '14:00-15:30'),
+      ];
+    }
+    if (d.day == 10) {
+      return const [
+        _CalendarEvent('Code review', '11:00-12:00'),
+        _CalendarEvent('Planning session', '16:00-17:00'),
+      ];
+    }
+    if (d.day == 15) {
+      return const [
+        _CalendarEvent('Client call', '13:00-14:00'),
+      ];
+    }
+    if (d.day == 17) {
+      return const [
+        _CalendarEvent('Sprint planning', '10:00-11:30'),
+      ];
+    }
+    if (d.day == 23) {
+      return const [
+        _CalendarEvent('Design review', '15:00-16:00'),
+      ];
+    }
+    if (d.day == 29) {
+      return const [
+        _CalendarEvent('Monthly review', '09:00-10:00'),
+        _CalendarEvent('Team lunch', '12:00-13:00'),
+        _CalendarEvent('Project wrap-up', '15:00-16:30'),
       ];
     }
     return const [];
@@ -374,106 +470,15 @@ class _WeekdayLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return SizedBox(
       width: 36,
       child: Center(
         child: Text(
           text,
-          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: theme.hintColor),
-        ),
-      ),
-    );
-  }
-}
-
-
-class _CalendarEvent {
-  final String title;
-  final String timeRange;
-  const _CalendarEvent(this.title, this.timeRange);
-}
-
-
-class _InlineSelectedEvents extends StatelessWidget {
-  const _InlineSelectedEvents({required this.date, required this.events, required this.onOpenAll});
-  final DateTime date;
-  final List<_CalendarEvent> events;
-  final VoidCallback onOpenAll;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final title = _formatDateTr(date);
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: theme.dividerColor.withOpacity(0.3))),
-        color: theme.colorScheme.surface,
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onOpenAll,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.event, color: theme.colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Etkinlikler · $title',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        Text('Tümü', style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 4),
-                        Icon(Icons.keyboard_arrow_up_rounded, color: theme.colorScheme.primary),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    if (events.isEmpty)
-                      Text('Bu gün için etkinlik yok', style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor))
-                    else ...[
-                      ...events.take(2).map((e) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  margin: const EdgeInsets.only(right: 8),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    '${e.title} · ${e.timeRange}',
-                                    style: theme.textTheme.bodyMedium,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )),
-                      if (events.length > 2)
-                        Text('+${events.length - 2} daha', style: theme.textTheme.labelMedium?.copyWith(color: theme.hintColor)),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black54,
           ),
         ),
       ),
@@ -481,14 +486,144 @@ class _InlineSelectedEvents extends StatelessWidget {
   }
 }
 
-String _formatDateTr(DateTime d) {
-  const months = [
-    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-  ];
-  const weekdays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-  int weekdayFromMonday(int weekday) => weekday == DateTime.sunday ? 6 : weekday - 2;
-  return '${weekdays[weekdayFromMonday(d.weekday)]}, ${d.day} ${months[d.month - 1]}';
+class _CalendarEvent {
+  final String title;
+  final String timeRange;
+  const _CalendarEvent(this.title, this.timeRange);
 }
 
+class _InlineSelectedEvents extends StatelessWidget {
+  const _InlineSelectedEvents({
+    required this.date, 
+    required this.events, 
+    required this.onOpenAll,
+  });
+  final DateTime date;
+  final List<_CalendarEvent> events;
+  final VoidCallback onOpenAll;
 
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.circle,
+                color: Color(0xFF4285F4),
+                size: 8,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${events.isNotEmpty ? events.first.timeRange : '10:00-13:00'}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4285F4),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            events.isNotEmpty ? events.first.title : 'Design new UX flow for Michael',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Start from screen 16',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          if (events.length > 1) ...[
+            Row(
+              children: [
+                const Icon(
+                  Icons.circle,
+                  color: Color(0xFF9C27B0),
+                  size: 8,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  events.length > 1 ? events[1].timeRange : '14:00-15:00',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF9C27B0),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              events.length > 1 ? events[1].title : 'Brainstorm with the team',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Define the problem or question that...',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          
+          if (events.length > 2) ...[
+            Row(
+              children: [
+                const Icon(
+                  Icons.circle,
+                  color: Color(0xFF4285F4),
+                  size: 8,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  events.length > 2 ? events[2].timeRange : '19:00-20:00',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF4285F4),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              events.length > 2 ? events[2].title : 'Workout with Ella',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'We will do the legs and back workout',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

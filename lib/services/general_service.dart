@@ -75,6 +75,18 @@ class GeneralService {
     final parsed = GetAddressTypesResponse.fromJson(body, code);
     return parsed.types;
   }
+
+  Future<List<NaceCodeItem>> getNaceCodes() async {
+    // Direkt statik JSON URL'inden çekiyoruz
+    final Response resp = await ApiClient.getJson(
+      'https://projects.office701.com/arti-capital/upload/static/nace_codes.json',
+    );
+    final body = resp.data as Map<String, dynamic>;
+    final list = (body['naceCodes'] as List<dynamic>? ?? [])
+        .map((e) => NaceCodeItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return list;
+  }
 }
 
 

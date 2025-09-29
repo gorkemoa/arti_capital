@@ -30,6 +30,10 @@ class _EditCompanyViewState extends State<EditCompanyView> {
   final _compKepAddressController = TextEditingController();
   final _compMersisNoController = TextEditingController();
   final _compAddressController = TextEditingController();
+  final _compEmailController = TextEditingController();
+  final _compPhoneController = TextEditingController();
+  final _compWebsiteController = TextEditingController();
+  final _compNaceCodeController = TextEditingController();
 
   final GeneralService _generalService = GeneralService();
   final CompanyService _userService = const CompanyService();
@@ -37,12 +41,14 @@ class _EditCompanyViewState extends State<EditCompanyView> {
   List<CityItem> _cities = const [];
   List<DistrictItem> _districts = const [];
   List<TaxPalaceItem> _palaces = const [];
+  List<NaceCodeItem> _naceCodes = const [];
   CityItem? _selectedCity;
   DistrictItem? _selectedDistrict;
   TaxPalaceItem? _selectedPalace;
   bool _loading = false;
   bool _loadingMeta = true;
   String _logoBase64 = '';
+  String? _selectedNcID;
 
   @override
   void initState() {
@@ -53,6 +59,10 @@ class _EditCompanyViewState extends State<EditCompanyView> {
     _compKepAddressController.text = '';
     _compMersisNoController.text = widget.company.compMersisNo ?? '';
     _compAddressController.text = widget.company.compAddress;
+    _compEmailController.text = '';
+    _compPhoneController.text = '';
+    _compWebsiteController.text = '';
+    _compNaceCodeController.text = '';
     _logoBase64 = widget.company.compLogo;
     _initMeta();
   }
@@ -66,7 +76,8 @@ class _EditCompanyViewState extends State<EditCompanyView> {
       _selectedCity = city;
       final d = await _generalService.getDistricts(city.cityNo);
       final p = await _generalService.getTaxPalaces(city.cityNo);
-      setState(() { _districts = d; _palaces = p; });
+      final nace = await _generalService.getNaceCodes();
+      setState(() { _districts = d; _palaces = p; _naceCodes = nace; });
       // İlçeyi seçili getir
       try {
         _selectedDistrict = d.firstWhere((x) => x.districtNo == widget.company.compDistrictID);
@@ -96,6 +107,10 @@ class _EditCompanyViewState extends State<EditCompanyView> {
     _compKepAddressController.dispose();
     _compMersisNoController.dispose();
     _compAddressController.dispose();
+    _compEmailController.dispose();
+    _compPhoneController.dispose();
+    _compWebsiteController.dispose();
+    _compNaceCodeController.dispose();
     super.dispose();
   }
 
@@ -155,10 +170,15 @@ class _EditCompanyViewState extends State<EditCompanyView> {
         userIdentityNo: identityNo,
         compID: widget.company.compID,
         compName: _compNameController.text.trim(),
+        compEmail: _compEmailController.text.trim(),
+        compPhone: _compPhoneController.text.trim(),
+        compWebsite: _compWebsiteController.text.trim(),
         compTaxNo: _compTaxNoController.text.trim(),
         compTaxPalace: _selectedPalace!.palaceID.toString(),
         compKepAddress: _compKepAddressController.text.trim(),
         compMersisNo: _compMersisNoController.text.trim(),
+        compNaceCode: _compNaceCodeController.text.trim(),
+        ncID: _selectedNcID ?? '',
         compType: 1,
         compCity: _selectedCity!.cityNo,
         compDistrict: _selectedDistrict!.districtNo,
@@ -215,6 +235,12 @@ class _EditCompanyViewState extends State<EditCompanyView> {
                     _styledTextField(controller: _compNameController, label: 'Firma Adı *', validator: (v){ if(v==null||v.trim().isEmpty) return 'Gerekli'; return null; }),
                     const SizedBox(height: 16),
                     _styledTextField(controller: _compTaxNoController, label: 'Vergi No *', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], validator: (v){ if(v==null||v.trim().isEmpty) return 'Gerekli'; if(v.trim().length!=10) return '10 haneli olmalı'; return null; }),
+                    const SizedBox(height: 16),
+                    _styledTextField(controller: _compEmailController, label: 'E-Posta', keyboardType: TextInputType.emailAddress),
+                    const SizedBox(height: 16),
+                    _styledTextField(controller: _compPhoneController, label: 'Telefon', keyboardType: TextInputType.phone, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                    const SizedBox(height: 16),
+                    _styledTextField(controller: _compWebsiteController, label: 'Web Sitesi', keyboardType: TextInputType.url),
                     // Vergi dairesi text alanı kaldırıldı; aşağıda dropdown mevcut
 
                     const SizedBox(height: 24),
@@ -234,6 +260,8 @@ class _EditCompanyViewState extends State<EditCompanyView> {
                     _styledTextField(controller: _compKepAddressController, label: 'KEP Adresi', keyboardType: TextInputType.emailAddress),
                     const SizedBox(height: 16),
                     _styledTextField(controller: _compMersisNoController, label: 'MERSIS No', keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                    const SizedBox(height: 16),
+                    _styledNaceDropdown(theme),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -682,7 +710,142 @@ class _EditCompanyViewState extends State<EditCompanyView> {
     );
   }
 
-  
+  Widget _styledNaceDropdown(ThemeData theme) {
+    if (_naceCodes.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final String currentValue = _compNaceCodeController.text.trim();
+    final String? currentLabel = currentValue.isEmpty
+        ? null
+        : (() {
+            try {
+              final item = _naceCodes.firstWhere((n) => n.naceCode == currentValue);
+              return '${item.naceCode} - ${item.naceDesc}';
+            } catch (_) {
+              return currentValue;
+            }
+          })();
+
+    return _buildCupertinoField(
+      placeholder: 'NACE Kodu',
+      value: currentLabel,
+      onTap: () async {
+        await _openNaceSearchSheet();
+      },
+    );
+  }
+
+  Future<void> _openNaceSearchSheet() async {
+    if (_naceCodes.isEmpty) return;
+    List<NaceCodeItem> filtered = List.of(_naceCodes);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSt) {
+            void applyFilter(String q) {
+              setSt(() {
+                final lower = q.toLowerCase();
+                filtered = _naceCodes.where((n) {
+                  return n.naceCode.toLowerCase().contains(lower)
+                      || n.naceDesc.toLowerCase().contains(lower)
+                      || n.professionDesc.toLowerCase().contains(lower)
+                      || n.sectorDesc.toLowerCase().contains(lower);
+                }).toList();
+              });
+            }
+
+            return SafeArea(
+              child: DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.85,
+                minChildSize: 0.5,
+                maxChildSize: 0.95,
+                builder: (ctx, scrollController) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  autofocus: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'NACE ara (kod, açıklama)',
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    isDense: true,
+                                  ),
+                                  onChanged: applyFilter,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: ListView.separated(
+                            controller: scrollController,
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (ctx, i) {
+                              final n = filtered[i];
+                              return ListTile(
+                                title: Text('${n.naceCode} - ${n.naceDesc}'),
+                                subtitle: Text(n.professionDesc.isNotEmpty ? n.professionDesc : n.sectorDesc),
+                                onTap: () {
+                                  setState(() { _compNaceCodeController.text = n.naceCode; _selectedNcID = n.ncID; });
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
 
   
 }

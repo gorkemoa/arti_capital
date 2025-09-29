@@ -39,6 +39,10 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   final _compKepAddressController = TextEditingController();
   final _compMersisNoController = TextEditingController();
   final _compAddressController = TextEditingController();
+  final _compEmailController = TextEditingController();
+  final _compPhoneController = TextEditingController();
+  final _compWebsiteController = TextEditingController();
+  final _compNaceCodeController = TextEditingController();
   
   final UserService _userService = UserService();
   final GeneralService _generalService = GeneralService();
@@ -46,6 +50,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   List<CityItem> _cities = const [];
   List<DistrictItem> _districts = const [];
   List<TaxPalaceItem> _taxPalaces = const [];
+  List<NaceCodeItem> _naceCodes = const [];
   List<AddressTypeItem> _addressTypes = const [];
   CityItem? _selectedCity;
   DistrictItem? _selectedDistrict;
@@ -59,6 +64,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   bool _hasUnsavedChanges = false;
   FormStep _currentStep = FormStep.company;
   // _selectedBirthday kaldırıldı - doğum tarihi alanı kaldırıldı
+  String? _selectedNcID;
   
   // Step-specific form keys
   // Kişisel step kaldırıldı
@@ -97,9 +103,11 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   Future<void> _loadAddressTypes() async {
     try {
       final types = await _generalService.getAddressTypes();
+      final nace = await _generalService.getNaceCodes();
       if (!mounted) return;
       setState(() {
         _addressTypes = types;
+        _naceCodes = nace;
       });
     } catch (_) {}
   }
@@ -270,6 +278,10 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     _compKepAddressController.dispose();
     _compMersisNoController.dispose();
     _compAddressController.dispose();
+    _compEmailController.dispose();
+    _compPhoneController.dispose();
+    _compWebsiteController.dispose();
+    _compNaceCodeController.dispose();
     super.dispose();
   }
 
@@ -481,10 +493,15 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         userToken: token,
         userIdentityNo: identityNo,
         compName: _compNameController.text.trim(),
+        compEmail: _compEmailController.text.trim(),
+        compPhone: _compPhoneController.text.trim(),
+        compWebsite: _compWebsiteController.text.trim(),
         compTaxNo: _compTaxNoController.text.trim(),
         compTaxPalace: compTaxPalaceInt,
         compKepAddress: _compKepAddressController.text.trim(),
         compMersisNo: _compMersisNoController.text.trim(),
+        compNaceCode: _compNaceCodeController.text.trim(),
+        ncID: _selectedNcID ?? '',
         compType: _selectedCompanyTypeId ?? 1,
         compCity: _selectedCity!.cityNo,
         compDistrict: _selectedDistrict!.districtNo,
@@ -852,6 +869,25 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 16),
+        _buildTextField(
+          name: 'compEmail',
+          label: 'E-Posta',
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'compPhone',
+          label: 'Telefon',
+          keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        ),
+        const SizedBox(height: 16),
+        _buildTextField(
+          name: 'compWebsite',
+          label: 'Web Sitesi',
+          keyboardType: TextInputType.url,
+        ),
+        const SizedBox(height: 16),
         // Vergi dairesi artık dropdown olarak konum bölümünde
         _buildTextField(
           name: 'compMersisNo',
@@ -859,6 +895,8 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
+        const SizedBox(height: 16),
+        _buildNaceDropdown(Theme.of(context)),
         const SizedBox(height: 16),
         _buildTextField(
           name: 'compKepAddress',
@@ -881,6 +919,146 @@ class _AddCompanyViewState extends State<AddCompanyView> {
        
         _buildTaxPalaceDropdown(Theme.of(context)),
       ],
+    );
+  }
+
+  Widget _buildNaceDropdown(ThemeData theme) {
+    if (_naceCodes.isEmpty) {
+      return Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final String currentValue = _compNaceCodeController.text.trim();
+    final String? currentLabel = currentValue.isEmpty
+        ? null
+        : (() {
+            try {
+              final item = _naceCodes.firstWhere((n) => n.naceCode == currentValue);
+              return '${item.naceCode} - ${item.naceDesc}';
+            } catch (_) {
+              return currentValue;
+            }
+          })();
+
+    return _buildCupertinoField(
+      placeholder: 'NACE Kodu',
+      value: currentLabel,
+      onTap: () async {
+        await _openNaceSearchSheet();
+      },
+    );
+  }
+
+  Future<void> _openNaceSearchSheet() async {
+    if (_naceCodes.isEmpty) return;
+    List<NaceCodeItem> filtered = List.of(_naceCodes);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSt) {
+            void applyFilter(String q) {
+              setSt(() {
+                final lower = q.toLowerCase();
+                filtered = _naceCodes.where((n) {
+                  return n.naceCode.toLowerCase().contains(lower)
+                      || n.naceDesc.toLowerCase().contains(lower)
+                      || n.professionDesc.toLowerCase().contains(lower)
+                      || n.sectorDesc.toLowerCase().contains(lower);
+                }).toList();
+              });
+            }
+
+            return SafeArea(
+              child: DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.85,
+                minChildSize: 0.5,
+                maxChildSize: 0.95,
+                builder: (ctx, scrollController) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  autofocus: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'NACE ara (kod, açıklama)',
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    isDense: true,
+                                  ),
+                                  onChanged: applyFilter,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: ListView.separated(
+                            controller: scrollController,
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (ctx, i) {
+                              final n = filtered[i];
+                              return ListTile(
+                                title: Text('${n.naceCode} - ${n.naceDesc}'),
+                                subtitle: Text(n.professionDesc.isNotEmpty ? n.professionDesc : n.sectorDesc),
+                                onTap: () {
+                                  setState(() {
+                                    _compNaceCodeController.text = n.naceCode;
+                                    _selectedNcID = n.ncID;
+                                    _hasUnsavedChanges = true;
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1230,6 +1408,15 @@ class _AddCompanyViewState extends State<AddCompanyView> {
       case 'compName':
         controller = _compNameController;
         break;
+      case 'compEmail':
+        controller = _compEmailController;
+        break;
+      case 'compPhone':
+        controller = _compPhoneController;
+        break;
+      case 'compWebsite':
+        controller = _compWebsiteController;
+        break;
       case 'compTaxNo':
         controller = _compTaxNoController;
         break;
@@ -1241,6 +1428,9 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         break;
       case 'compMersisNo':
         controller = _compMersisNoController;
+        break;
+      case 'compNaceCode':
+        controller = _compNaceCodeController;
         break;
       case 'compAddress':
         controller = _compAddressController;
