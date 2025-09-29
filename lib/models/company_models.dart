@@ -9,6 +9,10 @@ class CompanyItem {
   final String? compType;
   final String compLogo; // data url veya http url
   final String createdate;
+  final String? compEmail;
+  final String? compPhone;
+  final String? compWebsite;
+  final int? compNaceCodeID;
   final List<CompanyAddressItem> addresses;
   final List<CompanyDocumentItem> documents;
   final List<PartnerItem> partners;
@@ -24,6 +28,10 @@ class CompanyItem {
     this.compType,
     required this.compLogo,
     required this.createdate,
+    this.compEmail,
+    this.compPhone,
+    this.compWebsite,
+    this.compNaceCodeID,
     this.addresses = const [],
     this.documents = const [],
     this.partners = const [],
@@ -73,6 +81,10 @@ class CompanyItem {
       compType: json['compType'] as String?,
       compLogo: json['compLogo'] as String? ?? '',
       createdate: json['createdate'] as String? ?? '',
+      compEmail: json['compEmail'] as String?,
+      compPhone: json['compPhone'] as String?,
+      compWebsite: json['compWebsite'] as String?,
+      compNaceCodeID: (json['compNaceCodeID'] as num?)?.toInt(),
       addresses: addresses,
       documents: ((json['documents'] as List<dynamic>?) ?? const [])
           .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))
@@ -602,7 +614,7 @@ class UpdateCompanyRequest {
   final String compPhone;
   final String compWebsite;
   final String compTaxNo;
-  final String compTaxPalace;
+  final int compTaxPalace;
   final String compKepAddress;
   final String compMersisNo;
   final String compNaceCode;

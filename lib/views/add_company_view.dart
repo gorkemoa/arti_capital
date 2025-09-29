@@ -960,107 +960,19 @@ class _AddCompanyViewState extends State<AddCompanyView> {
       placeholder: 'NACE Kodu',
       value: currentLabel,
       onTap: () async {
-        await _openNaceSearchSheet();
+        final result = await Navigator.of(context).pushNamed('/nace-search');
+        if (result != null && result is NaceCodeItem) {
+          setState(() {
+            _compNaceCodeController.text = result.naceCode;
+            _selectedNcID = result.ncID;
+            _hasUnsavedChanges = true;
+          });
+        }
       },
     );
   }
 
-  Future<void> _openNaceSearchSheet() async {
-    if (_naceCodes.isEmpty) return;
-    List<NaceCodeItem> filtered = List.of(_naceCodes);
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSt) {
-            void applyFilter(String q) {
-              setSt(() {
-                final lower = q.toLowerCase();
-                filtered = _naceCodes.where((n) {
-                  return n.naceCode.toLowerCase().contains(lower)
-                      || n.naceDesc.toLowerCase().contains(lower)
-                      || n.professionDesc.toLowerCase().contains(lower)
-                      || n.sectorDesc.toLowerCase().contains(lower);
-                }).toList();
-              });
-            }
-
-            return SafeArea(
-              child: DraggableScrollableSheet(
-                expand: false,
-                initialChildSize: 0.85,
-                minChildSize: 0.5,
-                maxChildSize: 0.95,
-                builder: (ctx, scrollController) {
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      bottom: MediaQuery.of(context).viewInsets.bottom,
-                    ),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  autofocus: true,
-                                  decoration: InputDecoration(
-                                    hintText: 'NACE ara (kod, açıklama)',
-                                    prefixIcon: const Icon(Icons.search),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    isDense: true,
-                                  ),
-                                  onChanged: applyFilter,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () => Navigator.pop(context),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        Expanded(
-                          child: ListView.separated(
-                            controller: scrollController,
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
-                            itemBuilder: (ctx, i) {
-                              final n = filtered[i];
-                              return ListTile(
-                                title: Text('${n.naceCode} - ${n.naceDesc}'),
-                                subtitle: Text(n.professionDesc.isNotEmpty ? n.professionDesc : n.sectorDesc),
-                                onTap: () {
-                                  setState(() {
-                                    _compNaceCodeController.text = n.naceCode;
-                                    _selectedNcID = n.ncID;
-                                    _hasUnsavedChanges = true;
-                                  });
-                                  Navigator.pop(context);
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  
 
   Widget _buildAddressTypeDropdown(ThemeData theme) {
     if (_addressTypes.isEmpty) {
