@@ -657,6 +657,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                     _InfoRow(label: 'Telefon', value: _company!.compPhone ?? '-'),
                                     _InfoRow(label: 'Web Sitesi', value: _company!.compWebsite ?? '-'),
                                     _InfoRow(label: 'NACE Kodu', value: _company!.compNaceCodeID?.toString() ?? '-'),
+                                    _InfoRow(label: 'Açıklama', value: _company!.compDesc ?? '-'),
                                     
                                   ],
                                 ),
@@ -853,6 +854,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                               _InfoRow(label: 'Web Sitesi', value: _company!.compWebsite ?? '-'),
                               _InfoRow(label: 'NACE Code ID', value: _company!.compNaceCodeID?.toString() ?? '-'),
                               _InfoRow(label: 'Kep Adresi', value: _company!.compKepAddress ?? '-'),
+                              _InfoRow(label: 'Açıklama', value: _company!.compDesc ?? '-'),
                             ],
                           ),
                           const SizedBox(height: 16),

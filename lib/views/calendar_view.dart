@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import '../services/appointments_service.dart';
+import '../models/appointment_models.dart';
+import 'appointment_detail_view.dart';
+import '../theme/app_colors.dart';
 
 class CalendarView extends StatefulWidget {
   const CalendarView({super.key});
@@ -10,10 +15,108 @@ class CalendarView extends StatefulWidget {
 class _CalendarViewState extends State<CalendarView> {
   DateTime _currentMonth = _firstDayOfMonth(DateTime.now());
   DateTime _selectedDate = _stripTime(DateTime.now());
+  bool _loading = true;
+  String? _errorMessage;
+  final AppointmentsService _appointmentsService = AppointmentsService();
+  final Map<DateTime, List<_CalendarEvent>> _eventsByDay = <DateTime, List<_CalendarEvent>>{};
+  static const List<String> _weekdaysShortTr = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
   static DateTime _stripTime(DateTime date) => DateTime(date.year, date.month, date.day);
   static DateTime _firstDayOfMonth(DateTime date) => DateTime(date.year, date.month, 1);
   static DateTime _lastDayOfMonth(DateTime date) => DateTime(date.year, date.month + 1, 0);
+  // Pazartesi=0 ... Pazar=6
+  static int _weekdayFromMonday(int weekday) => weekday == DateTime.sunday ? 6 : weekday - 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAppointments();
+  }
+
+  Future<void> _fetchAppointments() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+    final resp = await _appointmentsService.getAppointments();
+    if (!mounted) return;
+    if (resp.success) {
+      final map = <DateTime, List<_CalendarEvent>>{};
+      for (final AppointmentItem item in resp.appointments) {
+        final dt = _parseTrDateTime(item.appointmentDate);
+        if (dt == null) continue;
+        final key = _stripTime(dt);
+        final list = map.putIfAbsent(key, () => <_CalendarEvent>[]);
+        final timeStr = _formatTime(dt);
+        final color = _parseStatusColor(item.statusColor);
+        list.add(
+          _CalendarEvent(
+            title: item.appointmentTitle,
+            timeRange: timeStr,
+            compName: item.compName,
+            statusName: item.statusName,
+            statusColor: color,
+            description: item.appointmentDesc,
+          ),
+        );
+      }
+      setState(() {
+        _eventsByDay
+          ..clear()
+          ..addAll(map);
+        _loading = false;
+      });
+    } else {
+      setState(() {
+        _loading = false;
+        _errorMessage = resp.errorMessage ?? resp.message;
+      });
+    }
+  }
+
+  static DateTime? _parseTrDateTime(String raw) {
+    // Beklenen format: dd.MM.yyyy HH:mm
+    try {
+      final parts = raw.split(' ');
+      if (parts.length < 2) return null;
+      final datePart = parts[0];
+      final timePart = parts[1];
+      final d = datePart.split('.');
+      final t = timePart.split(':');
+      if (d.length != 3 || t.length < 2) return null;
+      final day = int.parse(d[0]);
+      final month = int.parse(d[1]);
+      final year = int.parse(d[2]);
+      final hour = int.parse(t[0]);
+      final minute = int.parse(t[1]);
+      return DateTime(year, month, day, hour, minute);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _formatTime(DateTime dt) {
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  static Color _parseStatusColor(String raw) {
+    // Beklenen format: #RRGGBB veya #AARRGGBB; boşsa varsayılan mavi
+    final fallback = const Color(0xFF4285F4);
+    final s = raw.trim();
+    if (s.isEmpty) return fallback;
+    String hex = s.startsWith('#') ? s.substring(1) : s;
+    if (hex.length == 6) {
+      hex = 'FF$hex';
+    }
+    try {
+      final value = int.parse(hex, radix: 16);
+      return Color(value);
+    } catch (_) {
+      return fallback;
+    }
+  }
 
   void _goToPrevMonth() {
     setState(() {
@@ -44,10 +147,8 @@ class _CalendarViewState extends State<CalendarView> {
     final first = _firstDayOfMonth(month);
     final last = _lastDayOfMonth(month);
 
-    // Takvim haftası Pazartesi ile başlasın
-    int weekdayFromMonday(int weekday) => weekday == DateTime.sunday ? 7 : weekday - 1;
-
-    final leading = weekdayFromMonday(first.weekday) - 1; // 0..6
+    // Takvim haftası Pazartesi ile başlasın (0..6)
+    final leading = _weekdayFromMonday(first.weekday);
     for (int i = leading; i > 0; i--) {
       days.add(first.subtract(Duration(days: i)));
     }
@@ -71,7 +172,7 @@ class _CalendarViewState extends State<CalendarView> {
     final days = _buildCalendarDays(_currentMonth);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -83,10 +184,10 @@ class _CalendarViewState extends State<CalendarView> {
                 children: [
                   GestureDetector(
                     onTap: _goToPrevMonth,
-                    child: const Icon(
+                    child: Icon(
                       Icons.chevron_left,
                       size: 28,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   GestureDetector(
@@ -94,50 +195,55 @@ class _CalendarViewState extends State<CalendarView> {
                     child: Column(
                       children: [
                         Text(
-                          _monthNameEn(_currentMonth.month),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                          _monthNameTr(_currentMonth.month),
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
                         Text(
                           _currentMonth.year.toString(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black54,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
                     ),
                   ),
                   GestureDetector(
                     onTap: _goToNextMonth,
-                    child: const Icon(
+                    child: Icon(
                       Icons.chevron_right,
                       size: 28,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                 ],
               ),
             ),
+            if (_loading)
+              const LinearProgressIndicator(minHeight: 2),
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.redAccent),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton(onPressed: _fetchAppointments, child: const Text('Tekrar dene')),
+                  ],
+                ),
+              ),
             
             // Weekday headers
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: const [
-                  _WeekdayLabel('Pzt'),
-                  _WeekdayLabel('Salı'),
-                  _WeekdayLabel('Çar'),
-                  _WeekdayLabel('Per'),
-                  _WeekdayLabel('Cum'),
-                  _WeekdayLabel('Cmt'),
-                  _WeekdayLabel('Paz'),
-                ],
+                children: _weekdaysShortTr.map((w) => _WeekdayLabel(w)).toList(),
               ),
             ),
             
@@ -158,19 +264,19 @@ class _CalendarViewState extends State<CalendarView> {
                     final isCurrentMonth = day.month == _currentMonth.month;
                     final isToday = _stripTime(day) == _stripTime(DateTime.now());
                     final isSelected = _stripTime(day) == _selectedDate;
-                    final events = mockEventsFor(day);
+                    final events = _eventsByDay[_stripTime(day)] ?? const <_CalendarEvent>[];
                     final hasEvents = events.isNotEmpty;
 
                     Color bg = isSelected
-                        ? const Color(0xFF4285F4)
+                        ? AppColors.primary
                         : Colors.transparent;
                     Color txt = isSelected
                         ? Colors.white
                         : isCurrentMonth
-                            ? Colors.black87
-                            : Colors.black38;
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.45);
                     Color border = isToday && !isSelected
-                        ? const Color(0xFF4285F4)
+                        ? AppColors.primary
                         : Colors.transparent;
 
                     return GestureDetector(
@@ -203,18 +309,31 @@ class _CalendarViewState extends State<CalendarView> {
                             if (hasEvents)
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(
-                                  events.length > 3 ? 3 : events.length,
-                                  (i) => Container(
-                                    width: 6,
-                                    height: 6,
-                                    margin: const EdgeInsets.symmetric(horizontal: 1),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF4285F4),
-                                      shape: BoxShape.circle,
+                                children: [
+                                  ...List.generate(
+                                    events.length > 3 ? 3 : events.length,
+                                    (i) => Container(
+                                      width: 6,
+                                      height: 6,
+                                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                                      decoration: BoxDecoration(
+                                        color: events[i].statusColor,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  if (events.length > 3) ...[
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '+${events.length - 3}',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isSelected ? Colors.white70 : Colors.black45,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               )
                             else
                               const SizedBox(height: 6),
@@ -230,7 +349,7 @@ class _CalendarViewState extends State<CalendarView> {
             // Bottom Events Section
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 border: Border(
                   top: BorderSide(
                     color: Colors.grey.withOpacity(0.2),
@@ -240,28 +359,14 @@ class _CalendarViewState extends State<CalendarView> {
               ),
               child: _InlineSelectedEvents(
                 date: _selectedDate,
-                events: mockEventsFor(_selectedDate),
-                onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, mockEventsFor(_selectedDate)),
+                events: _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[],
+                onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[]),
               ),
             ),
           ],
         ),
       ),
       
-      // Floating Action Button
-      floatingActionButton: Container(
-        width: 56,
-        height: 56,
-        decoration: const BoxDecoration(
-          color: Color(0xFF6366F1),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-          size: 24,
-        ),
-      ),
       
       
     );
@@ -312,14 +417,11 @@ class _CalendarViewState extends State<CalendarView> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.event, color: Color(0xFF4285F4)),
+                      const Icon(Icons.event, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
                         'Etkinlikler · $title', 
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
@@ -352,11 +454,11 @@ class _CalendarViewState extends State<CalendarView> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           leading: CircleAvatar(
                             radius: 18,
-                            backgroundColor: const Color(0xFF4285F4).withOpacity(0.15),
-                            child: const Icon(
+                            backgroundColor: ev.statusColor.withOpacity(0.15),
+                            child: Icon(
                               Icons.event_note, 
                               size: 18, 
-                              color: Color(0xFF4285F4),
+                              color: ev.statusColor,
                             ),
                           ),
                           title: Text(
@@ -366,17 +468,61 @@ class _CalendarViewState extends State<CalendarView> {
                               fontSize: 16,
                             ),
                           ),
-                          subtitle: Text(
-                            ev.timeRange,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black54,
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ev.compName,
+                                style: const TextStyle(fontSize: 13, color: Colors.black54),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                ev.timeRange,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              if (ev.description.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  ev.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13, color: Colors.black45),
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: ev.statusColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              ev.statusName,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: ev.statusColor,
+                              ),
                             ),
                           ),
-                          trailing: Icon(
-                            Icons.chevron_right, 
-                            color: Colors.black.withOpacity(0.35),
-                          ),
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => AppointmentDetailView(
+                                  title: ev.title,
+                                  companyName: ev.compName,
+                                  time: '${_CalendarViewState.formatDateTrPublic(date)} · ${ev.timeRange}',
+                                  statusName: ev.statusName,
+                                  statusColor: ev.statusColor,
+                                  description: ev.description,
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -389,10 +535,10 @@ class _CalendarViewState extends State<CalendarView> {
     );
   }
 
-  String _monthNameEn(int m) {
+  String _monthNameTr(int m) {
     const names = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
     ];
     return names[m - 1];
   }
@@ -402,66 +548,12 @@ class _CalendarViewState extends State<CalendarView> {
       'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
     ];
-    const weekdays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-    int weekdayFromMonday(int weekday) => weekday == DateTime.sunday ? 6 : weekday - 1;
-    return '${weekdays[weekdayFromMonday(d.weekday)]}, ${d.day} ${months[d.month - 1]}';
+    return '${_weekdaysShortTr[_weekdayFromMonday(d.weekday)]}, ${d.day} ${months[d.month - 1]}';
   }
 
-  List<_CalendarEvent> mockEventsFor(DateTime d) {
-    // Tasarımdaki örneklere göre events
-    if (d.day == 2) { // Seçili gün
-      return const [
-        _CalendarEvent('Design new UX flow for Michael', '10:00-13:00'),
-        _CalendarEvent('Brainstorm with the team', '14:00-15:00'),
-        _CalendarEvent('Workout with Ella', '19:00-20:00'),
-      ];
-    }
-    if (d.day == 3) {
-      return const [
-        _CalendarEvent('Meeting with client', '10:00-11:00'),
-        _CalendarEvent('Review project', '15:00-16:00'),
-      ];
-    }
-    if (d.day == 6) {
-      return const [
-        _CalendarEvent('Team standup', '09:00-09:30'),
-      ];
-    }
-    if (d.day == 9) {
-      return const [
-        _CalendarEvent('Project presentation', '14:00-15:30'),
-      ];
-    }
-    if (d.day == 10) {
-      return const [
-        _CalendarEvent('Code review', '11:00-12:00'),
-        _CalendarEvent('Planning session', '16:00-17:00'),
-      ];
-    }
-    if (d.day == 15) {
-      return const [
-        _CalendarEvent('Client call', '13:00-14:00'),
-      ];
-    }
-    if (d.day == 17) {
-      return const [
-        _CalendarEvent('Sprint planning', '10:00-11:30'),
-      ];
-    }
-    if (d.day == 23) {
-      return const [
-        _CalendarEvent('Design review', '15:00-16:00'),
-      ];
-    }
-    if (d.day == 29) {
-      return const [
-        _CalendarEvent('Monthly review', '09:00-10:00'),
-        _CalendarEvent('Team lunch', '12:00-13:00'),
-        _CalendarEvent('Project wrap-up', '15:00-16:30'),
-      ];
-    }
-    return const [];
-  }
+  // _InlineSelectedEvents içinde de kullanmak için public alias
+  static String formatDateTrPublic(DateTime d) => formatDateTr(d);
+
 }
 
 class _WeekdayLabel extends StatelessWidget {
@@ -489,7 +581,19 @@ class _WeekdayLabel extends StatelessWidget {
 class _CalendarEvent {
   final String title;
   final String timeRange;
-  const _CalendarEvent(this.title, this.timeRange);
+  final String compName;
+  final String statusName;
+  final Color statusColor;
+  final String description;
+
+  const _CalendarEvent({
+    required this.title,
+    required this.timeRange,
+    required this.compName,
+    required this.statusName,
+    required this.statusColor,
+    required this.description,
+  });
 }
 
 class _InlineSelectedEvents extends StatelessWidget {
@@ -504,124 +608,112 @@ class _InlineSelectedEvents extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: const Text(
+          'Bu gün için etkinlik yok',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.black54,
+          ),
+        ),
+      );
+    }
+
+    final double itemExtent = 58;
+    final double maxHeight = 200;
+    final double listHeight = math.min(maxHeight, events.length * itemExtent);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.circle,
-                color: Color(0xFF4285F4),
-                size: 8,
-              ),
-              const SizedBox(width: 8),
               Text(
-                '${events.isNotEmpty ? events.first.timeRange : '10:00-13:00'}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF4285F4),
-                  fontWeight: FontWeight.w600,
-                ),
+                '${events.length} randevu',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onOpenAll,
+                child: const Text('Tümünü gör'),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            events.isNotEmpty ? events.first.title : 'Design new UX flow for Michael',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+          SizedBox(
+            height: listHeight,
+            child: ListView.separated(
+              padding: const EdgeInsets.only(top: 4, bottom: 4, right: 4),
+              itemCount: events.length,
+              separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+              itemBuilder: (context, index) {
+                final ev = events[index];
+                return ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  leading: Icon(Icons.circle, size: 10, color: ev.statusColor),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          ev.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: ev.statusColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          ev.statusName,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ev.statusColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          ev.compName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        ev.timeRange,
+                        style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AppointmentDetailView(
+                          title: ev.title,
+                          companyName: ev.compName,
+                          time: '${_CalendarViewState.formatDateTrPublic(date)} · ${ev.timeRange}',
+                          statusName: ev.statusName,
+                          statusColor: ev.statusColor,
+                          description: ev.description,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Start from screen 16',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.black54,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          if (events.length > 1) ...[
-            Row(
-              children: [
-                const Icon(
-                  Icons.circle,
-                  color: Color(0xFF9C27B0),
-                  size: 8,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  events.length > 1 ? events[1].timeRange : '14:00-15:00',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF9C27B0),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              events.length > 1 ? events[1].title : 'Brainstorm with the team',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Define the problem or question that...',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          
-          if (events.length > 2) ...[
-            Row(
-              children: [
-                const Icon(
-                  Icons.circle,
-                  color: Color(0xFF4285F4),
-                  size: 8,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  events.length > 2 ? events[2].timeRange : '19:00-20:00',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF4285F4),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              events.length > 2 ? events[2].title : 'Workout with Ella',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'We will do the legs and back workout',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black54,
-              ),
-            ),
-          ],
         ],
       ),
     );
