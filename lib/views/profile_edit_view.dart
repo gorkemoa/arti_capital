@@ -22,7 +22,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   late final TextEditingController addressCtrl;
   late final TextEditingController phoneCtrl;
   String? _genderValue;
-  String? _profilePhotoDataUrl; // data:image/...;base64,xxxx
+  String? _profilePhotoDataUrl;
   Uint8List? _pickedImageBytes;
 
   final _formKey = GlobalKey<FormState>();
@@ -616,13 +616,14 @@ class _InputCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _InputField extends StatelessWidget {
   const _InputField({
     required this.controller,
     required this.label,
     required this.icon,
-    this.keyboardType,
-    this.validator,
+    required this.keyboardType,
+    required this.validator,
   });
   final TextEditingController controller;
   final String label;

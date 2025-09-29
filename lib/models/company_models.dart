@@ -9,6 +9,7 @@ class CompanyItem {
   final String? compType;
   final String compLogo; // data url veya http url
   final String createdate;
+  final String? compDesc;
   final String? compEmail;
   final String? compPhone;
   final String? compWebsite;
@@ -28,6 +29,7 @@ class CompanyItem {
     this.compType,
     required this.compLogo,
     required this.createdate,
+    this.compDesc,
     this.compEmail,
     this.compPhone,
     this.compWebsite,
@@ -81,6 +83,7 @@ class CompanyItem {
       compType: json['compType'] as String?,
       compLogo: json['compLogo'] as String? ?? '',
       createdate: json['createdate'] as String? ?? '',
+      compDesc: json['compDesc'] as String?,
       compEmail: json['compEmail'] as String?,
       compPhone: json['compPhone'] as String?,
       compWebsite: json['compWebsite'] as String?,

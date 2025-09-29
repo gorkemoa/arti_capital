@@ -27,7 +27,7 @@ class AddCompanyView extends StatefulWidget {
   State<AddCompanyView> createState() => _AddCompanyViewState();
 }
 
-enum FormStep { company, location, logo }
+enum FormStep { company, company2, location, logo }
 enum PickerSource { gallery, files }
 
 class _AddCompanyViewState extends State<AddCompanyView> {
@@ -69,6 +69,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   // Step-specific form keys
   // Kişisel step kaldırıldı
   final _companyFormKey = GlobalKey<FormBuilderState>();
+  final _companyFormKey2 = GlobalKey<FormBuilderState>();
   final _locationFormKey = GlobalKey<FormBuilderState>();
   final _logoFormKey = GlobalKey<FormBuilderState>();
   
@@ -445,6 +446,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     // Tüm step formlarını kaydet
     // Kişisel step yok
     _companyFormKey.currentState?.save();
+    _companyFormKey2.currentState?.save();
     _locationFormKey.currentState?.save();
     _logoFormKey.currentState?.save();
     
@@ -624,6 +626,9 @@ class _AddCompanyViewState extends State<AddCompanyView> {
     setState(() {
       switch (_currentStep) {
         case FormStep.company:
+          _currentStep = FormStep.company2;
+          break;
+        case FormStep.company2:
           _currentStep = FormStep.location;
           break;
         case FormStep.location:
@@ -643,8 +648,11 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         case FormStep.company:
           // First step, can't go back
           break;
-        case FormStep.location:
+        case FormStep.company2:
           _currentStep = FormStep.company;
+          break;
+        case FormStep.location:
+          _currentStep = FormStep.company2;
           break;
         case FormStep.logo:
           _currentStep = FormStep.location;
@@ -663,10 +671,22 @@ class _AddCompanyViewState extends State<AddCompanyView> {
               children: [
               _buildSectionTitle('Şirket Bilgileri'),
                     const SizedBox(height: 24),
-              _buildCompanyInfoFields(),
+              _buildCompanyInfoFieldsBasic(),
                   ],
                 ),
               );
+      case FormStep.company2:
+        return FormBuilder(
+          key: _companyFormKey2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSectionTitle('İletişim ve Diğer Bilgiler'),
+              const SizedBox(height: 24),
+              _buildCompanyInfoFieldsContact(),
+            ],
+          ),
+        );
       case FormStep.location:
         return FormBuilder(
           key: _locationFormKey,
@@ -699,6 +719,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
   Widget _buildStepIndicator() {
     final steps = [
       ('Şirket', FormStep.company, Icons.business_outlined),
+      ('İletişim', FormStep.company2, Icons.contact_phone_outlined),
       ('Konum', FormStep.location, Icons.location_on_outlined),
       ('Logo', FormStep.logo, Icons.image_outlined),
     ];
@@ -718,7 +739,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
               children: [
                 // Step indicator
         Container(
-                  width: 28,
+                  width: 30,
                   height: 30,
           decoration: BoxDecoration(
                     color: isActive 
@@ -737,7 +758,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
                 // Connector line (except for last item)
                 if (index < steps.length - 1)
                   Container(
-                    width: 100,
+                    width: 60,
                     height: 3,
                     color: isCompleted ? Colors.green : Colors.grey[300],
                     margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -869,6 +890,18 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 16),
+        _buildNaceDropdown(Theme.of(context)),
+      ],
+    );
+  }
+
+  Widget _buildCompanyInfoFieldsBasic() {
+    return _buildCompanyInfoFields();
+  }
+
+  Widget _buildCompanyInfoFieldsContact() {
+    return Column(
+      children: [
         _buildTextField(
           name: 'compEmail',
           label: 'E-Posta',
@@ -888,15 +921,12 @@ class _AddCompanyViewState extends State<AddCompanyView> {
           keyboardType: TextInputType.url,
         ),
         const SizedBox(height: 16),
-        // Vergi dairesi artık dropdown olarak konum bölümünde
         _buildTextField(
           name: 'compMersisNo',
           label: 'MERSİS No',
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
-        const SizedBox(height: 16),
-        _buildNaceDropdown(Theme.of(context)),
         const SizedBox(height: 16),
         _buildTextField(
           name: 'compKepAddress',

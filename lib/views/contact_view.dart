@@ -327,6 +327,7 @@ class _InputField extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _RequestTypeField extends StatelessWidget {
   const _RequestTypeField({required this.items, required this.value, required this.onChanged});
   final List<ContactSubjectItem> items;
