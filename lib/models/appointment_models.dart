@@ -91,3 +91,39 @@ class GetAppointmentsResponse {
 }
 
 
+
+
+class AddAppointmentResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final int? appointmentID;
+  final int? statusCode;
+  final String? errorMessage;
+
+  AddAppointmentResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.appointmentID,
+    this.statusCode,
+    this.errorMessage,
+  });
+
+  factory AddAppointmentResponse.fromJson(Map<String, dynamic> json, [int? statusCode]) {
+    final data = json['data'] as Map<String, dynamic>?;
+    int? id;
+    if (data != null) {
+      final v = data['appointmentID'];
+      if (v is int) id = v; else if (v is String) id = int.tryParse(v);
+    }
+    return AddAppointmentResponse(
+      error: (json['error'] ?? false) as bool,
+      success: (json['success'] ?? false) as bool,
+      message: (json['message'] ?? '').toString(),
+      appointmentID: id,
+      statusCode: statusCode,
+      errorMessage: null,
+    );
+  }
+}

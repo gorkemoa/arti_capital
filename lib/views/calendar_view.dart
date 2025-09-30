@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../services/appointments_service.dart';
+// removed: company imports no longer needed after moving to separate page
 import '../models/appointment_models.dart';
 import 'appointment_detail_view.dart';
-import '../theme/app_colors.dart';
 
 class CalendarView extends StatefulWidget {
   const CalendarView({super.key});
@@ -24,8 +24,9 @@ class _CalendarViewState extends State<CalendarView> {
   static DateTime _stripTime(DateTime date) => DateTime(date.year, date.month, date.day);
   static DateTime _firstDayOfMonth(DateTime date) => DateTime(date.year, date.month, 1);
   static DateTime _lastDayOfMonth(DateTime date) => DateTime(date.year, date.month + 1, 0);
-  // Pazartesi=0 ... Pazar=6
+  // Pazartesi=0 ... Pazar=6 döndür
   static int _weekdayFromMonday(int weekday) => weekday == DateTime.sunday ? 6 : weekday - 1;
+  // no-op helpers removed
 
   @override
   void initState() {
@@ -147,8 +148,8 @@ class _CalendarViewState extends State<CalendarView> {
     final first = _firstDayOfMonth(month);
     final last = _lastDayOfMonth(month);
 
-    // Takvim haftası Pazartesi ile başlasın (0..6)
-    final leading = _weekdayFromMonday(first.weekday);
+    // Takvim haftası Pazartesi ile başlasın
+    final leading = _weekdayFromMonday(first.weekday) - 1; // 0..6
     for (int i = leading; i > 0; i--) {
       days.add(first.subtract(Duration(days: i)));
     }
@@ -172,22 +173,27 @@ class _CalendarViewState extends State<CalendarView> {
     final days = _buildCalendarDays(_currentMonth);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Padding(
+            // Üst yarı: Başlık + hafta başlıkları + takvim ızgarası
+            Expanded(
+              flex: 3,
+              child: Column(
+                children: [
+                  // Header
+                  Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
                     onTap: _goToPrevMonth,
-                    child: Icon(
+                    child: const Icon(
                       Icons.chevron_left,
                       size: 28,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: Colors.black87,
                     ),
                   ),
                   GestureDetector(
@@ -196,47 +202,55 @@ class _CalendarViewState extends State<CalendarView> {
                       children: [
                         Text(
                           _monthNameTr(_currentMonth.month),
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
                         ),
                         Text(
                           _currentMonth.year.toString(),
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   GestureDetector(
                     onTap: _goToNextMonth,
-                    child: Icon(
+                    child: const Icon(
                       Icons.chevron_right,
                       size: 28,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: Colors.black87,
                     ),
                   ),
                 ],
               ),
             ),
-            if (_loading)
-              const LinearProgressIndicator(minHeight: 2),
-            if (_errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.redAccent),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                  if (_loading)
+                    const LinearProgressIndicator(minHeight: 2),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: Colors.redAccent),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          TextButton(onPressed: _fetchAppointments, child: const Text('Tekrar dene')),
+                        ],
                       ),
                     ),
-                    TextButton(onPressed: _fetchAppointments, child: const Text('Tekrar dene')),
-                  ],
-                ),
-              ),
             
             // Weekday headers
             Padding(
@@ -247,11 +261,11 @@ class _CalendarViewState extends State<CalendarView> {
               ),
             ),
             
-            // Calendar Grid
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.builder(
+                  // Calendar Grid
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: GridView.builder(
                   itemCount: days.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 7,
@@ -268,15 +282,15 @@ class _CalendarViewState extends State<CalendarView> {
                     final hasEvents = events.isNotEmpty;
 
                     Color bg = isSelected
-                        ? AppColors.primary
+                        ? const Color(0xFF4285F4)
                         : Colors.transparent;
                     Color txt = isSelected
                         ? Colors.white
                         : isCurrentMonth
-                            ? Theme.of(context).colorScheme.onSurface
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.45);
+                            ? Colors.black87
+                            : Colors.black38;
                     Color border = isToday && !isSelected
-                        ? AppColors.primary
+                        ? const Color(0xFF4285F4)
                         : Colors.transparent;
 
                     return GestureDetector(
@@ -342,14 +356,19 @@ class _CalendarViewState extends State<CalendarView> {
                       ),
                     );
                   },
-                ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             
-            // Bottom Events Section
-            Container(
+            // Alt yarı: Randevular
+            Expanded(
+              flex: 2,
+              child: Container(
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: Colors.white,
                 border: Border(
                   top: BorderSide(
                     color: Colors.grey.withOpacity(0.2),
@@ -357,18 +376,28 @@ class _CalendarViewState extends State<CalendarView> {
                   ),
                 ),
               ),
-              child: _InlineSelectedEvents(
+                child: _InlineSelectedEvents(
                 date: _selectedDate,
                 events: _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[],
                 onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[]),
+                showSeeAll: false,
+                fillAvailable: true,
               ),
+            ),
             ),
           ],
         ),
       ),
-      
-      
-      
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final created = await Navigator.of(context).pushNamed('/new-appointment');
+          if (created == true) {
+            await _fetchAppointments();
+          }
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Yeni Randevu'),
+      ),
     );
   }
 
@@ -417,11 +446,14 @@ class _CalendarViewState extends State<CalendarView> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.event, color: AppColors.primary),
+                      const Icon(Icons.event, color: Color(0xFF4285F4)),
                       const SizedBox(width: 8),
                       Text(
                         'Etkinlikler · $title', 
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -535,6 +567,8 @@ class _CalendarViewState extends State<CalendarView> {
     );
   }
 
+  // eski diyalog kaldırıldı; FAB doğrudan yeni sayfaya gidiyor
+
   String _monthNameTr(int m) {
     const names = [
       'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -548,7 +582,8 @@ class _CalendarViewState extends State<CalendarView> {
       'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
     ];
-    return '${_weekdaysShortTr[_weekdayFromMonday(d.weekday)]}, ${d.day} ${months[d.month - 1]}';
+    final int idx = _weekdayFromMonday(d.weekday); // 0..6
+    return '${_weekdaysShortTr[idx]}, ${d.day} ${months[d.month - 1]}';
   }
 
   // _InlineSelectedEvents içinde de kullanmak için public alias
@@ -601,10 +636,14 @@ class _InlineSelectedEvents extends StatelessWidget {
     required this.date, 
     required this.events, 
     required this.onOpenAll,
+    this.showSeeAll = true,
+    this.fillAvailable = false,
   });
   final DateTime date;
   final List<_CalendarEvent> events;
   final VoidCallback onOpenAll;
+  final bool showSeeAll;
+  final bool fillAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -637,15 +676,88 @@ class _InlineSelectedEvents extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               const Spacer(),
-              TextButton(
-                onPressed: onOpenAll,
-                child: const Text('Tümünü gör'),
-              ),
+              if (showSeeAll)
+                TextButton(
+                  onPressed: onOpenAll,
+                  child: const Text('Tümünü gör'),
+                ),
             ],
           ),
-          SizedBox(
-            height: listHeight,
-            child: ListView.separated(
+          if (fillAvailable)
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.only(top: 4, bottom: 4, right: 4),
+                itemCount: events.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+                itemBuilder: (context, index) {
+                  final ev = events[index];
+                  return ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    leading: Icon(Icons.circle, size: 10, color: ev.statusColor),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            ev.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: ev.statusColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            ev.statusName,
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ev.statusColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            ev.compName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          ev.timeRange,
+                          style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AppointmentDetailView(
+                            title: ev.title,
+                            companyName: ev.compName,
+                            time: '${_CalendarViewState.formatDateTrPublic(date)} · ${ev.timeRange}',
+                            statusName: ev.statusName,
+                            statusColor: ev.statusColor,
+                            description: ev.description,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            )
+          else
+            SizedBox(
+              height: listHeight,
+              child: ListView.separated(
               padding: const EdgeInsets.only(top: 4, bottom: 4, right: 4),
               itemCount: events.length,
               separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
@@ -712,8 +824,8 @@ class _InlineSelectedEvents extends StatelessWidget {
                   },
                 );
               },
+              ),
             ),
-          ),
         ],
       ),
     );

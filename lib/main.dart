@@ -34,6 +34,8 @@ import 'models/user_model.dart';
 import 'services/user_service.dart';
 import 'services/app_group_service.dart';
 import 'views/nace_search_view.dart';
+import 'views/new_appointment_view.dart';
+import 'views/select_company_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -112,6 +114,8 @@ class MyApp extends StatelessWidget {
           '/notifications': (context) => const NotificationsView(),
           '/companies': (context) => const CompaniesView(),
           '/nace-search': (context) => const NaceSearchView(),
+          '/new-appointment': (context) => const NewAppointmentView(),
+          '/select-company': (context) => const SelectCompanyView(),
         },
         debugShowCheckedModeBanner: false,
       ),
