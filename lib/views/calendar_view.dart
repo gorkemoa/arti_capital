@@ -1,3 +1,5 @@
+import 'package:arti_capital/theme/app_colors.dart';
+import 'package:arti_capital/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../services/appointments_service.dart';
@@ -17,6 +19,7 @@ class _CalendarViewState extends State<CalendarView> {
   DateTime _selectedDate = _stripTime(DateTime.now());
   bool _loading = true;
   String? _errorMessage;
+  bool _isListView = false; // false = calendar view, true = list view
   final AppointmentsService _appointmentsService = AppointmentsService();
   final Map<DateTime, List<_CalendarEvent>> _eventsByDay = <DateTime, List<_CalendarEvent>>{};
   static const List<String> _weekdaysShortTr = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -171,6 +174,290 @@ class _CalendarViewState extends State<CalendarView> {
     return days;
   }
 
+  Widget _buildCalendarGrid(List<DateTime> days) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: GridView.builder(
+        itemCount: days.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 7,
+          mainAxisSpacing: 6,
+          crossAxisSpacing: 6,
+          childAspectRatio: 1.0,
+        ),
+        itemBuilder: (context, index) {
+          final day = days[index];
+          final isCurrentMonth = day.month == _currentMonth.month;
+          final isToday = _stripTime(day) == _stripTime(DateTime.now());
+          final isSelected = _stripTime(day) == _selectedDate;
+          final events = _eventsByDay[_stripTime(day)] ?? const <_CalendarEvent>[];
+          final hasEvents = events.isNotEmpty;
+
+          Color bg = isSelected
+              ? AppColors.primary
+              : Colors.transparent;
+          Color txt = isSelected
+              ? Colors.white
+              : isCurrentMonth
+                  ? Colors.black87
+                  : Colors.black38;
+          Color border = isToday && !isSelected
+              ? AppColors.primary
+              : Colors.transparent;
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedDate = _stripTime(day);
+                _currentMonth = _firstDayOfMonth(day);
+              });
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(8),
+                border: border != Colors.transparent 
+                    ? Border.all(color: border, width: 1) 
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                              '${day.day}',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: txt,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                  const SizedBox(height: 4),
+                  if (hasEvents)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ...List.generate(
+                          events.length > 3 ? 3 : events.length,
+                          (i) => Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            decoration: BoxDecoration(
+                              color: events[i].statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        if (events.length > 3) ...[
+                          const SizedBox(width: 2),
+                          Text(
+                                      '+${events.length - 3}',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        fontSize: 10,
+                                        color: isSelected ? Colors.white70 : Colors.black45,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                        ],
+                      ],
+                    )
+                  else
+                    const SizedBox(height: 6),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildListView() {
+    // Get all appointments sorted by date
+    final List<MapEntry<DateTime, _CalendarEvent>> allAppointments = [];
+    
+    for (final entry in _eventsByDay.entries) {
+      for (final event in entry.value) {
+        allAppointments.add(MapEntry(entry.key, event));
+      }
+    }
+    
+    // Sort by date
+    allAppointments.sort((a, b) => a.key.compareTo(b.key));
+    
+    if (allAppointments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_note, size: 48, color: Colors.grey),
+            SizedBox(height: 12),
+            Text(
+              'Henüz randevu yok',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(8),
+      itemCount: allAppointments.length,
+      separatorBuilder: (context, index) {
+        final current = allAppointments[index].key;
+        final next = index < allAppointments.length - 1 ? allAppointments[index + 1].key : null;
+        
+        // Add date separator if next appointment is on different day
+        if (next != null && !_isSameDay(current, next)) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                const Expanded(child: Divider()),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    formatDateTr(next),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const Expanded(child: Divider()),
+              ],
+            ),
+          );
+        }
+        return const SizedBox(height: 6);
+      },
+      itemBuilder: (context, index) {
+        final entry = allAppointments[index];
+        final date = entry.key;
+        final event = entry.value;
+        
+        // Show date header for first item or when date changes
+        final showDateHeader = index == 0 || 
+            (index > 0 && !_isSameDay(allAppointments[index - 1].key, date));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showDateHeader)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  formatDateTr(date),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(8),
+                leading: Container(
+                  width: 4,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: event.statusColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                title: Text(
+                  event.title,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 2),
+                    Text(
+                      event.compName,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      event.timeRange,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                                        if (event.description.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        event.description,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black45,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: event.statusColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    event.statusName,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: event.statusColor,
+                    ),
+                  ),
+                ),
+                onTap: () async {
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AppointmentDetailView(
+                        title: event.title,
+                        companyName: event.compName,
+                        time: '${formatDateTr(date)} · ${event.timeRange}',
+                        statusName: event.statusName,
+                        statusColor: event.statusColor,
+                        description: event.description,
+                        appointmentID: event.appointmentID,
+                        compID: event.compID,
+                        appointmentDateRaw: event.appointmentDateRaw,
+                      ),
+                    ),
+                  );
+                  if (result == true) {
+                    await _fetchAppointments();
+                  }
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   @override
   Widget build(BuildContext context) {
     final days = _buildCalendarDays(_currentMonth);
@@ -180,215 +467,141 @@ class _CalendarViewState extends State<CalendarView> {
       body: SafeArea(
         child: Column(
           children: [
-            // Üst yarı: Başlık + hafta başlıkları + takvim ızgarası
-            Expanded(
-              flex: 3,
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 10, 15, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
-                    onTap: _goToPrevMonth,
-                    child: const Icon(
+                    onTap: _isListView ? null : _goToPrevMonth,
+                    child: Icon(
                       Icons.chevron_left,
-                      size: 28,
-                      color: Colors.black87,
+                      size: 25,
+                      color:  Colors.black87,
                     ),
                   ),
                   GestureDetector(
-                    onTap: _openMonthPicker,
+                    onTap: _isListView ? null : _openMonthPicker,
                     child: Column(
                       children: [
                         Text(
-                          _monthNameTr(_currentMonth.month),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                          _isListView ? 'Randevular' : _monthNameTr(_currentMonth.month),
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        Text(
-                          _currentMonth.year.toString(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.black54,
+                        if (!_isListView)
+                          Text(
+                            _currentMonth.year.toString(),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.black54,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: _goToNextMonth,
-                    child: const Icon(
-                      Icons.chevron_right,
-                      size: 28,
-                      color: Colors.black87,
-                    ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _isListView = !_isListView;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _isListView ? Icons.calendar_month : Icons.view_list,
+                            size: 20,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: _isListView ? null : _goToNextMonth,
+                        child: Icon(
+                          Icons.chevron_right,
+                          size: 25,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-                  if (_loading)
-                    const LinearProgressIndicator(minHeight: 2),
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: const TextStyle(color: Colors.redAccent),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          TextButton(onPressed: _fetchAppointments, child: const Text('Tekrar dene')),
-                        ],
+            if (_loading)
+              const LinearProgressIndicator(minHeight: 2),
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.redAccent),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-            
-            // Weekday headers
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: _weekdaysShortTr.map((w) => _WeekdayLabel(w)).toList(),
+                    TextButton(onPressed: _fetchAppointments, child: const Text('Tekrar dene')),
+                  ],
+                ),
               ),
-            ),
             
+            // Content area - switches between calendar and list view
+            Expanded(
+              child: _isListView ? _buildListView() : Column(
+                children: [
+                  // Weekday headers (only in calendar mode)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: _weekdaysShortTr.map((w) => _WeekdayLabel(w)).toList(),
+                    ),
+                  ),
+                  
                   // Calendar Grid
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GridView.builder(
-                  itemCount: days.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemBuilder: (context, index) {
-                    final day = days[index];
-                    final isCurrentMonth = day.month == _currentMonth.month;
-                    final isToday = _stripTime(day) == _stripTime(DateTime.now());
-                    final isSelected = _stripTime(day) == _selectedDate;
-                    final events = _eventsByDay[_stripTime(day)] ?? const <_CalendarEvent>[];
-                    final hasEvents = events.isNotEmpty;
-
-                    Color bg = isSelected
-                        ? const Color(0xFF4285F4)
-                        : Colors.transparent;
-                    Color txt = isSelected
-                        ? Colors.white
-                        : isCurrentMonth
-                            ? Colors.black87
-                            : Colors.black38;
-                    Color border = isToday && !isSelected
-                        ? const Color(0xFF4285F4)
-                        : Colors.transparent;
-
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedDate = _stripTime(day);
-                          _currentMonth = _firstDayOfMonth(day);
-                        });
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: bg,
-                          borderRadius: BorderRadius.circular(8),
-                          border: border != Colors.transparent 
-                              ? Border.all(color: border, width: 1) 
-                              : null,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '${day.day}',
-                              style: TextStyle(
-                                color: txt,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (hasEvents)
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ...List.generate(
-                                    events.length > 3 ? 3 : events.length,
-                                    (i) => Container(
-                                      width: 6,
-                                      height: 6,
-                                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                                      decoration: BoxDecoration(
-                                        color: events[i].statusColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                                  if (events.length > 3) ...[
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      '+${events.length - 3}',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: isSelected ? Colors.white70 : Colors.black45,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              )
-                            else
-                              const SizedBox(height: 6),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                      ),
-                    ),
+                    flex: 2,
+                    child: _buildCalendarGrid(days),
                   ),
                 ],
               ),
             ),
             
-            // Alt yarı: Randevular
-            Expanded(
-              flex: 2,
-              child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  top: BorderSide(
-                    color: Colors.grey.withOpacity(0.2),
-                    width: 1,
+            // Selected events (only in calendar mode)
+            if (!_isListView)
+              Expanded(
+                flex: 1,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.grey.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: _InlineSelectedEvents(
+                    date: _selectedDate,
+                    events: _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[],
+                    onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[]),
+                    onRefresh: _fetchAppointments,
+                    showSeeAll: false,
+                    fillAvailable: true,
                   ),
                 ),
               ),
-                child: _InlineSelectedEvents(
-                date: _selectedDate,
-                events: _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[],
-                onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[]),
-                onRefresh: _fetchAppointments,
-                showSeeAll: false,
-                fillAvailable: true,
-              ),
-            ),
-            ),
           ],
         ),
       ),
@@ -450,27 +663,23 @@ class _CalendarViewState extends State<CalendarView> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.event, color: Color(0xFF4285F4)),
-                      const SizedBox(width: 8),
+                      Icon(Icons.event, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 6),
                       Text(
                         'Etkinlikler · $title', 
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 4),
                 if (events.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 8, 16, 20),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
                     child: Text(
                       'Bu gün için etkinlik yok',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Colors.black54,
-                        fontSize: 16,
                       ),
                     ),
                   )
@@ -487,21 +696,20 @@ class _CalendarViewState extends State<CalendarView> {
                       itemBuilder: (context, index) {
                         final ev = events[index];
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           leading: CircleAvatar(
-                            radius: 18,
+                            radius: 16,
                             backgroundColor: ev.statusColor.withOpacity(0.15),
                             child: Icon(
                               Icons.event_note, 
-                              size: 18, 
+                              size: 16, 
                               color: ev.statusColor,
                             ),
                           ),
                           title: Text(
                             ev.title, 
-                            style: const TextStyle(
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.w600,
-                              fontSize: 16,
                             ),
                           ),
                           subtitle: Column(
@@ -531,16 +739,15 @@ class _CalendarViewState extends State<CalendarView> {
                             ],
                           ),
                           trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: ev.statusColor.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               ev.statusName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                fontSize: 11,
                                 color: ev.statusColor,
                               ),
                             ),
@@ -608,13 +815,11 @@ class _WeekdayLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 36,
+      width: 32,
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: Colors.black54,
           ),
         ),
@@ -683,7 +888,7 @@ class _InlineSelectedEvents extends StatelessWidget {
     final double listHeight = math.min(maxHeight, events.length * itemExtent);
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -691,7 +896,7 @@ class _InlineSelectedEvents extends StatelessWidget {
             children: [
               Text(
                 '${events.length} randevu',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.titleSmall,
               ),
               const Spacer(),
               if (showSeeAll)
@@ -711,8 +916,8 @@ class _InlineSelectedEvents extends StatelessWidget {
                   final ev = events[index];
                   return ListTile(
                     dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    leading: Icon(Icons.circle, size: 10, color: ev.statusColor),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    leading: Icon(Icons.circle, size: 8, color: ev.statusColor),
                     title: Row(
                       children: [
                         Expanded(
@@ -720,19 +925,24 @@ class _InlineSelectedEvents extends StatelessWidget {
                             ev.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: ev.statusColor.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             ev.statusName,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ev.statusColor),
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              fontSize: 10,
+                              color: ev.statusColor,
+                            ),
                           ),
                         ),
                       ],
@@ -744,13 +954,15 @@ class _InlineSelectedEvents extends StatelessWidget {
                             ev.compName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Text(
                           ev.timeRange,
-                          style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
