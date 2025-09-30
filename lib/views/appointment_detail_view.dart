@@ -2,6 +2,7 @@ import 'package:arti_capital/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'edit_appointment_view.dart';
+import '../services/appointments_service.dart';
 
 class AppointmentDetailView extends StatelessWidget {
   const AppointmentDetailView({
@@ -92,6 +93,12 @@ class AppointmentDetailView extends StatelessWidget {
                 }
               },
               icon: const Icon(Icons.edit_outlined),
+            ),
+          if (appointmentID != null)
+            IconButton(
+              tooltip: 'Sil',
+              onPressed: () => _deleteAppointment(context),
+              icon: const Icon(Icons.delete_outline),
             ),
         ],
       ),
@@ -198,6 +205,76 @@ class AppointmentDetailView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _deleteAppointment(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Randevuyu Sil'),
+        content: const Text('Bu randevuyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final service = AppointmentsService();
+      final response = await service.deleteAppointment(appointmentID: appointmentID!);
+
+      if (!context.mounted) return;
+
+      if (response.success && !response.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.message.isNotEmpty ? response.message : 'Randevu başarıyla silindi')),
+        );
+        Navigator.of(context).pop(true); // Return true to indicate deletion
+      } else {
+        // Handle 417 status code and error_message specifically
+        String errorMsg = 'Randevu silinirken hata oluştu';
+        if (response.statusCode == 417) {
+          // For 417 errors, prioritize message field, then errorMessage
+          errorMsg = response.message.isNotEmpty 
+              ? response.message 
+              : (response.errorMessage?.isNotEmpty == true 
+                  ? response.errorMessage! 
+                  : 'İşlem başarısız oldu (417)');
+        } else if (response.errorMessage?.isNotEmpty == true) {
+          errorMsg = response.errorMessage!;
+        } else if (response.message.isNotEmpty) {
+          errorMsg = response.message;
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Beklenmeyen hata: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 

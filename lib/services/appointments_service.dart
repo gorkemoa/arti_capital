@@ -160,6 +160,55 @@ class AppointmentsService {
       );
     }
   }
+
+  Future<DeleteAppointmentResponse> deleteAppointment({
+    required int appointmentID,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return DeleteAppointmentResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+          errorMessage: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.deleteAppointment;
+      AppLogger.i('DELETE $endpoint', tag: 'DELETE_APPOINTMENT');
+
+      final body = {
+        'userToken': token,
+        'appointmentID': appointmentID,
+      };
+
+      final Response resp = await ApiClient.deleteJson(
+        endpoint,
+        data: body,
+      );
+
+      final map = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DELETE_APPOINTMENT');
+      AppLogger.i(map.toString(), tag: 'DELETE_APPOINTMENT_RES');
+
+      return DeleteAppointmentResponse.fromJson(map, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Delete appointment error ${e.statusCode} ${e.message}', tag: 'DELETE_APPOINTMENT');
+      final map = (e.data is Map<String, dynamic>) ? e.data as Map<String, dynamic> : null;
+      if (map != null) {
+        return DeleteAppointmentResponse.fromJson(map, e.statusCode);
+      }
+      // For 417 errors, use the exception message directly as it contains the API's error message
+      return DeleteAppointmentResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Beklenmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.statusCode == 417 ? e.message : null,
+      );
+    }
+  }
 }
 
 

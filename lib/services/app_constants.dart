@@ -14,6 +14,7 @@ class AppConstants {
   static const String getAppointments = '/service/user/account/appointments';
   static const String addAppointment = '/service/user/account/appointment/add';
   static const String updateAppointment = '/service/user/account/appointment/update';
+  static const String deleteAppointment = '/service/user/account/appointment/delete';
   static const String sendContactMessage = '/service/general/contact/sendMessage';
   static const String getContactSubjects = '/service/general/contact/subjects';
   static const String allReadNotifications = '/service/user/account/notification/allRead';
@@ -73,6 +74,7 @@ class AppConstants {
   static String get getAppointmentsUrl => baseUrl + getAppointments;
   static String get addAppointmentUrl => baseUrl + addAppointment;
   static String get updateAppointmentUrl => baseUrl + updateAppointment;
+  static String get deleteAppointmentUrl => baseUrl + deleteAppointment;
 }
 
 

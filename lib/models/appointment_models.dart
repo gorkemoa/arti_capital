@@ -127,3 +127,29 @@ class AddAppointmentResponse {
     );
   }
 }
+
+class DeleteAppointmentResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final int? statusCode;
+  final String? errorMessage;
+
+  DeleteAppointmentResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.statusCode,
+    this.errorMessage,
+  });
+
+  factory DeleteAppointmentResponse.fromJson(Map<String, dynamic> json, [int? statusCode]) {
+    return DeleteAppointmentResponse(
+      error: (json['error'] ?? false) as bool,
+      success: (json['success'] ?? false) as bool,
+      message: (json['message'] ?? '').toString(),
+      statusCode: statusCode,
+      errorMessage: json['error_message']?.toString(),
+    );
+  }
+}
