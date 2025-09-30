@@ -149,7 +149,6 @@ class _EditCompanyViewState extends State<EditCompanyView> {
   }
 
   Future<void> _submitForm() async {
-    // Form validatorleri kaldırıldı; doğrulama API tarafından yapılacak
     if (_selectedCity == null || _selectedDistrict == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şehir/ilçe seçiniz')));
       return;
@@ -564,15 +563,13 @@ class _EditCompanyViewState extends State<EditCompanyView> {
   Widget _styledTextField({
     required TextEditingController controller,
     required String label,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
+      TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     int maxLines = 1,
   }) {
     return TextFormField(
       controller: controller,
       decoration: _styledDecoration(label),
-      validator: validator,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       maxLines: maxLines,

@@ -32,29 +32,121 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
   }
 
   Future<void> _pickDateTime() async {
-    final pickedDate = await showDatePicker(
+    // First pick date
+    DateTime tempDate = _selectedDateTime;
+    await showCupertinoModalPopup<void>(
       context: context,
-      initialDate: _selectedDateTime,
-      firstDate: DateTime.now().subtract(const Duration(days: 0)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-      helpText: 'Tarih seç',
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Tarih Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Devam'),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _pickTime(tempDate);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: _selectedDateTime,
+                  minimumDate: DateTime.now().subtract(const Duration(days: 0)),
+                  maximumDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                  onDateTimeChanged: (d) { tempDate = d; },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
-    if (pickedDate == null) return;
-    final pickedTime = await showTimePicker(
+  }
+
+  Future<void> _pickTime(DateTime selectedDate) async {
+    // Then pick time
+    DateTime tempDateTime = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      _selectedDateTime.hour,
+      _selectedDateTime.minute,
+    );
+    
+    await showCupertinoModalPopup<void>(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
-      helpText: 'Saat seç',
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Geri'),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _pickDateTime(); // Go back to date picker
+                      },
+                    ),
+                    Text('Saat Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedDateTime = tempDateTime;
+                        });
+                        Navigator.of(ctx).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  initialDateTime: tempDateTime,
+                  onDateTimeChanged: (d) {
+                    tempDateTime = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      d.hour,
+                      d.minute,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
-    if (pickedTime == null) return;
-    setState(() {
-      _selectedDateTime = DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        pickedTime.hour,
-        pickedTime.minute,
-      );
-    });
   }
 
   // Cupertino selector bu sayfada kullanılmıyor
@@ -190,7 +282,6 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                         fillColor: AppColors.surface,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Başlık zorunludur' : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(

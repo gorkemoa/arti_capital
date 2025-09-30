@@ -312,7 +312,6 @@ class _InputField extends StatelessWidget {
       maxLines: 1,
       minLines: 1,
       style: theme.textTheme.bodyMedium,
-      validator: (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),

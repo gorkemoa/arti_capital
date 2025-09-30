@@ -623,13 +623,11 @@ class _InputField extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.keyboardType,
-    required this.validator,
   });
   final TextEditingController controller;
   final String label;
   final IconData icon;
   final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -637,7 +635,6 @@ class _InputField extends StatelessWidget {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        validator: validator,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),

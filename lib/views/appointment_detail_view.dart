@@ -72,34 +72,9 @@ class AppointmentDetailView extends StatelessWidget {
           'Randevu Detayı',
           style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.onPrimary, fontSize: 15),
         ),
+        centerTitle: true,
         actions: [
-          if (appointmentID != null && compID != null)
-            IconButton(
-              tooltip: 'Düzenle',
-              onPressed: () async {
-                final changed = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => EditAppointmentView(
-                      appointmentID: appointmentID!,
-                      compID: compID!,
-                      initialTitle: title,
-                      initialDesc: description,
-                      initialDateTimeStr: appointmentDateRaw ?? '',
-                    ),
-                  ),
-                );
-                if (changed == true && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Randevu güncellendi')));
-                }
-              },
-              icon: const Icon(Icons.edit_outlined),
-            ),
-          if (appointmentID != null)
-            IconButton(
-              tooltip: 'Sil',
-              onPressed: () => _deleteAppointment(context),
-              icon: const Icon(Icons.delete_outline),
-            ),
+          // Removed edit and delete buttons from AppBar
         ],
       ),
       body: SafeArea(
@@ -200,11 +175,74 @@ class AppointmentDetailView extends StatelessWidget {
                   ),
                 ),
               ),
+              
+              // Edit and Delete buttons
+              if (appointmentID != null && (compID != null || appointmentID != null))
+                const SizedBox(height: 16),
+              if (appointmentID != null && (compID != null || appointmentID != null))
+                Row(
+                  children: [
+                    // Edit button (left)
+                    if (appointmentID != null && compID != null)
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _editAppointment(context),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Güncelle'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    
+                    // Spacing between buttons
+                    if (appointmentID != null && compID != null && appointmentID != null)
+                      const SizedBox(width: 12),
+                    
+                    // Delete button (right)
+                    if (appointmentID != null)
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _deleteAppointment(context),
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('Sil'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _editAppointment(BuildContext context) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditAppointmentView(
+          appointmentID: appointmentID!,
+          compID: compID!,
+          initialTitle: title,
+          initialDesc: description,
+          initialDateTimeStr: appointmentDateRaw ?? '',
+        ),
+      ),
+    );
+    if (changed == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Randevu güncellendi')),
+      );
+    }
   }
 
   Future<void> _deleteAppointment(BuildContext context) async {

@@ -314,7 +314,6 @@ class _EditCompanyAddressViewState extends State<EditCompanyAddressView> {
               controller: _addressCtrl,
               maxLines: 3,
               decoration: const InputDecoration(labelText: 'Adres'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Adres yazınız' : null,
             ),
             const SizedBox(height: 20),
             SizedBox(

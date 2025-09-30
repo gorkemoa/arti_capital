@@ -119,7 +119,6 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                                   icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
                                 ),
                               ),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
@@ -142,7 +141,6 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                                   icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
                                 ),
                               ),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Zorunlu alan' : null,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(
@@ -165,11 +163,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                                   icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
                                 ),
                               ),
-                              validator: (v) {
-                                if (v == null || v.isEmpty) return 'Zorunlu alan';
-                                if (v != _newCtrl.text) return 'Şifreler eşleşmiyor';
-                                return null;
-                              },
+                             
                             ),
                             const SizedBox(height: 20),
                             SizedBox(
