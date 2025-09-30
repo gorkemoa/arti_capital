@@ -383,6 +383,7 @@ class _CalendarViewState extends State<CalendarView> {
                 date: _selectedDate,
                 events: _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[],
                 onOpenAll: () => _openEventsBottomSheet(context, _selectedDate, _eventsByDay[_selectedDate] ?? const <_CalendarEvent>[]),
+                onRefresh: _fetchAppointments,
                 showSeeAll: false,
                 fillAvailable: true,
               ),
@@ -544,8 +545,8 @@ class _CalendarViewState extends State<CalendarView> {
                               ),
                             ),
                           ),
-                          onTap: () {
-                            Navigator.of(context).push(
+                          onTap: () async {
+                            final result = await Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => AppointmentDetailView(
                                   title: ev.title,
@@ -560,6 +561,9 @@ class _CalendarViewState extends State<CalendarView> {
                                 ),
                               ),
                             );
+                            if (result == true) {
+                              await _fetchAppointments();
+                            }
                           },
                         );
                       },
@@ -648,12 +652,14 @@ class _InlineSelectedEvents extends StatelessWidget {
     required this.date, 
     required this.events, 
     required this.onOpenAll,
+    this.onRefresh,
     this.showSeeAll = true,
     this.fillAvailable = false,
   });
   final DateTime date;
   final List<_CalendarEvent> events;
   final VoidCallback onOpenAll;
+  final Future<void> Function()? onRefresh;
   final bool showSeeAll;
   final bool fillAvailable;
 
@@ -748,8 +754,8 @@ class _InlineSelectedEvents extends StatelessWidget {
                         ),
                       ],
                     ),
-                    onTap: () {
-                      Navigator.of(context).push(
+                    onTap: () async {
+                      final result = await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => AppointmentDetailView(
                             title: ev.title,
@@ -764,6 +770,9 @@ class _InlineSelectedEvents extends StatelessWidget {
                           ),
                         ),
                       );
+                      if (result == true && onRefresh != null) {
+                        await onRefresh!();
+                      }
                     },
                   );
                 },
@@ -823,8 +832,8 @@ class _InlineSelectedEvents extends StatelessWidget {
                       ),
                     ],
                   ),
-                  onTap: () {
-                    Navigator.of(context).push(
+                  onTap: () async {
+                    final result = await Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => AppointmentDetailView(
                           title: ev.title,
@@ -839,6 +848,9 @@ class _InlineSelectedEvents extends StatelessWidget {
                         ),
                       ),
                     );
+                    if (result == true && onRefresh != null) {
+                      await onRefresh!();
+                    }
                   },
                 );
               },

@@ -206,7 +206,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       if (!mounted) return;
       if (resp.success) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Randevu eklendi')));
-        Navigator.of(context).pop(true);
+        Navigator.of(context).pop(true); // Return true to indicate refresh needed
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resp.message)));
       }

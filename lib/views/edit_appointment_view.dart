@@ -199,7 +199,10 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
       );
       if (!mounted) return;
       if (resp.success) {
-        Navigator.of(context).pop(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Randevu güncellendi')),
+        );
+        Navigator.of(context).pop(true); // Return true to indicate refresh needed
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resp.message)));
       }

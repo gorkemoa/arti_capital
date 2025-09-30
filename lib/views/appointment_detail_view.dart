@@ -242,6 +242,8 @@ class AppointmentDetailView extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Randevu güncellendi')),
       );
+      // Return to parent with refresh indicator
+      Navigator.of(context).pop(true);
     }
   }
 
@@ -280,7 +282,7 @@ class AppointmentDetailView extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(response.message.isNotEmpty ? response.message : 'Randevu başarıyla silindi')),
         );
-        Navigator.of(context).pop(true); // Return true to indicate deletion
+        Navigator.of(context).pop(true); // Return true to indicate deletion and refresh needed
       } else {
         // Handle 417 status code and error_message specifically
         String errorMsg = 'Randevu silinirken hata oluştu';
