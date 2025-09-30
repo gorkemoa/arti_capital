@@ -55,9 +55,7 @@ class PanelView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-           
-            const SizedBox(height: 16),
-            Text('Hızlı İstatistikler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+             Text('Hızlı İstatistikler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             _StatsGrid(cards: const [
               _StatData(title: 'Bekleyen İşler', value: '7'),

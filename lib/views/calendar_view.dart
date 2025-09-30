@@ -52,6 +52,9 @@ class _CalendarViewState extends State<CalendarView> {
         final color = _parseStatusColor(item.statusColor);
         list.add(
           _CalendarEvent(
+            appointmentID: item.appointmentID,
+            compID: item.compID,
+            appointmentDateRaw: item.appointmentDate,
             title: item.appointmentTitle,
             timeRange: timeStr,
             compName: item.compName,
@@ -551,6 +554,9 @@ class _CalendarViewState extends State<CalendarView> {
                                   statusName: ev.statusName,
                                   statusColor: ev.statusColor,
                                   description: ev.description,
+                                  appointmentID: ev.appointmentID,
+                                  compID: ev.compID,
+                                  appointmentDateRaw: ev.appointmentDateRaw,
                                 ),
                               ),
                             );
@@ -614,6 +620,9 @@ class _WeekdayLabel extends StatelessWidget {
 }
 
 class _CalendarEvent {
+  final int appointmentID;
+  final int compID;
+  final String appointmentDateRaw;
   final String title;
   final String timeRange;
   final String compName;
@@ -622,6 +631,9 @@ class _CalendarEvent {
   final String description;
 
   const _CalendarEvent({
+    required this.appointmentID,
+    required this.compID,
+    required this.appointmentDateRaw,
     required this.title,
     required this.timeRange,
     required this.compName,
@@ -746,6 +758,9 @@ class _InlineSelectedEvents extends StatelessWidget {
                             statusName: ev.statusName,
                             statusColor: ev.statusColor,
                             description: ev.description,
+                            appointmentID: ev.appointmentID,
+                            compID: ev.compID,
+                            appointmentDateRaw: ev.appointmentDateRaw,
                           ),
                         ),
                       );
@@ -818,6 +833,9 @@ class _InlineSelectedEvents extends StatelessWidget {
                           statusName: ev.statusName,
                           statusColor: ev.statusColor,
                           description: ev.description,
+                          appointmentID: ev.appointmentID,
+                          compID: ev.compID,
+                          appointmentDateRaw: ev.appointmentDateRaw,
                         ),
                       ),
                     );

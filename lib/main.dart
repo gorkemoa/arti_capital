@@ -127,7 +127,8 @@ class MyApp extends StatelessWidget {
     if (authService.isLoggedIn()) {
       return const _MainNavigation();
     } else {
-      return const SplashView();
+      // İlk açılışta doğrudan giriş ekranına yönlendir
+      return const LoginView();
     }
   }
 }

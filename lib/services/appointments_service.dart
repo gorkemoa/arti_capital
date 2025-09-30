@@ -103,6 +103,63 @@ class AppointmentsService {
       );
     }
   }
+
+  Future<AddAppointmentResponse> updateAppointment({
+    required int compID,
+    required int appointmentID,
+    required String appointmentTitle,
+    required String appointmentDate,
+    int? appointmentStatus,
+    String? appointmentDesc,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddAppointmentResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+          errorMessage: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.updateAppointment;
+      AppLogger.i('PUT $endpoint', tag: 'UPDATE_APPOINTMENT');
+
+      final body = {
+        'userToken': token,
+        'compID': compID,
+        'appointmentID': appointmentID,
+        'appointmentTitle': appointmentTitle,
+        'appointmentDesc': appointmentDesc ?? '',
+        'appointmentDate': appointmentDate,
+        if (appointmentStatus != null) 'appointmentStatus': appointmentStatus,
+      };
+
+      final Response resp = await ApiClient.putJson(
+        endpoint,
+        data: body as Map<String, dynamic>,
+      );
+
+      final map = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_APPOINTMENT');
+      AppLogger.i(map.toString(), tag: 'UPDATE_APPOINTMENT_RES');
+      return AddAppointmentResponse.fromJson(map, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Update appointment error ${e.statusCode} ${e.message}', tag: 'UPDATE_APPOINTMENT');
+      final map = (e.data is Map<String, dynamic>) ? e.data as Map<String, dynamic> : null;
+      if (map != null) {
+        return AddAppointmentResponse.fromJson(map, e.statusCode);
+      }
+      return AddAppointmentResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Beklenmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.message,
+      );
+    }
+  }
 }
 
 

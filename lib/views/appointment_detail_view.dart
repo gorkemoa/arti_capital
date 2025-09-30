@@ -1,5 +1,7 @@
 import 'package:arti_capital/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:add_2_calendar/add_2_calendar.dart';
+import 'edit_appointment_view.dart';
 
 class AppointmentDetailView extends StatelessWidget {
   const AppointmentDetailView({
@@ -10,6 +12,9 @@ class AppointmentDetailView extends StatelessWidget {
     required this.statusName,
     required this.statusColor,
     required this.description,
+    this.appointmentID,
+    this.compID,
+    this.appointmentDateRaw,
   });
 
   final String title;
@@ -18,6 +23,40 @@ class AppointmentDetailView extends StatelessWidget {
   final String statusName;
   final Color statusColor;
   final String description;
+  final int? appointmentID;
+  final int? compID;
+  final String? appointmentDateRaw;
+
+  Event _toCalendarEvent() {
+    // Zamanı ayırmak için basit ayrıştırma beklenen format: ".. · HH:MM" veya "HH:MM"
+    // title ve description'ı ekleyerek temel bir etkinlik oluşturur
+    // Not: Uygulamada daha doğru başlangıç/bitiş saatleri varsa burada kullanılabilir
+    DateTime now = DateTime.now();
+    DateTime start = now;
+    DateTime end = now.add(const Duration(hours: 1));
+    try {
+      final parts = time.split('·');
+      final String timePart = parts.length > 1 ? parts[1].trim() : time.trim();
+      final tm = timePart.split(':');
+      if (tm.length >= 2) {
+        final h = int.tryParse(tm[0]) ?? now.hour;
+        final m = int.tryParse(tm[1]) ?? now.minute;
+        // Eğer gün bilgisi varsa bugünün ayına/yılına göre set etmeyelim; burada sadece saat kullanıyoruz
+        start = DateTime(now.year, now.month, now.day, h, m);
+        end = start.add(const Duration(hours: 1));
+      }
+    } catch (_) {}
+
+    return Event(
+      title: title,
+      description: description.isNotEmpty ? description : companyName,
+      location: companyName,
+      startDate: start,
+      endDate: end,
+      androidParams: const AndroidParams(emailInvites: []),
+      iosParams: const IOSParams(reminder: Duration(minutes: 30)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +71,29 @@ class AppointmentDetailView extends StatelessWidget {
           'Randevu Detayı',
           style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.onPrimary, fontSize: 15),
         ),
+        actions: [
+          if (appointmentID != null && compID != null)
+            IconButton(
+              tooltip: 'Düzenle',
+              onPressed: () async {
+                final changed = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => EditAppointmentView(
+                      appointmentID: appointmentID!,
+                      compID: compID!,
+                      initialTitle: title,
+                      initialDesc: description,
+                      initialDateTimeStr: appointmentDateRaw ?? '',
+                    ),
+                  ),
+                );
+                if (changed == true && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Randevu güncellendi')));
+                }
+              },
+              icon: const Icon(Icons.edit_outlined),
+            ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -112,6 +174,24 @@ class AppointmentDetailView extends StatelessWidget {
                 title: 'Açıklama',
                 content: description.isNotEmpty ? description : 'Açıklama bulunmuyor.',
                 multiline: true,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final event = _toCalendarEvent();
+                    await Add2Calendar.addEvent2Cal(event);
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: const Text('Takvime ekle'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
               ),
             ],
           ),
