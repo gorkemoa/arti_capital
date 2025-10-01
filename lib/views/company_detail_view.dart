@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -870,7 +871,83 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                                   )
                                                 : const Icon(Icons.account_balance),
                                             title: Text(bank.bankName.isNotEmpty ? bank.bankName : 'Banka ${bank.bankID}'),
-                                            subtitle: Text('${bank.bankUsername}\nIBAN: ${bank.bankIBAN}'),
+                                            subtitle: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(bank.bankUsername),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      'IBAN: ',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: GestureDetector(
+                                                        onTap: () async {
+                                                          await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
+                                                          if (!mounted) return;
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text('IBAN kopyalandı'),
+                                                              duration: const Duration(seconds: 1),
+                                                              backgroundColor: Colors.green,
+                                                            ),
+                                                          );
+                                                        },
+                                                        child: Text(
+                                                          bank.bankIBAN.replaceAllMapped(
+                                                            RegExp(r'(.{4})'),
+                                                            (match) => '${match.group(1)} ',
+                                                          ).trim(),
+                                                          style: const TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: Colors.blue,
+                                                            decoration: TextDecoration.underline,
+                                                            decorationColor: Colors.blue,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    GestureDetector(
+                                                      onTap: () async {
+                                                        await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
+                                                        if (!mounted) return;
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text('IBAN kopyalandı'),
+                                                            duration: const Duration(seconds: 1),
+                                                            backgroundColor: Colors.green,
+                                                          ),
+                                                        );
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          border: Border.all(
+                                                            color: Colors.grey.withOpacity(0.4),
+                                                            width: 1,
+                                                          ),
+                                                          borderRadius: BorderRadius.circular(4),
+                                                          color: Colors.grey.withOpacity(0.05),
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.content_copy,
+                                                          size: 14,
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
                                             trailing: PopupMenuButton<String>(
                                               tooltip: 'Aksiyonlar',
                                               icon: const Icon(Icons.more_vert),
@@ -1195,7 +1272,83 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                             )
                                           : const Icon(Icons.account_balance),
                                       title: Text(bank.bankName.isNotEmpty ? bank.bankName : 'Banka ${bank.bankID}'),
-                                      subtitle: Text('${bank.bankUsername}\nIBAN: ${bank.bankIBAN}'),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(bank.bankUsername),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'IBAN: ',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[600],
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () async {
+                                                    await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
+                                                    if (!mounted) return;
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text('IBAN kopyalandı'),
+                                                        duration: const Duration(seconds: 1),
+                                                        backgroundColor: Colors.green,
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text(
+                                                    bank.bankIBAN.replaceAllMapped(
+                                                      RegExp(r'(.{4})'),
+                                                      (match) => '${match.group(1)} ',
+                                                    ).trim(),
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.blue,
+                                                      decoration: TextDecoration.underline,
+                                                      decorationColor: Colors.blue,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              GestureDetector(
+                                                onTap: () async {
+                                                  await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
+                                                  if (!mounted) return;
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text('IBAN kopyalandı'),
+                                                      duration: const Duration(seconds: 1),
+                                                      backgroundColor: Colors.green,
+                                                    ),
+                                                  );
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(5),
+                                                  decoration: BoxDecoration(
+                                                    border: Border.all(
+                                                      color: Colors.grey.withOpacity(0.4),
+                                                      width: 1,
+                                                    ),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    color: Colors.grey.withOpacity(0.05),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.content_copy,
+                                                    size: 16,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                       isThreeLine: true,
                                       trailing: PopupMenuButton<String>(
                                         tooltip: 'Aksiyonlar',
