@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:add_2_calendar/add_2_calendar.dart';
 
 import '../models/company_models.dart';
 import '../models/appointment_models.dart';
@@ -286,6 +287,70 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
     );
   }
 
+  Future<void> _showAddToCalendarDialog() async {
+    final shouldAdd = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Telefon Takvimine Ekle'),
+        content: const Text('Bu randevuyu telefon takviminize eklemek ister misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hayır'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Evet'),
+          ),
+        ],
+      ),
+    );
+    
+    if (shouldAdd == true) {
+      await _addToCalendar();
+    }
+  }
+
+  Future<void> _addToCalendar() async {
+    try {
+      // Randevu başlığını oluştur
+      final eventTitle = _titleController.text.trim();
+      
+      // Notları oluştur
+      final notes = StringBuffer();
+      notes.writeln('Durum: ${_selectedStatus?.statusName?? ''}');
+      if (_descController.text.trim().isNotEmpty) {
+        notes.writeln('Açıklama: ${_descController.text.trim()}');
+      }
+      notes.write('Şirket: ${_selectedCompany?.compName}');
+      
+      // Takvim etkinliği oluştur
+      final event = Event(
+        title: eventTitle,
+        description: notes.toString(),
+        location: _selectedCompany?.compName ?? '',
+        startDate: _selectedDateTime,
+        endDate: _selectedDateTime.add(const Duration(hours: 1)), // 1 saat varsayılan süre
+        allDay: false,
+      );
+      
+      // Takvime ekle
+      await Add2Calendar.addEvent2Cal(event);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Randevu takviminize eklendi')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Takvime eklenirken hata oluştu: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCompany == null) {
@@ -303,8 +368,18 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       );
       if (!mounted) return;
       if (resp.success) {
+        // Başarılı mesajı göster
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Randevu eklendi')));
-        Navigator.of(context).pop(true); // Return true to indicate refresh needed
+        
+        // Hemen arkada geri dön - dialog arkaplanda açılacak
+        if (mounted) {
+          Navigator.of(context).pop(true); // Return true to indicate refresh needed
+        }
+        
+        // Dialog'u arkada göster (non-blocking)
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _showAddToCalendarDialog();
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resp.message)));
       }
@@ -312,7 +387,10 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      // Sadece hata durumunda veya başarısız response'da state'i sıfırla
+      if (mounted && _submitting) {
+        setState(() => _submitting = false);
+      }
     }
   }
 

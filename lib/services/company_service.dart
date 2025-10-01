@@ -580,6 +580,122 @@ class CompanyService {
       return false;
     }
   }
+
+  Future<AddCompanyBankResponse> addCompanyBank(AddCompanyBankRequest request) async {
+    try {
+      final endpoint = AppConstants.addCompanyBank;
+
+      AppLogger.i('POST $endpoint', tag: 'ADD_COMPANY_BANK');
+      AppLogger.i(request.toJson().toString(), tag: 'ADD_COMPANY_BANK_REQ');
+
+      final Response resp = await ApiClient.postJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_COMPANY_BANK');
+          return AddCompanyBankResponse(
+            error: true,
+            success: false,
+            message: 'Geçersiz yanıt',
+            statusCode: resp.statusCode,
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return AddCompanyBankResponse(
+          error: true,
+          success: false,
+          message: 'Beklenmeyen yanıt',
+          statusCode: resp.statusCode,
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_COMPANY_BANK');
+      AppLogger.i(body.toString(), tag: 'ADD_COMPANY_BANK_RES');
+
+      return AddCompanyBankResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      return AddCompanyBankResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'API Hatası',
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Add company bank error: $e', tag: 'ADD_COMPANY_BANK');
+      return AddCompanyBankResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen hata',
+      );
+    }
+  }
+
+  Future<GetBanksResponse> getBanks() async {
+    try {
+      final endpoint = AppConstants.getBanks;
+      AppLogger.i('GET $endpoint', tag: 'GET_BANKS');
+      final Response resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_BANKS');
+          return GetBanksResponse(
+            error: true,
+            success: false,
+            banks: const [],
+            errorMessage: 'Geçersiz yanıt',
+            statusCode: resp.statusCode,
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return GetBanksResponse(
+          error: true,
+          success: false,
+          banks: const [],
+          errorMessage: 'Beklenmeyen yanıt',
+          statusCode: resp.statusCode,
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_BANKS');
+      AppLogger.i(body.toString(), tag: 'GET_BANKS_RES');
+      return GetBanksResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      return GetBanksResponse(
+        error: true,
+        success: false,
+        banks: const [],
+        errorMessage: e.message ?? 'API Hatası',
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Get banks error: $e', tag: 'GET_BANKS');
+      return GetBanksResponse(
+        error: true,
+        success: false,
+        banks: const [],
+        errorMessage: 'Beklenmeyen hata',
+      );
+    }
+  }
 }
 
 

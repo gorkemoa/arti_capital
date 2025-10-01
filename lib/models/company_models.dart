@@ -17,6 +17,7 @@ class CompanyItem {
   final List<CompanyAddressItem> addresses;
   final List<CompanyDocumentItem> documents;
   final List<PartnerItem> partners;
+  final List<CompanyBankItem> banks;
 
   CompanyItem({
     required this.compID,
@@ -37,6 +38,7 @@ class CompanyItem {
     this.addresses = const [],
     this.documents = const [],
     this.partners = const [],
+    this.banks = const [],
   });
 
   // Geriye dönük uyumluluk için birincil adres kısa yolları
@@ -94,6 +96,9 @@ class CompanyItem {
           .toList(),
       partners: ((json['partners'] as List<dynamic>?) ?? const [])
           .map((e) => PartnerItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      banks: ((json['banks'] as List<dynamic>?) ?? const [])
+          .map((e) => CompanyBankItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
@@ -916,6 +921,181 @@ class UpdatePartnerResponse {
       error: json['error'] as bool? ?? false,
       success: json['success'] as bool? ?? false,
       message: json['message'] as String? ?? '',
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+// Bank related models
+class CompanyBankItem {
+  final int cbID;
+  final int compID;
+  final int bankID;
+  final String bankName;
+  final String bankUsername;
+  final String bankBranch;
+  final String bankBranchCode;
+  final String bankIBAN;
+  final String? bankLogo;
+
+  CompanyBankItem({
+    required this.cbID,
+    required this.compID,
+    required this.bankID,
+    required this.bankName,
+    required this.bankUsername,
+    required this.bankBranch,
+    required this.bankBranchCode,
+    required this.bankIBAN,
+    this.bankLogo,
+  });
+
+  factory CompanyBankItem.fromJson(Map<String, dynamic> json) {
+    return CompanyBankItem(
+      cbID: json['cbID'] as int? ?? 0,
+      compID: json['compID'] as int? ?? 0,
+      bankID: json['bankID'] as int? ?? 0,
+      bankName: json['bankName'] as String? ?? '',
+      bankUsername: json['bankUsername'] as String? ?? '',
+      bankBranch: json['bankBranch'] as String? ?? '',
+      bankBranchCode: json['bankBranchCode'] as String? ?? '',
+      bankIBAN: json['bankIBAN'] as String? ?? '',
+      bankLogo: json['bankLogo'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'cbID': cbID,
+      'compID': compID,
+      'bankID': bankID,
+      'bankName': bankName,
+      'bankUsername': bankUsername,
+      'bankBranch': bankBranch,
+      'bankBranchCode': bankBranchCode,
+      'bankIBAN': bankIBAN,
+      if (bankLogo != null) 'bankLogo': bankLogo,
+    };
+  }
+}
+
+class AddCompanyBankRequest {
+  final String userToken;
+  final int compID;
+  final int bankID;
+  final String bankUsername;
+  final String bankBranchName;
+  final String bankBranchCode;
+  final String compIban;
+
+  AddCompanyBankRequest({
+    required this.userToken,
+    required this.compID,
+    required this.bankID,
+    required this.bankUsername,
+    required this.bankBranchName,
+    required this.bankBranchCode,
+    required this.compIban,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'compID': compID,
+      'bankID': bankID,
+      'bankUsername': bankUsername,
+      'bankBranchName': bankBranchName,
+      'bankBranchCode': bankBranchCode,
+      'compIban': compIban,
+    };
+  }
+}
+
+class AddCompanyBankResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final int? cbID;
+  final String? errorMessage;
+  final int? statusCode;
+
+  AddCompanyBankResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.cbID,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory AddCompanyBankResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return AddCompanyBankResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      cbID: data?['cbID'] as int?,
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
+// Bank lookup models
+class BankItem {
+  final int bankID;
+  final String bankName;
+  final String bankLogo;
+
+  BankItem({
+    required this.bankID,
+    required this.bankName,
+    required this.bankLogo,
+  });
+
+  factory BankItem.fromJson(Map<String, dynamic> json) {
+    return BankItem(
+      bankID: json['bankID'] as int? ?? 0,
+      bankName: json['bankName'] as String? ?? '',
+      bankLogo: json['bankLogo'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bankID': bankID,
+      'bankName': bankName,
+      'bankLogo': bankLogo,
+    };
+  }
+}
+
+class GetBanksResponse {
+  final bool error;
+  final bool success;
+  final List<BankItem> banks;
+  final String? errorMessage;
+  final int? statusCode;
+
+  GetBanksResponse({
+    required this.error,
+    required this.success,
+    required this.banks,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory GetBanksResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final banksJson = data?['banks'] as List<dynamic>? ?? [];
+    
+    return GetBanksResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      banks: banksJson
+          .map((e) => BankItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
       errorMessage: json['error_message'] as String?,
       statusCode: code,
     );

@@ -480,8 +480,13 @@ class _CalendarViewState extends State<CalendarView> {
           Padding(
             padding: const EdgeInsets.only(right: 10),
             child: TextButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed('/new-appointment');
+              onPressed: () async {
+                // Yeni randevu eklendikten sonra takvimi yenilemek için await kullan
+                final shouldRefresh = await Navigator.of(context).pushNamed('/new-appointment');
+                // True döndüyse randevuları yenile
+                if (shouldRefresh == true) {
+                  _fetchAppointments();
+                }
               },
               style: TextButton.styleFrom(backgroundColor: Colors.white, 
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

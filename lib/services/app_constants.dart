@@ -39,6 +39,7 @@ class AppConstants {
   static const String getCompanyTypes = '/service/general/general/companyTypes/all';
   static const String getDocumentTypes = '/service/general/general/documentsTypes/all';
   static const String getAddressTypes = '/service/general/general/addressTypes/all';
+  static const String getBanks = '/service/general/general/banks/all';
   static String getDistrictsFor(int cityNo) => '/service/general/general/$cityNo/districts';
   static String getTaxPalacesFor(int cityNo) => '/service/general/general/$cityNo/taxPalaces';
   static String getServiceDetail(int id) => '/service/general/general/services/$id';
@@ -46,6 +47,7 @@ class AppConstants {
   static const String addPartner = '/service/user/account/company/partnerAdd';
   static const String updatePartner = '/service/user/account/company/partnerUpdate';
   static const String deletePartner = '/service/user/account/company/partnerDelete';
+  static const String addCompanyBank = '/service/user/account/company/bankAdd';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/notifications';

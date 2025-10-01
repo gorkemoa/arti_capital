@@ -13,6 +13,7 @@ import '../services/pdf_generator_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
+import 'add_company_bank_view.dart';
 import 'document_preview_view.dart';
 import 'add_company_partner_view.dart';
 import 'edit_company_partner_view.dart';
@@ -814,6 +815,90 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                 ),
                               ),
                             ],
+                          ),
+                        if (isWide) const SizedBox(height: 16),
+                        if (isWide)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _Panel(
+                                  title: 'Banka Bilgileri',
+                                  icon: Icons.account_balance_outlined,
+                                  actions: [
+                                    IconButton(
+                                      icon: const Icon(Icons.add),
+                                      tooltip: 'Banka Bilgisi Ekle',
+                                      onPressed: () async {
+                                        final res = await Navigator.of(context).push<bool>(
+                                          MaterialPageRoute(
+                                            builder: (_) => AddCompanyBankView(compId: widget.compId),
+                                          ),
+                                        );
+                                        if (res == true) {
+                                          _load();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                  children: [
+                                    if (_company!.banks.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        child: Text(
+                                          'Hiç banka bilgisi yok',
+                                          style: Theme.of(context).textTheme.bodyMedium,
+                                        ),
+                                      )
+                                    else
+                                      Column(
+                                        children: [
+                                          for (final bank in _company!.banks) ListTile(
+                                            dense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                            leading: bank.bankLogo != null && bank.bankLogo!.isNotEmpty
+                                                ? ClipRRect(
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    child: Image.network(
+                                                      bank.bankLogo!,
+                                                      width: 32,
+                                                      height: 32,
+                                                      fit: BoxFit.contain,
+                                                      errorBuilder: (context, error, stackTrace) =>
+                                                          const Icon(Icons.account_balance),
+                                                    ),
+                                                  )
+                                                : const Icon(Icons.account_balance),
+                                            title: Text(bank.bankName.isNotEmpty ? bank.bankName : 'Banka ${bank.bankID}'),
+                                            subtitle: Text('${bank.bankUsername}\nIBAN: ${bank.bankIBAN}'),
+                                            trailing: PopupMenuButton<String>(
+                                              tooltip: 'Aksiyonlar',
+                                              icon: const Icon(Icons.more_vert),
+                                              onSelected: (value) {
+                                                if (value == 'delete') {
+                                                  // TODO: Implement delete bank functionality
+                                                }
+                                              },
+                                              itemBuilder: (context) => const [
+                                                PopupMenuItem<String>(
+                                                  value: 'delete',
+                                                  child: ListTile(
+                                                    leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                    title: Text('Sil'),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const Expanded(child: SizedBox()), // Empty space for now
+                              const Expanded(child: SizedBox()), // Empty space for now
+                              const Expanded(child: SizedBox()), // Empty space for now
+                            ],
                           )
                         else ...[
                           _Panel(
@@ -1021,6 +1106,88 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                           ),
                                         );
                                       },
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _Panel(
+                            title: 'Banka Bilgileri',
+                            icon: Icons.account_balance_outlined,
+                            actions: [
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.add, size: 12),
+                                label: const Text('Banka Ekle'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.onPrimary,
+                                  side: BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                ),
+                                onPressed: () async {
+                                  final res = await Navigator.of(context).push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => AddCompanyBankView(compId: widget.compId),
+                                    ),
+                                  );
+                                  if (res == true) {
+                                    _load();
+                                  }
+                                },
+                              ),
+                            ],
+                            children: [
+                              if (_company!.banks.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    'Hiç banka bilgisi yok',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                )
+                              else
+                                Column(
+                                  children: [
+                                    for (final bank in _company!.banks) ListTile(
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: bank.bankLogo != null && bank.bankLogo!.isNotEmpty
+                                          ? ClipRRect(
+                                              borderRadius: BorderRadius.circular(4),
+                                              child: Image.network(
+                                                bank.bankLogo!,
+                                                width: 32,
+                                                height: 32,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (context, error, stackTrace) =>
+                                                    const Icon(Icons.account_balance),
+                                              ),
+                                            )
+                                          : const Icon(Icons.account_balance),
+                                      title: Text(bank.bankName.isNotEmpty ? bank.bankName : 'Banka ${bank.bankID}'),
+                                      subtitle: Text('${bank.bankUsername}\nIBAN: ${bank.bankIBAN}'),
+                                      isThreeLine: true,
+                                      trailing: PopupMenuButton<String>(
+                                        tooltip: 'Aksiyonlar',
+                                        icon: const Icon(Icons.more_vert),
+                                        onSelected: (value) {
+                                          if (value == 'delete') {
+                                            // TODO: Implement delete bank functionality
+                                          }
+                                        },
+                                        itemBuilder: (context) => const [
+                                          PopupMenuItem<String>(
+                                            value: 'delete',
+                                            child: ListTile(
+                                              leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                              title: Text('Sil'),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
