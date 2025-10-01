@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
 import '../models/company_models.dart';
+import '../models/appointment_models.dart';
 import '../services/appointments_service.dart';
 import '../theme/app_colors.dart';
 import 'company_detail_view.dart';
@@ -21,8 +22,45 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
 
   // Şirket seçimi ayrı sayfada yapılacak; burada liste tutulmuyor
   CompanyItem? _selectedCompany;
+  List<AppointmentStatus> _appointmentStatuses = [];
+  AppointmentStatus? _selectedStatus;
   DateTime _selectedDateTime = DateTime.now().add(const Duration(minutes: 30));
   bool _submitting = false;
+  bool _loadingStatuses = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppointmentStatuses();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadAppointmentStatuses() async {
+    setState(() => _loadingStatuses = true);
+    try {
+      final response = await _appointmentsService.getAppointmentStatuses();
+      if (response.success && mounted) {
+        setState(() {
+          _appointmentStatuses = response.statuses;
+          // Default olarak "Yeni Randevu" (statusID: 1) seç
+          _selectedStatus = _appointmentStatuses.firstWhere(
+            (status) => status.statusID == 1,
+            orElse: () => _appointmentStatuses.isNotEmpty ? _appointmentStatuses.first : _appointmentStatuses.first,
+          );
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingStatuses = false);
+    }
+  }
 
   // init state gerekmiyor; şirket seçimi ayrı sayfada yapılacak
 
@@ -149,6 +187,66 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
     );
   }
 
+  Future<void> _showStatusPicker() async {
+    if (_appointmentStatuses.isEmpty) return;
+    
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Durum Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 44,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: _appointmentStatuses.indexWhere((s) => s.statusID == (_selectedStatus?.statusID ?? 1)).clamp(0, _appointmentStatuses.length - 1),
+                  ),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _selectedStatus = _appointmentStatuses[index];
+                    });
+                  },
+                  children: _appointmentStatuses.map((status) {
+                    return Container(
+                      alignment: Alignment.center,
+                      child: Text(
+                        status.statusName,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // Cupertino selector bu sayfada kullanılmıyor
 
   Widget _buildCupertinoField({
@@ -201,7 +299,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
         appointmentTitle: _titleController.text.trim(),
         appointmentDesc: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
         appointmentDate: _formatApiDate(_selectedDateTime),
-        appointmentStatus: 1,
+        appointmentStatus: _selectedStatus?.statusID ?? 1,
       );
       if (!mounted) return;
       if (resp.success) {
@@ -305,6 +403,12 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCupertinoField(
+                      placeholder: 'Durum',
+                      value: _selectedStatus?.statusName,
+                      onTap: _loadingStatuses ? null : _showStatusPicker,
                     ),
                     const SizedBox(height: 12),
                     _buildCupertinoField(

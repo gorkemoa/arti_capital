@@ -153,3 +153,68 @@ class DeleteAppointmentResponse {
     );
   }
 }
+
+class AppointmentStatus {
+  final int statusID;
+  final String statusName;
+  final String statusColor;
+
+  AppointmentStatus({
+    required this.statusID,
+    required this.statusName,
+    required this.statusColor,
+  });
+
+  factory AppointmentStatus.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic v) {
+      if (v is int) return v;
+      if (v is String) return int.tryParse(v) ?? 0;
+      return 0;
+    }
+
+    return AppointmentStatus(
+      statusID: parseInt(json['statusID']),
+      statusName: (json['statusName'] ?? '').toString(),
+      statusColor: (json['statusColor'] ?? '').toString(),
+    );
+  }
+}
+
+class GetAppointmentStatusesResponse {
+  final bool error;
+  final bool success;
+  final List<AppointmentStatus> statuses;
+  final String message;
+  final int? statusCode;
+  final String? errorMessage;
+
+  GetAppointmentStatusesResponse({
+    required this.error,
+    required this.success,
+    required this.statuses,
+    required this.message,
+    this.statusCode,
+    this.errorMessage,
+  });
+
+  factory GetAppointmentStatusesResponse.fromJson(Map<String, dynamic> json, [int? statusCode]) {
+    final List<AppointmentStatus> statusList = [];
+    if (json['data'] != null && json['data']['statuses'] != null) {
+      final statusesData = json['data']['statuses'] as List<dynamic>;
+      for (final item in statusesData) {
+        if (item is Map<String, dynamic>) {
+          statusList.add(AppointmentStatus.fromJson(item));
+        }
+      }
+    }
+
+    return GetAppointmentStatusesResponse(
+      error: (json['error'] ?? false) as bool,
+      success: (json['success'] ?? false) as bool,
+      statuses: statusList,
+      message: (json['message'] ?? '').toString(),
+      statusCode: statusCode,
+      errorMessage: json['error_message']?.toString(),
+    );
+  }
+}

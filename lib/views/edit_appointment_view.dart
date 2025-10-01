@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../theme/app_colors.dart';
+import '../models/appointment_models.dart';
 import '../services/appointments_service.dart';
 
 class EditAppointmentView extends StatefulWidget {
@@ -11,6 +12,7 @@ class EditAppointmentView extends StatefulWidget {
     required this.initialTitle,
     required this.initialDesc,
     required this.initialDateTimeStr, // dd.MM.yyyy HH:mm
+    this.initialStatusID,
   });
 
   final int appointmentID;
@@ -18,6 +20,7 @@ class EditAppointmentView extends StatefulWidget {
   final String initialTitle;
   final String initialDesc;
   final String initialDateTimeStr;
+  final int? initialStatusID;
 
   @override
   State<EditAppointmentView> createState() => _EditAppointmentViewState();
@@ -30,7 +33,10 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
   late TextEditingController _titleController;
   late TextEditingController _descController;
   late DateTime _selectedDateTime;
+  List<AppointmentStatus> _appointmentStatuses = [];
+  AppointmentStatus? _selectedStatus;
   bool _saving = false;
+  bool _loadingStatuses = false;
 
   @override
   void initState() {
@@ -38,6 +44,28 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     _titleController = TextEditingController(text: widget.initialTitle);
     _descController = TextEditingController(text: widget.initialDesc);
     _selectedDateTime = _parseTrDateTime(widget.initialDateTimeStr) ?? DateTime.now();
+    _loadAppointmentStatuses();
+  }
+
+  Future<void> _loadAppointmentStatuses() async {
+    setState(() => _loadingStatuses = true);
+    try {
+      final response = await _service.getAppointmentStatuses();
+      if (response.success && mounted) {
+        setState(() {
+          _appointmentStatuses = response.statuses;
+          // Mevcut status'u seç veya default olarak "Yeni Randevu" (statusID: 1) seç
+          _selectedStatus = _appointmentStatuses.firstWhere(
+            (status) => status.statusID == (widget.initialStatusID ?? 1),
+            orElse: () => _appointmentStatuses.isNotEmpty ? _appointmentStatuses.first : _appointmentStatuses.first,
+          );
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingStatuses = false);
+    }
   }
 
   @override
@@ -185,6 +213,66 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     );
   }
 
+  Future<void> _showStatusPicker() async {
+    if (_appointmentStatuses.isEmpty) return;
+    
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Durum Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 44,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: _appointmentStatuses.indexWhere((s) => s.statusID == (_selectedStatus?.statusID ?? 1)).clamp(0, _appointmentStatuses.length - 1),
+                  ),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _selectedStatus = _appointmentStatuses[index];
+                    });
+                  },
+                  children: _appointmentStatuses.map((status) {
+                    return Container(
+                      alignment: Alignment.center,
+                      child: Text(
+                        status.statusName,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
@@ -195,7 +283,7 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
         appointmentTitle: _titleController.text.trim(),
         appointmentDesc: _descController.text.trim(),
         appointmentDate: _formatApiDate(_selectedDateTime),
-        appointmentStatus: 1,
+        appointmentStatus: _selectedStatus?.statusID ?? 1,
       );
       if (!mounted) return;
       if (resp.success) {
@@ -279,6 +367,35 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                               child: Text(
                                 _formatApiDate(_selectedDateTime),
                                 style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _loadingStatuses ? null : _showStatusPicker,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.task_alt),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _selectedStatus?.statusName ?? 'Durum seçin',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: _selectedStatus != null ? Colors.black87 : Colors.grey,
+                                ),
                               ),
                             ),
                             const Icon(Icons.chevron_right),

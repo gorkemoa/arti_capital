@@ -64,6 +64,7 @@ class _CalendarViewState extends State<CalendarView> {
             statusName: item.statusName,
             statusColor: color,
             description: item.appointmentDesc,
+            statusID: item.statusID,
           ),
         );
       }
@@ -110,7 +111,7 @@ class _CalendarViewState extends State<CalendarView> {
 
   static Color _parseStatusColor(String raw) {
     // Beklenen format: #RRGGBB veya #AARRGGBB; boşsa varsayılan mavi
-    final fallback = const Color(0xFF4285F4);
+    final fallback = AppColors.primary;
     final s = raw.trim();
     if (s.isEmpty) return fallback;
     String hex = s.startsWith('#') ? s.substring(1) : s;
@@ -303,7 +304,7 @@ class _CalendarViewState extends State<CalendarView> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       itemCount: allAppointments.length,
       separatorBuilder: (context, index) {
         final current = allAppointments[index].key;
@@ -312,7 +313,7 @@ class _CalendarViewState extends State<CalendarView> {
         // Add date separator if next appointment is on different day
         if (next != null && !_isSameDay(current, next)) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: Row(
               children: [
                 const Expanded(child: Divider()),
@@ -320,7 +321,7 @@ class _CalendarViewState extends State<CalendarView> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     formatDateTr(next),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.grey,
                       fontWeight: FontWeight.w500,
                     ),
@@ -331,7 +332,7 @@ class _CalendarViewState extends State<CalendarView> {
             ),
           );
         }
-        return const SizedBox(height: 6);
+        return const SizedBox(height: 1);
       },
       itemBuilder: (context, index) {
         final entry = allAppointments[index];
@@ -347,105 +348,103 @@ class _CalendarViewState extends State<CalendarView> {
           children: [
             if (showDateHeader)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 4, top: 8),
                 child: Text(
                   formatDateTr(date),
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(8),
-                leading: Container(
-                  width: 4,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: event.statusColor,
-                    borderRadius: BorderRadius.circular(2),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black54,
                   ),
                 ),
-                title: Text(
-                  event.title,
-                  style: Theme.of(context).textTheme.titleSmall,
+              ),
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AppointmentDetailView(
+                      title: event.title,
+                      companyName: event.compName,
+                      time: '${formatDateTr(date)} · ${event.timeRange}',
+                      statusName: event.statusName,
+                      statusColor: event.statusColor,
+                      description: event.description,
+                      appointmentID: event.appointmentID,
+                      compID: event.compID,
+                      appointmentDateRaw: event.appointmentDateRaw,
+                      statusID: event.statusID, // Event objesinden statusID al
+                    ),
+                  ),
+                );
+                if (result == true) {
+                  await _fetchAppointments();
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    const SizedBox(height: 2),
-                    Text(
-                      event.compName,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.black54,
+                    // Sol renkli nokta
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: event.statusColor,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(width: 12),
+                    // Ana içerik
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              event.title,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              event.compName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black54,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.left,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Sağ taraf - zaman
                     Text(
                       event.timeRange,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
                         fontWeight: FontWeight.w500,
-                        color: Colors.black87,
                       ),
                     ),
-                                        if (event.description.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        event.description,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black45,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
                   ],
                 ),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: event.statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    event.statusName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: event.statusColor,
-                    ),
-                  ),
-                ),
-                onTap: () async {
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AppointmentDetailView(
-                        title: event.title,
-                        companyName: event.compName,
-                        time: '${formatDateTr(date)} · ${event.timeRange}',
-                        statusName: event.statusName,
-                        statusColor: event.statusColor,
-                        description: event.description,
-                        appointmentID: event.appointmentID,
-                        compID: event.compID,
-                        appointmentDateRaw: event.appointmentDateRaw,
-                      ),
-                    ),
-                  );
-                  if (result == true) {
-                    await _fetchAppointments();
-                  }
-                },
               ),
             ),
           ],
@@ -463,7 +462,45 @@ class _CalendarViewState extends State<CalendarView> {
     final days = _buildCalendarDays(_currentMonth);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        title: Text(
+          'Takvim',
+          style: TextStyle(
+            fontSize: Theme.of(context).appBarTheme.titleTextStyle?.fontSize,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onPrimary,
+          ),
+        ),
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: AppColors.onPrimary),
+            actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: TextButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/new-appointment');
+              },
+              style: TextButton.styleFrom(backgroundColor: Colors.white, 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.all(6),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.add, size: 15, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  const Text('Randevu Ekle', style: TextStyle(fontSize: 12, color: AppColors.primary),),
+                ],
+              ),
+            ),
+          ),
+
+
+
+  ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -473,14 +510,7 @@ class _CalendarViewState extends State<CalendarView> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: _isListView ? null : _goToPrevMonth,
-                    child: Icon(
-                      Icons.chevron_left,
-                      size: 25,
-                      color:  Colors.black87,
-                    ),
-                  ),
+                
                   GestureDetector(
                     onTap: _isListView ? null : _openMonthPicker,
                     child: Column(
@@ -520,15 +550,7 @@ class _CalendarViewState extends State<CalendarView> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: _isListView ? null : _goToNextMonth,
-                        child: Icon(
-                          Icons.chevron_right,
-                          size: 25,
-                          color: Colors.black87,
-                        ),
-                      ),
+              
                     ],
                   ),
                 ],
@@ -604,16 +626,6 @@ class _CalendarViewState extends State<CalendarView> {
               ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final created = await Navigator.of(context).pushNamed('/new-appointment');
-          if (created == true) {
-            await _fetchAppointments();
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Yeni Randevu'),
       ),
     );
   }
@@ -765,6 +777,7 @@ class _CalendarViewState extends State<CalendarView> {
                                   appointmentID: ev.appointmentID,
                                   compID: ev.compID,
                                   appointmentDateRaw: ev.appointmentDateRaw,
+                                  statusID: ev.statusID,
                                 ),
                               ),
                             );
@@ -838,6 +851,7 @@ class _CalendarEvent {
   final String statusName;
   final Color statusColor;
   final String description;
+  final int statusID;
 
   const _CalendarEvent({
     required this.appointmentID,
@@ -849,6 +863,7 @@ class _CalendarEvent {
     required this.statusName,
     required this.statusColor,
     required this.description,
+    required this.statusID,
   });
 }
 
@@ -979,6 +994,7 @@ class _InlineSelectedEvents extends StatelessWidget {
                             appointmentID: ev.appointmentID,
                             compID: ev.compID,
                             appointmentDateRaw: ev.appointmentDateRaw,
+                            statusID: ev.statusID,
                           ),
                         ),
                       );
@@ -1057,6 +1073,7 @@ class _InlineSelectedEvents extends StatelessWidget {
                           appointmentID: ev.appointmentID,
                           compID: ev.compID,
                           appointmentDateRaw: ev.appointmentDateRaw,
+                          statusID: ev.statusID,
                         ),
                       ),
                     );

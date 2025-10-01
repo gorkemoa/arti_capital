@@ -209,6 +209,31 @@ class AppointmentsService {
       );
     }
   }
+
+  Future<GetAppointmentStatusesResponse> getAppointmentStatuses() async {
+    try {
+      final endpoint = AppConstants.getAppointmentStatuses;
+      AppLogger.i('GET $endpoint', tag: 'GET_APPOINTMENT_STATUSES');
+
+      final Response resp = await ApiClient.getJson(endpoint);
+
+      final body = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_APPOINTMENT_STATUSES');
+      AppLogger.i(body.toString(), tag: 'GET_APPOINTMENT_STATUSES_RES');
+
+      return GetAppointmentStatusesResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Get appointment statuses error ${e.statusCode} ${e.message}', tag: 'GET_APPOINTMENT_STATUSES');
+      return GetAppointmentStatusesResponse(
+        error: true,
+        success: false,
+        statuses: const <AppointmentStatus>[],
+        message: e.message ?? 'Beklenmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.message,
+      );
+    }
+  }
 }
 
 

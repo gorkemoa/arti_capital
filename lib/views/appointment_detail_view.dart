@@ -16,6 +16,7 @@ class AppointmentDetailView extends StatelessWidget {
     this.appointmentID,
     this.compID,
     this.appointmentDateRaw,
+    this.statusID,
   });
 
   final String title;
@@ -27,6 +28,7 @@ class AppointmentDetailView extends StatelessWidget {
   final int? appointmentID;
   final int? compID;
   final String? appointmentDateRaw;
+  final int? statusID;
 
   Event _toCalendarEvent() {
     // Zamanı ayırmak için basit ayrıştırma beklenen format: ".. · HH:MM" veya "HH:MM"
@@ -235,6 +237,7 @@ class AppointmentDetailView extends StatelessWidget {
           initialTitle: title,
           initialDesc: description,
           initialDateTimeStr: appointmentDateRaw ?? '',
+          initialStatusID: statusID,
         ),
       ),
     );
