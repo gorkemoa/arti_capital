@@ -696,6 +696,29 @@ class CompanyService {
       );
     }
   }
+
+  Future<bool> deleteCompanyBank({
+    required String userToken,
+    required int compId,
+    required int cbID,
+  }) async {
+    try {
+      final endpoint = AppConstants.deleteCompanyBank;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+        'cbID': cbID,
+      };
+      AppLogger.i('DELETE $endpoint', tag: 'DELETE_BANK');
+      AppLogger.i(payload.toString(), tag: 'DELETE_BANK_REQ');
+      final Response resp = await ApiClient.deleteJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      return body['success'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.e('Delete bank error: $e', tag: 'DELETE_BANK');
+      return false;
+    }
+  }
 }
 
 

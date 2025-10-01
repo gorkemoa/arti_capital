@@ -874,9 +874,36 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                             trailing: PopupMenuButton<String>(
                                               tooltip: 'Aksiyonlar',
                                               icon: const Icon(Icons.more_vert),
-                                              onSelected: (value) {
+                                              onSelected: (value) async {
                                                 if (value == 'delete') {
-                                                  // TODO: Implement delete bank functionality
+                                                  final token = await StorageService.getToken();
+                                                  if (token == null) {
+                                                    if (!mounted) return;
+                                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                                                    return;
+                                                  }
+                                                  final confirm = await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (context) => AlertDialog(
+                                                      title: const Text('Banka Bilgisini Sil'),
+                                                      content: Text('${bank.bankName} banka bilgisini silmek istediğinize emin misiniz?'),
+                                                      actions: [
+                                                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                                                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                                                      ],
+                                                    ),
+                                                  );
+                                                  if (confirm != true) return;
+                                                  final ok = await const CompanyService().deleteCompanyBank(
+                                                    userToken: token,
+                                                    compId: widget.compId,
+                                                    cbID: bank.cbID != 0 ? bank.cbID : bank.bankID,
+                                                  );
+                                                  if (!mounted) return;
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text(ok ? 'Banka bilgisi silindi.' : 'Banka bilgisi silinemedi')),
+                                                  );
+                                                  if (ok) _load();
                                                 }
                                               },
                                               itemBuilder: (context) => const [
@@ -1173,9 +1200,36 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                       trailing: PopupMenuButton<String>(
                                         tooltip: 'Aksiyonlar',
                                         icon: const Icon(Icons.more_vert),
-                                        onSelected: (value) {
+                                        onSelected: (value) async {
                                           if (value == 'delete') {
-                                            // TODO: Implement delete bank functionality
+                                            final token = await StorageService.getToken();
+                                            if (token == null) {
+                                              if (!mounted) return;
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                                              return;
+                                            }
+                                            final confirm = await showDialog<bool>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text('Banka Bilgisini Sil'),
+                                                content: Text('${bank.bankName} banka bilgisini silmek istediğinize emin misiniz?'),
+                                                actions: [
+                                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                                                ],
+                                              ),
+                                            );
+                                            if (confirm != true) return;
+                                            final ok = await const CompanyService().deleteCompanyBank(
+                                              userToken: token,
+                                              compId: widget.compId,
+                                              cbID: bank.cbID != 0 ? bank.cbID : bank.bankID,
+                                            );
+                                            if (!mounted) return;
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text(ok ? 'Banka bilgisi silindi.' : 'Banka bilgisi silinemedi')),
+                                            );
+                                            if (ok) _load();
                                           }
                                         },
                                         itemBuilder: (context) => const [
