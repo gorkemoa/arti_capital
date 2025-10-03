@@ -14,6 +14,8 @@ class CompanyItem {
   final String? compPhone;
   final String? compWebsite;
   final int? compNaceCodeID;
+  final String? compNaceCode;
+  final String? compNaceCodeDesc;
   final List<CompanyAddressItem> addresses;
   final List<CompanyDocumentItem> documents;
   final List<PartnerItem> partners;
@@ -37,6 +39,8 @@ class CompanyItem {
     this.compPhone,
     this.compWebsite,
     this.compNaceCodeID,
+    this.compNaceCode,
+    this.compNaceCodeDesc,
     this.addresses = const [],
     this.documents = const [],
     this.partners = const [],
@@ -93,6 +97,8 @@ class CompanyItem {
       compPhone: json['compPhone'] as String?,
       compWebsite: json['compWebsite'] as String?,
       compNaceCodeID: (json['compNaceCodeID'] as num?)?.toInt(),
+      compNaceCode: json['compNaceCode'] as String?,
+      compNaceCodeDesc: json['compNaceCodeDesc'] as String?,
       addresses: addresses,
       documents: ((json['documents'] as List<dynamic>?) ?? const [])
           .map((e) => CompanyDocumentItem.fromJson(e as Map<String, dynamic>))

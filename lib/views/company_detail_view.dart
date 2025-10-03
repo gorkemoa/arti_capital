@@ -787,7 +787,9 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
         _InfoRow(label: 'E-Posta', value: _company!.compEmail ?? '-'),
         _InfoRow(label: 'Telefon', value: _company!.compPhone ?? '-'),
         _InfoRow(label: 'Web Sitesi', value: _company!.compWebsite ?? '-'),
-        _InfoRow(label: 'NACE Kodu', value: _company!.compNaceCodeID?.toString() ?? '-'),
+        _InfoRow(label: 'NACE Kodu', value: _company!.compNaceCode ?? '-'),
+        if (_company!.compNaceCodeDesc != null && _company!.compNaceCodeDesc!.isNotEmpty)
+          _InfoRow(label: 'NACE Açıklama', value: _company!.compNaceCodeDesc!),
         _InfoRow(label: 'Kep Adresi', value: _company!.compKepAddress ?? '-'),
         _InfoRow(label: 'Açıklama', value: _company!.compDesc ?? '-'),
       ],
