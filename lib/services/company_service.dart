@@ -816,6 +816,94 @@ class CompanyService {
     }
   }
 
+  Future<UpdateCompanyPasswordResponse> updateCompanyPassword(UpdateCompanyPasswordRequest request) async {
+    try {
+      final endpoint = AppConstants.updateCompanyPassword;
+
+      AppLogger.i('POST $endpoint', tag: 'UPDATE_PASSWORD');
+      AppLogger.i(request.toJson().toString(), tag: 'UPDATE_PASSWORD_REQ');
+
+      final Response resp = await ApiClient.postJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_PASSWORD');
+          return UpdateCompanyPasswordResponse(
+            error: true,
+            success: false,
+            message: 'Geçersiz yanıt formatı',
+            statusCode: resp.statusCode,
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return UpdateCompanyPasswordResponse(
+          error: true,
+          success: false,
+          message: 'Beklenmeyen yanıt formatı',
+          statusCode: resp.statusCode,
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_PASSWORD');
+      AppLogger.i(body.toString(), tag: 'UPDATE_PASSWORD_RES');
+
+      return UpdateCompanyPasswordResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('API error: ${e.message}', tag: 'UPDATE_PASSWORD');
+      return UpdateCompanyPasswordResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Bilinmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.message,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error: $e', tag: 'UPDATE_PASSWORD');
+      return UpdateCompanyPasswordResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen hata',
+        errorMessage: 'Beklenmeyen hata',
+      );
+    }
+  }
+
+  Future<bool> deleteCompanyPassword({
+    required String userToken,
+    required int compId,
+    required int passID,
+  }) async {
+    try {
+      final endpoint = AppConstants.deleteCompanyPassword;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+        'passID': passID,
+      };
+      AppLogger.i('DELETE $endpoint', tag: 'DELETE_PASSWORD');
+      AppLogger.i(payload.toString(), tag: 'DELETE_PASSWORD_REQ');
+      final Response resp = await ApiClient.deleteJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DELETE_PASSWORD');
+      AppLogger.i(body.toString(), tag: 'DELETE_PASSWORD_RES');
+      return body['success'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.e('Delete password error: $e', tag: 'DELETE_PASSWORD');
+      return false;
+    }
+  }
+
   Future<bool> deleteCompanyBank({
     required String userToken,
     required int compId,

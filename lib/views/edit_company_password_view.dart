@@ -6,18 +6,24 @@ import '../services/company_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 
-class AddCompanyPasswordView extends StatefulWidget {
-  const AddCompanyPasswordView({super.key, required this.compId});
+class EditCompanyPasswordView extends StatefulWidget {
+  const EditCompanyPasswordView({
+    super.key,
+    required this.compId,
+    required this.password,
+  });
+  
   final int compId;
+  final CompanyPasswordItem password;
 
   @override
-  State<AddCompanyPasswordView> createState() => _AddCompanyPasswordViewState();
+  State<EditCompanyPasswordView> createState() => _EditCompanyPasswordViewState();
 }
 
-class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
+class _EditCompanyPasswordViewState extends State<EditCompanyPasswordView> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  late TextEditingController _usernameController;
+  late TextEditingController _passwordController;
   
   bool _loading = false;
   bool _typesLoading = true;
@@ -28,6 +34,9 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
   @override
   void initState() {
     super.initState();
+    _usernameController = TextEditingController(text: widget.password.passwordUsername);
+    _passwordController = TextEditingController(text: widget.password.passwordPassword);
+    _selectedPasswordType = widget.password.passwordTypeID;
     _loadPasswordTypes();
   }
 
@@ -46,9 +55,6 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
         setState(() {
           _passwordTypes = response.types;
           _typesLoading = false;
-          if (_passwordTypes.isNotEmpty) {
-            _selectedPasswordType = _passwordTypes.first.typeID;
-          }
         });
       }
     } catch (e) {
@@ -61,7 +67,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
     }
   }
 
-  Future<void> _addPassword() async {
+  Future<void> _updatePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedPasswordType == null) {
@@ -83,15 +89,16 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
         return;
       }
 
-      final request = AddCompanyPasswordRequest(
+      final request = UpdateCompanyPasswordRequest(
         userToken: token,
         compID: widget.compId,
+        passID: widget.password.passwordID,
         passType: _selectedPasswordType!,
         passUsername: _usernameController.text.trim(),
         passPassword: _passwordController.text.trim(),
       );
 
-      final response = await const CompanyService().addCompanyPassword(request);
+      final response = await const CompanyService().updateCompanyPassword(request);
 
       if (!mounted) return;
 
@@ -115,7 +122,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Şifre eklenirken hata oluştu'),
+          content: Text('Şifre güncellenirken hata oluştu'),
           backgroundColor: Colors.red,
         ),
       );
@@ -208,7 +215,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Şifre Ekle'),
+        title: const Text('Şifre Düzenle'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
@@ -284,7 +291,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: _loading ? null : _addPassword,
+                onPressed: _loading ? null : _updatePassword,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -306,7 +313,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'Kaydediliyor...',
+                            'Güncelleniyor...',
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: AppColors.onPrimary,
                               fontWeight: FontWeight.w600,
@@ -315,7 +322,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
                         ],
                       )
                     : Text(
-                        'Kaydet',
+                        'Güncelle',
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: AppColors.onPrimary,
                           fontWeight: FontWeight.w600,

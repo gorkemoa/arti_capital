@@ -410,6 +410,59 @@ class AddCompanyPasswordResponse {
   }
 }
 
+class UpdateCompanyPasswordRequest {
+  final String userToken;
+  final int compID;
+  final int passID;
+  final int passType;
+  final String passUsername;
+  final String passPassword;
+
+  UpdateCompanyPasswordRequest({
+    required this.userToken,
+    required this.compID,
+    required this.passID,
+    required this.passType,
+    required this.passUsername,
+    required this.passPassword,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'userToken': userToken,
+    'compID': compID,
+    'passID': passID,
+    'passType': passType,
+    'passUsername': passUsername,
+    'passPassword': passPassword,
+  };
+}
+
+class UpdateCompanyPasswordResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final String? errorMessage;
+  final int? statusCode;
+
+  UpdateCompanyPasswordResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory UpdateCompanyPasswordResponse.fromJson(Map<String, dynamic> json, int? code) {
+    return UpdateCompanyPasswordResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
 class CompanyImageItem {
   final int imageID;
   final int imageTypeID;

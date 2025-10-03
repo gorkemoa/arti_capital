@@ -17,6 +17,7 @@ import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
 import 'add_company_bank_view.dart';
 import 'add_company_password_view.dart';
+import 'edit_company_password_view.dart';
 import 'document_preview_view.dart';
 import 'add_company_partner_view.dart';
 import 'edit_company_partner_view.dart';
@@ -942,7 +943,11 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
         else
           Column(
             children: _company!.passwords.map((password) {
-              return _PasswordListItem(password: password);
+              return _PasswordListItem(
+                password: password,
+                compId: widget.compId,
+                onPasswordUpdated: _load,
+              );
             }).toList(),
           ),
       ],
@@ -1334,8 +1339,15 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _PasswordListItem extends StatefulWidget {
-  const _PasswordListItem({required this.password});
+  const _PasswordListItem({
+    required this.password,
+    required this.compId,
+    required this.onPasswordUpdated,
+  });
+  
   final CompanyPasswordItem password;
+  final int compId;
+  final VoidCallback onPasswordUpdated;
 
   @override
   State<_PasswordListItem> createState() => _PasswordListItemState();
@@ -1412,6 +1424,81 @@ class _PasswordListItemState extends State<_PasswordListItem> {
     );
   }
 
+  Future<void> _showDeletePasswordDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Şifreyi Sil'),
+        content: Text(
+          'Bu şifreyi silmek istediğinizden emin misiniz?\n\n'
+          'Şifre Türü: ${widget.password.passwordType}\n'
+          'Kullanıcı Adı: ${widget.password.passwordUsername}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _deletePassword();
+    }
+  }
+
+  Future<void> _deletePassword() async {
+    try {
+      final token = await StorageService.getToken();
+      if (token == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Oturum bulunamadı')),
+        );
+        return;
+      }
+
+      final success = await const CompanyService().deleteCompanyPassword(
+        userToken: token,
+        compId: widget.compId,
+        passID: widget.password.passwordID,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Şifre başarıyla silindi'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        widget.onPasswordUpdated();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Şifre silinirken bir hata oluştu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1453,6 +1540,57 @@ class _PasswordListItemState extends State<_PasswordListItem> {
                   color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
+              if (StorageService.hasPermission('companies', 'update') || 
+                  StorageService.hasPermission('companies', 'delete'))
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    size: 20,
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EditCompanyPasswordView(
+                            compId: widget.compId,
+                            password: widget.password,
+                          ),
+                        ),
+                      );
+                      if (result == true) {
+                        widget.onPasswordUpdated();
+                      }
+                    } else if (value == 'delete') {
+                      _showDeletePasswordDialog(context);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (StorageService.hasPermission('companies', 'update'))
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('Düzenle'),
+                          ],
+                        ),
+                      ),
+                    if (StorageService.hasPermission('companies', 'delete'))
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Sil', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 12),
