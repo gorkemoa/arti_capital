@@ -857,6 +857,52 @@ class GetDocumentTypesResponse {
   }
 }
 
+class PasswordTypeItem {
+  final int typeID;
+  final String typeName;
+
+  PasswordTypeItem({
+    required this.typeID,
+    required this.typeName,
+  });
+
+  factory PasswordTypeItem.fromJson(Map<String, dynamic> json) {
+    return PasswordTypeItem(
+      typeID: json['typeID'] as int? ?? 0,
+      typeName: json['typeName'] as String? ?? '',
+    );
+  }
+}
+
+class GetPasswordTypesResponse {
+  final bool error;
+  final bool success;
+  final List<PasswordTypeItem> types;
+  final String? errorMessage;
+  final int? statusCode;
+
+  GetPasswordTypesResponse({
+    required this.error,
+    required this.success,
+    required this.types,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory GetPasswordTypesResponse.fromJson(Map<String, dynamic> json, int? code) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final typesList = data?['types'] as List<dynamic>? ?? [];
+    
+    return GetPasswordTypesResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      types: typesList.map((item) => PasswordTypeItem.fromJson(item as Map<String, dynamic>)).toList(),
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
 class TaxPalaceItem {
   final int palaceID;
   final String palaceName;

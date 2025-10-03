@@ -19,8 +19,16 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
   final _passwordController = TextEditingController();
   
   bool _loading = false;
+  bool _typesLoading = true;
   bool _obscurePassword = true;
-  int _selectedPasswordType = 1;
+  int? _selectedPasswordType;
+  List<PasswordTypeItem> _passwordTypes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPasswordTypes();
+  }
 
   @override
   void dispose() {
@@ -29,8 +37,38 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
     super.dispose();
   }
 
+  Future<void> _loadPasswordTypes() async {
+    setState(() { _typesLoading = true; });
+    try {
+      final response = await const CompanyService().getPasswordTypes();
+      if (mounted) {
+        setState(() {
+          _passwordTypes = response.types;
+          _typesLoading = false;
+          if (_passwordTypes.isNotEmpty) {
+            _selectedPasswordType = _passwordTypes.first.typeID;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { _typesLoading = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Şifre türleri yüklenirken hata oluştu')),
+        );
+      }
+    }
+  }
+
   Future<void> _addPassword() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedPasswordType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lütfen bir şifre türü seçin')),
+      );
+      return;
+    }
 
     setState(() { _loading = true; });
 
@@ -47,7 +85,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
       final request = AddCompanyPasswordRequest(
         userToken: token,
         compID: widget.compId,
-        passType: _selectedPasswordType,
+        passType: _selectedPasswordType!,
         passUsername: _usernameController.text.trim(),
         passPassword: _passwordController.text.trim(),
       );
@@ -118,58 +156,48 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
                       const SizedBox(height: 16),
                       
                       // Password Type Dropdown
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: DropdownButtonFormField<int>(
-                          value: _selectedPasswordType,
-                          decoration: const InputDecoration(
-                            labelText: 'Şifre Türü *',
-                            hintText: 'Şifre türünü seçin',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            prefixIcon: Icon(Icons.category, color: Colors.blue),
-                          ),
-                          dropdownColor: Colors.white,
-                          elevation: 8,
-                          borderRadius: BorderRadius.circular(12),
-                          isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.blue),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 1,
-                              child: Text('Genel'),
+                      _typesLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: DropdownButtonFormField<int>(
+                                value: _selectedPasswordType,
+                                decoration: const InputDecoration(
+                                  labelText: 'Şifre Türü *',
+                                  hintText: 'Şifre türünü seçin',
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  prefixIcon: Icon(Icons.category, color: Colors.blue),
+                                ),
+                                dropdownColor: Colors.white,
+                                elevation: 8,
+                                borderRadius: BorderRadius.circular(12),
+                                isExpanded: true,
+                                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.blue),
+                                items: _passwordTypes.map((type) {
+                                  return DropdownMenuItem<int>(
+                                    value: type.typeID,
+                                    child: Text(type.typeName),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _selectedPasswordType = value;
+                                    });
+                                  }
+                                },
+                                validator: (value) {
+                                  if (value == null) {
+                                    return 'Lütfen şifre türü seçin';
+                                  }
+                                  return null;
+                                },
+                              ),
                             ),
-                            DropdownMenuItem(
-                              value: 2,
-                              child: Text('E-Devlet'),
-                            ),
-                            DropdownMenuItem(
-                              value: 3,
-                              child: Text('Muhasebe'),
-                            ),
-                            DropdownMenuItem(
-                              value: 4,
-                              child: Text('Banka'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedPasswordType = value;
-                              });
-                            }
-                          },
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Lütfen şifre türü seçin';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
                       const SizedBox(height: 16),
                       
                       // Username Field

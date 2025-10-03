@@ -697,6 +697,62 @@ class CompanyService {
     }
   }
 
+  Future<GetPasswordTypesResponse> getPasswordTypes() async {
+    try {
+      final endpoint = AppConstants.getPasswordTypes;
+      AppLogger.i('GET $endpoint', tag: 'GET_PASSWORD_TYPES');
+      final Response resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_PASSWORD_TYPES');
+          return GetPasswordTypesResponse(
+            error: true,
+            success: false,
+            types: const [],
+            errorMessage: 'Geçersiz yanıt',
+            statusCode: resp.statusCode,
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return GetPasswordTypesResponse(
+          error: true,
+          success: false,
+          types: const [],
+          errorMessage: 'Beklenmeyen yanıt',
+          statusCode: resp.statusCode,
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_PASSWORD_TYPES');
+      AppLogger.i(body.toString(), tag: 'GET_PASSWORD_TYPES_RES');
+      return GetPasswordTypesResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      return GetPasswordTypesResponse(
+        error: true,
+        success: false,
+        types: const [],
+        errorMessage: e.message ?? 'API Hatası',
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Get password types error: $e', tag: 'GET_PASSWORD_TYPES');
+      return GetPasswordTypesResponse(
+        error: true,
+        success: false,
+        types: const [],
+        errorMessage: 'Beklenmeyen hata',
+      );
+    }
+  }
+
   Future<AddCompanyPasswordResponse> addCompanyPassword(AddCompanyPasswordRequest request) async {
     try {
       final endpoint = AppConstants.addCompanyPassword;

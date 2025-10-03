@@ -40,6 +40,7 @@ class AppConstants {
   static const String getDocumentTypes = '/service/general/general/documentsTypes/all';
   static const String getAddressTypes = '/service/general/general/addressTypes/all';
   static const String getBanks = '/service/general/general/banks/all';
+  static const String getPasswordTypes = '/service/general/general/passwordTypes/all';
   static String getDistrictsFor(int cityNo) => '/service/general/general/$cityNo/districts';
   static String getTaxPalacesFor(int cityNo) => '/service/general/general/$cityNo/taxPalaces';
   static String getServiceDetail(int id) => '/service/general/general/services/$id';
