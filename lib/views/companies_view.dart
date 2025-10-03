@@ -6,6 +6,7 @@ import '../viewmodels/companies_view_model.dart';
 import 'company_detail_view.dart';
 import 'add_company_view.dart';
 import '../theme/app_colors.dart';
+import '../services/storage_service.dart';
 
 class CompaniesView extends StatelessWidget {
   const CompaniesView({super.key});
@@ -70,20 +71,22 @@ class CompaniesView extends StatelessWidget {
                       itemCount: vm.companies.length,
                     ),
                   ),
-            floatingActionButton: FloatingActionButton(
-              onPressed: () async {
-                final result = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(builder: (_) => const AddCompanyView()),
-                );
-                // Eğer firma başarıyla eklendiyse listeyi yenile
-                if (result == true) {
-                  vm.refresh();
-                }
-              },
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
-              child: const Icon(Icons.add),
-            ),
+            floatingActionButton: StorageService.hasPermission('companies', 'add')
+                ? FloatingActionButton(
+                    onPressed: () async {
+                      final result = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(builder: (_) => const AddCompanyView()),
+                      );
+                      // Eğer firma başarıyla eklendiyse listeyi yenile
+                      if (result == true) {
+                        vm.refresh();
+                      }
+                    },
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    child: const Icon(Icons.add),
+                  )
+                : null,
           );
         },
       ),

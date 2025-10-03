@@ -92,64 +92,66 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GestureDetector(
-                          onTap: () async {
-                            final res = await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (_) => EditCompanyAddressView(compId: widget.compId, address: a),
+                        if (StorageService.hasPermission('companies', 'update'))
+                          GestureDetector(
+                            onTap: () async {
+                              final res = await Navigator.of(context).push<bool>(
+                                MaterialPageRoute(
+                                  builder: (_) => EditCompanyAddressView(compId: widget.compId, address: a),
+                                ),
+                              );
+                              if (res == true) _load();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.edit_outlined,
+                                size: 16,
+                                color: Colors.blue,
                               ),
-                            );
-                            if (res == true) _load();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.edit_outlined,
-                              size: 16,
-                              color: Colors.blue,
                             ),
                           ),
-                        ),
-                        GestureDetector(
-                          onTap: () async {
-                            final token = await StorageService.getToken();
-                            if (token == null) {
+                        if (StorageService.hasPermission('companies', 'delete'))
+                          GestureDetector(
+                            onTap: () async {
+                              final token = await StorageService.getToken();
+                              if (token == null) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                                return;
+                              }
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Adresi Sil'),
+                                  content: Text('${a.addressType ?? 'Adres'} kaydını silmek istediğinize emin misiniz?'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                                  ],
+                                ),
+                              );
+                              if (confirm != true) return;
+                              final ok = await const CompanyService().deleteCompanyAddress(
+                                userToken: token,
+                                compId: widget.compId,
+                                addressId: a.addressID,
+                              );
                               if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-                              return;
-                            }
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Adresi Sil'),
-                                content: Text('${a.addressType ?? 'Adres'} kaydını silmek istediğinize emin misiniz?'),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
-                                ],
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(ok ? 'Adres silindi.' : 'Adres silinemedi')),
+                              );
+                              if (ok) _load();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.delete_outline,
+                                size: 16,
+                                color: theme.colorScheme.error,
                               ),
-                            );
-                            if (confirm != true) return;
-                            final ok = await const CompanyService().deleteCompanyAddress(
-                              userToken: token,
-                              compId: widget.compId,
-                              addressId: a.addressID,
-                            );
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(ok ? 'Adres silindi.' : 'Adres silinemedi')),
-                            );
-                            if (ok) _load();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.delete_outline,
-                              size: 16,
-                              color: theme.colorScheme.error,
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ],
@@ -377,20 +379,22 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: ListTile(
-                          leading: Icon(Icons.edit_outlined),
-                          title: Text('Düzenle'),
+                      if (StorageService.hasPermission('companies', 'update'))
+                        const PopupMenuItem<String>(
+                          value: 'edit',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Düzenle'),
+                          ),
                         ),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: ListTile(
-                          leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                          title: Text('Sil'),
+                      if (StorageService.hasPermission('companies', 'delete'))
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                            title: Text('Sil'),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 );
@@ -634,22 +638,23 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   title: 'Firma Bilgileri',
                                   icon: Icons.apartment_outlined,
                                   actions: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit_outlined),
-                                      tooltip: 'Firma Bilgilerini Düzenle',
-                                      onPressed: (_loading || _company == null)
-                                          ? null
-                                          : () async {
-                                              final result = await Navigator.of(context).push<bool>(
-                                                MaterialPageRoute(
-                                                  builder: (_) => EditCompanyView(company: _company!),
-                                                ),
-                                              );
-                                              if (result == true) {
-                                                _load();
-                                              }
-                                            },
-                                    ),
+                                    if (StorageService.hasPermission('companies', 'update'))
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined),
+                                        tooltip: 'Firma Bilgilerini Düzenle',
+                                        onPressed: (_loading || _company == null)
+                                            ? null
+                                            : () async {
+                                                final result = await Navigator.of(context).push<bool>(
+                                                  MaterialPageRoute(
+                                                    builder: (_) => EditCompanyView(company: _company!),
+                                                  ),
+                                                );
+                                                if (result == true) {
+                                                  _load();
+                                                }
+                                              },
+                                      ),
                                   ],
                                   children: [
                                     _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
@@ -670,20 +675,21 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   title: 'Adres',
                                   icon: Icons.location_on_outlined,
                                   actions: [
-                                    IconButton(
-                                      icon: const Icon(Icons.add_location_alt_outlined),
-                                      tooltip: 'Adres Ekle',
-                                      onPressed: () async {
-                                        final res = await Navigator.of(context).push<bool>(
-                                          MaterialPageRoute(
-                                            builder: (_) => AddCompanyAddressView(compId: widget.compId),
-                                          ),
-                                        );
-                                        if (res == true) {
-                                          _load();
-                                        }
-                                      },
-                                    ),
+                                    if (StorageService.hasPermission('companies', 'add'))
+                                      IconButton(
+                                        icon: const Icon(Icons.add_location_alt_outlined),
+                                        tooltip: 'Adres Ekle',
+                                        onPressed: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => AddCompanyAddressView(compId: widget.compId),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
+                                      ),
                                   ],
                                   children: _addressRows(),
                                 ),
@@ -694,20 +700,21 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   title: 'Ortaklar',
                                   icon: Icons.group_outlined,
                                   actions: [
-                                    IconButton(
-                                      icon: const Icon(Icons.person_add_alt),
-                                      tooltip: 'Ortak Ekle',
-                                      onPressed: () async {
-                                        final res = await Navigator.of(context).push<bool>(
-                                          MaterialPageRoute(
-                                            builder: (_) => AddCompanyPartnerView(compId: widget.compId),
-                                          ),
-                                        );
-                                        if (res == true) {
-                                          _load();
-                                        }
-                                      },
-                                    ),
+                                    if (StorageService.hasPermission('companies', 'add'))
+                                      IconButton(
+                                        icon: const Icon(Icons.person_add_alt),
+                                        tooltip: 'Ortak Ekle',
+                                        onPressed: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
+                                      ),
                                   ],
                                   contentPadding: const EdgeInsets.only(left: 14, right: 0, top: 10, bottom: 10),
                                   children: [
@@ -729,20 +736,21 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   title: 'Belgeler',
                                   icon: Icons.insert_drive_file_outlined,
                                   actions: [
-                                    IconButton(
-                                      icon: const Icon(Icons.upload_file),
-                                      tooltip: 'Belge Ekle',
-                                      onPressed: () async {
-                                        final res = await Navigator.of(context).push<bool>(
-                                          MaterialPageRoute(
-                                            builder: (_) => AddCompanyDocumentView(compId: widget.compId),
-                                          ),
-                                        );
-                                        if (res == true) {
-                                          _load();
-                                        }
-                                      },
-                                    ),
+                                    if (StorageService.hasPermission('companies', 'add'))
+                                      IconButton(
+                                        icon: const Icon(Icons.upload_file),
+                                        tooltip: 'Belge Ekle',
+                                        onPressed: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
+                                      ),
                                   ],
                                   children: [
                                     if (_company!.documents.isEmpty)
@@ -774,29 +782,30 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                                   _shareDocument(doc);
                                                 }
                                               },
-                                              itemBuilder: (context) => const [
-                                                PopupMenuItem<String>(
-                                                  value: 'edit',
-                                                  child: ListTile(
-                                                    leading: Icon(Icons.edit_outlined),
-                                                    title: Text('Güncelle'),
+                                              itemBuilder: (context) => [
+                                                if (StorageService.hasPermission('companies', 'update'))
+                                                  const PopupMenuItem<String>(
+                                                    value: 'edit',
+                                                    child: ListTile(
+                                                      leading: Icon(Icons.edit_outlined),
+                                                      title: Text('Güncelle'),
+                                                    ),
                                                   ),
-                                                ),
-                                                PopupMenuItem<String>(
+                                                const PopupMenuItem<String>(
                                                   value: 'share',
                                                   child: ListTile(
                                                     leading: Icon(Icons.ios_share),
                                                     title: Text('Paylaş'),
                                                   ),
                                                 ),
-                                                PopupMenuItem<String>(
-                                                  value: 'delete',
-                                                  child: ListTile(
-                                                    leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                                    title: Text('Sil'),
+                                                if (StorageService.hasPermission('companies', 'delete'))
+                                                  const PopupMenuItem<String>(
+                                                    value: 'delete',
+                                                    child: ListTile(
+                                                      leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                      title: Text('Sil'),
+                                                    ),
                                                   ),
-                                                ),
-                                                
                                               ],
                                             ),
                                             onTap: () {
@@ -827,20 +836,21 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                   title: 'Banka Bilgileri',
                                   icon: Icons.account_balance_outlined,
                                   actions: [
-                                    IconButton(
-                                      icon: const Icon(Icons.add),
-                                      tooltip: 'Banka Bilgisi Ekle',
-                                      onPressed: () async {
-                                        final res = await Navigator.of(context).push<bool>(
-                                          MaterialPageRoute(
-                                            builder: (_) => AddCompanyBankView(compId: widget.compId),
-                                          ),
-                                        );
-                                        if (res == true) {
-                                          _load();
-                                        }
-                                      },
-                                    ),
+                                    if (StorageService.hasPermission('companies', 'add'))
+                                      IconButton(
+                                        icon: const Icon(Icons.add),
+                                        tooltip: 'Banka Bilgisi Ekle',
+                                        onPressed: () async {
+                                          final res = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => AddCompanyBankView(compId: widget.compId),
+                                            ),
+                                          );
+                                          if (res == true) {
+                                            _load();
+                                          }
+                                        },
+                                      ),
                                   ],
                                   children: [
                                     if (_company!.banks.isEmpty)
@@ -983,14 +993,15 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                                   if (ok) _load();
                                                 }
                                               },
-                                              itemBuilder: (context) => const [
-                                                PopupMenuItem<String>(
-                                                  value: 'delete',
-                                                  child: ListTile(
-                                                    leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                                    title: Text('Sil'),
+                                              itemBuilder: (context) => [
+                                                if (StorageService.hasPermission('companies', 'delete'))
+                                                  const PopupMenuItem<String>(
+                                                    value: 'delete',
+                                                    child: ListTile(
+                                                      leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                      title: Text('Sil'),
+                                                    ),
                                                   ),
-                                                ),
                                               ],
                                             ),
                                           ),
@@ -1009,30 +1020,31 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             title: 'Firma Bilgileri',
                             icon: Icons.apartment_outlined,
                             actions: [
-                              OutlinedButton.icon(
-                                icon: const Icon(Icons.edit_outlined, size: 12),
-                                label: const Text('Firma Düzenle'),
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                  side: BorderSide(color: AppColors.primary),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                              if (StorageService.hasPermission('companies', 'update'))
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.edit_outlined, size: 12),
+                                  label: const Text('Firma Düzenle'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  ),
+                                  onPressed: (_loading || _company == null)
+                                      ? null
+                                      : () async {
+                                          final result = await Navigator.of(context).push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) => EditCompanyView(company: _company!),
+                                            ),
+                                          );
+                                          if (result == true) {
+                                            _load();
+                                          }
+                                        },
                                 ),
-                                onPressed: (_loading || _company == null)
-                                    ? null
-                                    : () async {
-                                        final result = await Navigator.of(context).push<bool>(
-                                          MaterialPageRoute(
-                                            builder: (_) => EditCompanyView(company: _company!),
-                                          ),
-                                        );
-                                        if (result == true) {
-                                          _load();
-                                        }
-                                      },
-                              ),
                             ],
                             children: [
                               _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
@@ -1051,28 +1063,29 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             title: 'Adres',
                             icon: Icons.location_on_outlined,
                             actions: [
-                              OutlinedButton.icon(
-                                icon: const Icon(Icons.add_location_alt_outlined, size: 12),
-                                label: const Text('Adres Ekle'),
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                  side: BorderSide(color: AppColors.primary),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                              if (StorageService.hasPermission('companies', 'add'))
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.add_location_alt_outlined, size: 12),
+                                  label: const Text('Adres Ekle'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  ),
+                                  onPressed: () async {
+                                    final res = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => AddCompanyAddressView(compId: widget.compId),
+                                      ),
+                                    );
+                                    if (res == true) {
+                                      _load();
+                                    }
+                                  },
                                 ),
-                                onPressed: () async {
-                                  final res = await Navigator.of(context).push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (_) => AddCompanyAddressView(compId: widget.compId),
-                                    ),
-                                  );
-                                  if (res == true) {
-                                    _load();
-                                  }
-                                },
-                              ),
                             ],
                             children: _addressRows(),
                           ),
@@ -1081,28 +1094,29 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             title: 'Ortaklar',
                             icon: Icons.group_outlined,
                             actions: [
-                              OutlinedButton.icon(
-                                icon: const Icon(Icons.person_add_alt, size: 12),
-                                label: const Text('Ortak Ekle'),
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                  side: BorderSide(color: AppColors.primary),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                              if (StorageService.hasPermission('companies', 'add'))
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.person_add_alt, size: 12),
+                                  label: const Text('Ortak Ekle'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  ),
+                                  onPressed: () async {
+                                    final res = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                                      ),
+                                    );
+                                    if (res == true) {
+                                      _load();
+                                    }
+                                  },
                                 ),
-                                onPressed: () async {
-                                  final res = await Navigator.of(context).push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (_) => AddCompanyPartnerView(compId: widget.compId),
-                                    ),
-                                  );
-                                  if (res == true) {
-                                    _load();
-                                  }
-                                },
-                              ),
                             ],
                             contentPadding: const EdgeInsets.only(left: 14, right: 0, top: 10, bottom: 10),
                             children: [
@@ -1123,28 +1137,29 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             title: 'Belgeler',
                             icon: Icons.insert_drive_file_outlined,
                             actions: [
-                              OutlinedButton.icon(
-                                icon: const Icon(Icons.upload_file, size: 12),
-                                label: const Text('Belge Ekle'),
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                  side: BorderSide(color: AppColors.primary),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                              if (StorageService.hasPermission('companies', 'add'))
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.upload_file, size: 12),
+                                  label: const Text('Belge Ekle'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  ),
+                                  onPressed: () async {
+                                    final res = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                                      ),
+                                    );    
+                                    if (res == true) {
+                                      _load();
+                                    }
+                                  },
                                 ),
-                                onPressed: () async {
-                                  final res = await Navigator.of(context).push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (_) => AddCompanyDocumentView(compId: widget.compId),
-                                    ),
-                                  );    
-                                  if (res == true) {
-                                    _load();
-                                  }
-                                },
-                              ),
                             ],
                             children: [
                               if (_company!.documents.isEmpty)
@@ -1176,28 +1191,30 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                             _shareDocument(doc);
                                           }
                                         },
-                                        itemBuilder: (context) => const [
-                                          PopupMenuItem<String>(
-                                            value: 'edit',
-                                            child: ListTile(
-                                              leading: Icon(Icons.edit_outlined),
-                                              title: Text('Güncelle'),
+                                        itemBuilder: (context) => [
+                                          if (StorageService.hasPermission('companies', 'update'))
+                                            const PopupMenuItem<String>(
+                                              value: 'edit',
+                                              child: ListTile(
+                                                leading: Icon(Icons.edit_outlined),
+                                                title: Text('Güncelle'),
+                                              ),
                                             ),
-                                          ),
-                                          PopupMenuItem<String>(
+                                          const PopupMenuItem<String>(
                                             value: 'share',
                                             child: ListTile(
                                               leading: Icon(Icons.ios_share),
                                               title: Text('Paylaş'),
                                             ),
                                           ),
-                                          PopupMenuItem<String>(
-                                            value: 'delete',
-                                            child: ListTile(
-                                              leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                              title: Text('Sil'),
+                                          if (StorageService.hasPermission('companies', 'delete'))
+                                            const PopupMenuItem<String>(
+                                              value: 'delete',
+                                              child: ListTile(
+                                                leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                title: Text('Sil'),
+                                              ),
                                             ),
-                                          ),
                                         ],
                                       ),
                                       onTap: () {
@@ -1220,25 +1237,26 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             title: 'Banka Bilgileri',
                             icon: Icons.account_balance_outlined,
                             actions: [
-                              OutlinedButton.icon(
-                                icon: const Icon(Icons.add, size: 12),
-                                label: const Text('Banka Ekle'),
-                                style: OutlinedButton.styleFrom(
-                                  visualDensity: VisualDensity.compact,
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                  side: BorderSide(color: AppColors.primary),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                ),
-                                onPressed: () async {
-                                  final res = await Navigator.of(context).push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (_) => AddCompanyBankView(compId: widget.compId),
-                                    ),
-                                  );
-                                  if (res == true) {
-                                    _load();
+                              if (StorageService.hasPermission('companies', 'add'))
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.add, size: 12),
+                                  label: const Text('Banka Ekle'),
+                                  style: OutlinedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
+                                    side: BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                  ),
+                                  onPressed: () async {
+                                    final res = await Navigator.of(context).push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => AddCompanyBankView(compId: widget.compId),
+                                      ),
+                                    );
+                                    if (res == true) {
+                                      _load();
                                   }
                                 },
                               ),
@@ -1385,14 +1403,15 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                                             if (ok) _load();
                                           }
                                         },
-                                        itemBuilder: (context) => const [
-                                          PopupMenuItem<String>(
-                                            value: 'delete',
-                                            child: ListTile(
-                                              leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                              title: Text('Sil'),
+                                        itemBuilder: (context) => [
+                                          if (StorageService.hasPermission('companies', 'delete'))
+                                            const PopupMenuItem<String>(
+                                              value: 'delete',
+                                              child: ListTile(
+                                                leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                title: Text('Sil'),
+                                              ),
                                             ),
-                                          ),
                                         ],
                                       ),
                                     ),

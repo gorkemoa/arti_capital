@@ -97,7 +97,7 @@ class UserService {
       
       // Kullanıcı bilgileri başarılı ise kaydet
       if (getUserResponse.success && getUserResponse.user != null) {
-        await StorageService.saveUserData(getUserResponse.user!.toJson().toString());
+        await StorageService.saveUserData(jsonEncode(getUserResponse.user!.toJson()));
         
         // App Group'a kullanıcı bilgilerini kaydet
         await AppGroupService.setLoggedInUserName(getUserResponse.user!.userFullname);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'edit_appointment_view.dart';
 import '../services/appointments_service.dart';
+import '../services/storage_service.dart';
 
 class AppointmentDetailView extends StatelessWidget {
   const AppointmentDetailView({
@@ -185,7 +186,7 @@ class AppointmentDetailView extends StatelessWidget {
                 Row(
                   children: [
                     // Edit button (left)
-                    if (appointmentID != null && compID != null)
+                    if (appointmentID != null && compID != null && StorageService.hasPermission('appointments', 'update'))
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () => _editAppointment(context),
@@ -201,11 +202,12 @@ class AppointmentDetailView extends StatelessWidget {
                       ),
                     
                     // Spacing between buttons
-                    if (appointmentID != null && compID != null && appointmentID != null)
+                    if (appointmentID != null && compID != null && StorageService.hasPermission('appointments', 'update') && 
+                        appointmentID != null && StorageService.hasPermission('appointments', 'delete'))
                       const SizedBox(width: 12),
                     
                     // Delete button (right)
-                    if (appointmentID != null)
+                    if (appointmentID != null && StorageService.hasPermission('appointments', 'delete'))
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () => _deleteAppointment(context),

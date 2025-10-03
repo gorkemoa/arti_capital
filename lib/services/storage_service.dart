@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class StorageService {
   static const String _tokenKey = 'user_token';
@@ -46,7 +47,20 @@ class StorageService {
   }
 
   static String? getUserData() {
-    return _prefs?.getString(_userDataKey);
+    final data = _prefs?.getString(_userDataKey);
+    
+    // Eski format kontrolü - eğer parse edilemiyorsa temizle
+    if (data != null) {
+      try {
+        jsonDecode(data);
+      } catch (e) {
+        print('[STORAGE] Invalid user data format detected, clearing...');
+        _prefs?.remove(_userDataKey);
+        return null;
+      }
+    }
+    
+    return data;
   }
 
   static Future<void> removeUserData() async {
@@ -100,6 +114,28 @@ class StorageService {
 
   static Future<void> removeLastLoginAt() async {
     await _prefs?.remove(_lastLoginAtKey);
+  }
+
+  // Permission helpers - check user permissions (PHP isset logic)
+  static bool hasPermission(String module, String action) {
+    final userData = getUserData();
+    if (userData == null) return false;
+    
+    try {
+      final Map<String, dynamic> json = jsonDecode(userData);
+      final permissions = json['userPermissions'] as Map<String, dynamic>?;
+      if (permissions == null) return false;
+      
+      final modulePerms = permissions[module];
+      if (modulePerms == null || modulePerms is! Map<String, dynamic>) return false;
+      
+      final actionPerm = modulePerms[action];
+      return actionPerm == 'true' || actionPerm == true;
+    } catch (e) {
+      // Eski formatta kaydedilmiş veri varsa temizle
+      print('[PERMISSION_CHECK] Invalid user data format, please logout and login again. Error: $e');
+      return false;
+    }
   }
 }
 

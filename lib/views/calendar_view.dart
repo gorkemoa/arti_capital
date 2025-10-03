@@ -6,6 +6,7 @@ import '../services/appointments_service.dart';
 // removed: company imports no longer needed after moving to separate page
 import '../models/appointment_models.dart';
 import 'appointment_detail_view.dart';
+import '../services/storage_service.dart';
 
 class CalendarView extends StatefulWidget {
   const CalendarView({super.key});
@@ -477,30 +478,31 @@ class _CalendarViewState extends State<CalendarView> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: AppColors.onPrimary),
             actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: TextButton(
-              onPressed: () async {
-                // Yeni randevu eklendikten sonra takvimi yenilemek için await kullan
-                final shouldRefresh = await Navigator.of(context).pushNamed('/new-appointment');
-                // True döndüyse randevuları yenile
-                if (shouldRefresh == true) {
-                  _fetchAppointments();
-                }
-              },
-              style: TextButton.styleFrom(backgroundColor: Colors.white, 
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.all(6),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.add, size: 15, color: AppColors.primary),
-                  const SizedBox(width: 6),
-                  const Text('Randevu Ekle', style: TextStyle(fontSize: 12, color: AppColors.primary),),
-                ],
+          if (StorageService.hasPermission('appointments', 'add'))
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: TextButton(
+                onPressed: () async {
+                  // Yeni randevu eklendikten sonra takvimi yenilemek için await kullan
+                  final shouldRefresh = await Navigator.of(context).pushNamed('/new-appointment');
+                  // True döndüyse randevuları yenile
+                  if (shouldRefresh == true) {
+                    _fetchAppointments();
+                  }
+                },
+                style: TextButton.styleFrom(backgroundColor: Colors.white, 
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.all(6),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.add, size: 15, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    const Text('Randevu Ekle', style: TextStyle(fontSize: 12, color: AppColors.primary),),
+                  ],
+                ),
               ),
             ),
-          ),
 
 
 

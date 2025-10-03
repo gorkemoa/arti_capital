@@ -18,6 +18,7 @@ class User {
   final String? authTypeID;
   final String? authType;
   final bool? isAuth;
+  final Map<String, dynamic>? userPermissions;
 
   User({
     required this.userID,
@@ -39,6 +40,7 @@ class User {
     this.authTypeID,
     this.authType,
     this.isAuth,
+    this.userPermissions,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -61,6 +63,7 @@ class User {
         authTypeID: json['authTypeID'] as String?,
         authType: json['authType'] as String?,
         isAuth: json['isAuth'] as bool?,
+        userPermissions: json['userPermissions'] as Map<String, dynamic>?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -83,7 +86,17 @@ class User {
         'authTypeID': authTypeID,
         'authType': authType,
         'isAuth': isAuth,
+        'userPermissions': userPermissions,
       };
+
+  // Helper method to check permissions (PHP isset logic: if key exists and is "true", permission granted)
+  bool hasPermission(String module, String action) {
+    if (userPermissions == null) return false;
+    final modulePerms = userPermissions![module];
+    if (modulePerms == null || modulePerms is! Map<String, dynamic>) return false;
+    final actionPerm = modulePerms[action];
+    return actionPerm == 'true' || actionPerm == true;
+  }
 }
 
 
