@@ -52,7 +52,6 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
-		<string>background-processing</string>
 	</array>
 	
 	<!-- Firebase Cloud Messaging için gerekli ayarlar -->
@@ -62,5 +61,13 @@
 	<!-- Bildirim izinleri -->
 	<key>NSUserNotificationAlertStyle</key>
 	<string>alert</string>
+	
+	<!-- Privacy - Photo Library Usage Description -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Profil fotoğrafınızı güncellemek ve belge yüklemek için fotoğraf galerinize erişmemiz gerekiyor.</string>
+	
+	<!-- Privacy - Calendars Usage Description -->
+	<key>NSCalendarsUsageDescription</key>
+	<string>Yatırım etkinliklerinizi ve hatırlatmalarınızı takvime eklemek için달력 erişimi gerekiyor.</string>
 </dict>
 </plist>
