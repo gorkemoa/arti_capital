@@ -697,6 +697,69 @@ class CompanyService {
     }
   }
 
+  Future<AddCompanyPasswordResponse> addCompanyPassword(AddCompanyPasswordRequest request) async {
+    try {
+      final endpoint = AppConstants.addCompanyPassword;
+
+      AppLogger.i('POST $endpoint', tag: 'ADD_PASSWORD');
+      AppLogger.i(request.toJson().toString(), tag: 'ADD_PASSWORD_REQ');
+
+      final Response resp = await ApiClient.postJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_PASSWORD');
+          return AddCompanyPasswordResponse(
+            error: true,
+            success: false,
+            message: 'Geçersiz yanıt formatı',
+            statusCode: resp.statusCode,
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return AddCompanyPasswordResponse(
+          error: true,
+          success: false,
+          message: 'Beklenmeyen yanıt formatı',
+          statusCode: resp.statusCode,
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_PASSWORD');
+      AppLogger.i(body.toString(), tag: 'ADD_PASSWORD_RES');
+
+      return AddCompanyPasswordResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('API error: ${e.message}', tag: 'ADD_PASSWORD');
+      return AddCompanyPasswordResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'Bilinmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.message,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error: $e', tag: 'ADD_PASSWORD');
+      return AddCompanyPasswordResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen hata',
+        errorMessage: 'Beklenmeyen hata',
+      );
+    }
+  }
+
   Future<bool> deleteCompanyBank({
     required String userToken,
     required int compId,

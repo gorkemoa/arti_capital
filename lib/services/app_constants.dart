@@ -49,6 +49,7 @@ class AppConstants {
   static const String deletePartner = '/service/user/account/company/partnerDelete';
   static const String addCompanyBank = '/service/user/account/company/bankAdd';
   static const String deleteCompanyBank = '/service/user/account/company/bankDelete';
+  static const String addCompanyPassword = '/service/user/account/company/passwordAdd';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/notifications';

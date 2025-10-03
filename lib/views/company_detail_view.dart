@@ -16,6 +16,7 @@ import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
 import 'add_company_bank_view.dart';
+import 'add_company_password_view.dart';
 import 'document_preview_view.dart';
 import 'add_company_partner_view.dart';
 import 'edit_company_partner_view.dart';
@@ -920,10 +921,15 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
             icon: Icons.add,
             label: 'Şifre Ekle',
             onPressed: () async {
-              // TODO: Implement add password view
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Şifre ekleme özelliği yakında eklenecek')),
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyPasswordView(compId: widget.compId),
+                ),
               );
+              if (result == true) {
+                _load();
+              }
             },
           ),
       ],
