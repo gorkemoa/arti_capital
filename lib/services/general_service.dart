@@ -47,13 +47,16 @@ class GeneralService {
   Future<List<CompanyTypeItem>> getCompanyTypes() async {
     final Response resp = await ApiClient.getJson(AppConstants.getCompanyTypes);
     final body = resp.data as Map<String, dynamic>;
-    final code = resp.statusCode;
+     final code = resp.statusCode;
     final parsed = GetCompanyTypesResponse.fromJson(body, code);
     return parsed.types;
   }
 
-  Future<List<DocumentTypeItem>> getDocumentTypes() async {
-    final Response resp = await ApiClient.getJson(AppConstants.getDocumentTypes);
+  Future<List<DocumentTypeItem>> getDocumentTypes(int documentType) async {
+    final String endpoint = documentType == 2 
+        ? AppConstants.getDocumentTypesForImages 
+        : AppConstants.getDocumentTypesForDocuments;
+    final Response resp = await ApiClient.getJson(endpoint);
     final body = resp.data as Map<String, dynamic>;
     final code = resp.statusCode;
     final parsed = GetDocumentTypesResponse.fromJson(body, code);

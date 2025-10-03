@@ -37,7 +37,8 @@ class AppConstants {
   static const String getAllServices = '/service/general/general/services/all';
   static const String getCities = '/service/general/general/cities/all';
   static const String getCompanyTypes = '/service/general/general/companyTypes/all';
-  static const String getDocumentTypes = '/service/general/general/documentsTypes/all';
+  static const String getDocumentTypesForDocuments = '/service/general/general/documentsTypes/1';
+  static const String getDocumentTypesForImages = '/service/general/general/documentsTypes/2';
   static const String getAddressTypes = '/service/general/general/addressTypes/all';
   static const String getBanks = '/service/general/general/banks/all';
   static const String getPasswordTypes = '/service/general/general/passwordTypes/all';

@@ -15,6 +15,7 @@ import '../services/pdf_generator_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
+import 'add_company_image_view.dart';
 import 'add_company_bank_view.dart';
 import 'add_company_password_view.dart';
 import 'edit_company_password_view.dart';
@@ -443,6 +444,176 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('PDF oluşturulurken hata oluştu')),
       );
+    }
+  }
+
+  Future<void> _updateImage(CompanyImageItem image) async {
+    final token = await StorageService.getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: true,
+      type: FileType.image,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final String? path = file.path;
+    final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
+    if (bytes == null) return;
+
+    String mime = 'image/jpeg';
+    final name = (file.name).toLowerCase();
+    if (name.endsWith('.png')) {
+      mime = 'image/png';
+    } else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
+      mime = 'image/jpeg';
+    } else if (name.endsWith('.webp')) {
+      mime = 'image/webp';
+    }
+
+    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+
+    final ok = await const CompanyService().updateCompanyDocument(
+      userToken: token,
+      compId: widget.compId,
+      documentId: image.imageID,
+      documentType: image.imageTypeID,
+      dataUrl: dataUrl,
+      partnerID: 0,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Görsel güncellendi.' : 'Görsel güncellenemedi')),
+    );
+    if (ok) _load();
+  }
+
+  Future<void> _deleteImage(CompanyImageItem image) async {
+    final token = await StorageService.getToken();
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Görseli Sil'),
+        content: Text('${image.imageType} görselini silmek istediğinizden emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final ok = await const CompanyService().deleteCompanyDocument(
+      userToken: token,
+      compId: widget.compId,
+      documentId: image.imageID,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Görsel silindi.' : 'Görsel silinemedi')),
+    );
+    if (ok) _load();
+  }
+
+  Future<void> _shareImage(CompanyImageItem image) async {
+    try {
+      final String title = image.imageType;
+      final String url = image.imageURL;
+
+      Uint8List bytes;
+      String fileName = 'gorsel';
+      String? mimeType;
+
+      if (url.startsWith('data:')) {
+        final int commaIndex = url.indexOf(',');
+        final String header = commaIndex > 0 ? url.substring(0, commaIndex) : '';
+        final String b64 = commaIndex > 0 ? url.substring(commaIndex + 1) : '';
+        if (header.contains(';base64')) {
+          mimeType = header.split(':').last.split(';').first;
+        }
+        bytes = base64Decode(b64);
+        if (mimeType == 'image/png') {
+          fileName = 'gorsel.png';
+        } else if (mimeType == 'image/jpeg') {
+          fileName = 'gorsel.jpg';
+        } else if (mimeType == 'image/webp') {
+          fileName = 'gorsel.webp';
+        } else {
+          fileName = 'gorsel.jpg';
+        }
+      } else {
+        final uri = Uri.tryParse(url);
+        if (uri == null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Geçersiz görsel bağlantısı')));
+          return;
+        }
+
+        final client = HttpClient();
+        final request = await client.getUrl(uri);
+        final response = await request.close();
+        if (response.statusCode != 200) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Görsel indirilemedi')));
+          return;
+        }
+        final builder = BytesBuilder(copy: false);
+        await for (final chunk in response) {
+          builder.add(chunk);
+        }
+        bytes = builder.takeBytes();
+        mimeType = response.headers.value('content-type');
+
+        final String lastSeg = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+        if (lastSeg.isNotEmpty) {
+          fileName = lastSeg;
+        } else {
+          if (mimeType == 'image/png') {
+            fileName = 'gorsel.png';
+          } else if (mimeType == 'image/jpeg') {
+            fileName = 'gorsel.jpg';
+          } else if (mimeType == 'image/webp') {
+            fileName = 'gorsel.webp';
+          } else {
+            fileName = 'gorsel.jpg';
+          }
+        }
+      }
+
+      final String tempPath = Directory.systemTemp.path;
+      final File outFile = File('$tempPath/$fileName');
+      await outFile.writeAsBytes(bytes);
+
+      final xfile = XFile(outFile.path, mimeType: mimeType, name: fileName);
+      final box = context.findRenderObject() as RenderBox?;
+      await Share.shareXFiles(
+        [xfile], 
+        subject: title, 
+        text: title, 
+        sharePositionOrigin: box != null 
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Görsel paylaşılırken hata oluştu')));
     }
   }
 
@@ -964,10 +1135,12 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
             icon: Icons.add,
             label: 'Görsel Ekle',
             onPressed: () async {
-              // TODO: Implement add image view
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Görsel ekleme özelliği yakında eklenecek')),
+              final res = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyImageView(compId: widget.compId),
+                ),
               );
+              if (res == true) _load();
             },
           ),
       ],
@@ -1037,16 +1210,12 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                             ),
                           ),
                         );
+                      } else if (value == 'update') {
+                        _updateImage(image);
                       } else if (value == 'share') {
-                        // TODO: Implement share image
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Görsel paylaşma özelliği yakında eklenecek')),
-                        );
+                        _shareImage(image);
                       } else if (value == 'delete') {
-                        // TODO: Implement delete image
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Görsel silme özelliği yakında eklenecek')),
-                        );
+                        _deleteImage(image);
                       }
                     },
                     itemBuilder: (context) => [
@@ -1057,6 +1226,14 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                           title: Text('Görüntüle'),
                         ),
                       ),
+                      if (StorageService.hasPermission('companies', 'update'))
+                        const PopupMenuItem<String>(
+                          value: 'update',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Güncelle'),
+                          ),
+                        ),
                       const PopupMenuItem<String>(
                         value: 'share',
                         child: ListTile(

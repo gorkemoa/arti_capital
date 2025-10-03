@@ -4,8 +4,7 @@ import 'dart:ui';
 import 'dart:typed_data';
 import 'package:arti_capital/views/document_preview_view.dart';
 import 'package:path_provider/path_provider.dart';
-
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -15,21 +14,21 @@ import '../services/storage_service.dart';
 import '../services/company_service.dart';
 import '../theme/app_colors.dart';
 
-class AddCompanyDocumentView extends StatefulWidget {
-  const AddCompanyDocumentView({super.key, required this.compId, this.partnerID, this.documentType = 1});
+class AddCompanyImageView extends StatefulWidget {
+  const AddCompanyImageView({super.key, required this.compId});
   final int compId;
-  final int? partnerID;
-  final int documentType; // 1: Belge, 2: Görsel
 
   @override
-  State<AddCompanyDocumentView> createState() => _AddCompanyDocumentViewState();
+  State<AddCompanyImageView> createState() => _AddCompanyImageViewState();
 }
 
-class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
-  List<DocumentTypeItem> _documentTypes = [];
+class _AddCompanyImageViewState extends State<AddCompanyImageView> {
+  List<DocumentTypeItem> _imageTypes = [];
   DocumentTypeItem? _selectedType;
-  PlatformFile? _pickedFile;
+  XFile? _pickedImage;
+  Uint8List? _imageBytes;
   bool _submitting = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -38,10 +37,10 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
   }
 
   Future<void> _loadTypes() async {
-    final types = await GeneralService().getDocumentTypes(widget.documentType);
+    final types = await GeneralService().getDocumentTypes(2); // 2: Görseller
     if (!mounted) return;
     setState(() {
-      _documentTypes = types;
+      _imageTypes = types;
       if (types.isNotEmpty) _selectedType = types.first;
     });
   }
@@ -121,89 +120,160 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
     );
   }
 
-  Future<void> _pickFile() async {
-    final res = await FilePicker.platform.pickFiles(allowMultiple: false, withData: true);
-    if (res == null || res.files.isEmpty) return;
-    setState(() {
-      _pickedFile = res.files.first;
-    });
+  Future<void> _showImageSourceDialog() async {
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Görsel Seç'),
+        message: const Text('Görseli nereden seçmek istersiniz?'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _pickImageFromCamera();
+            },
+            child: const Text('Kamera'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _pickImageFromGallery();
+            },
+            child: const Text('Galeri'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('İptal'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _pickedImage = image;
+          _imageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kamera açılırken hata oluştu: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _pickedImage = image;
+          _imageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Galeri açılırken hata oluştu: $e')),
+      );
+    }
   }
 
   Future<void> _openPreview() async {
-    if (_pickedFile == null) return;
+    if (_pickedImage == null || _imageBytes == null) return;
     try {
-      final file = _pickedFile!;
-      final String? path = file.path;
-      final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
-      if (bytes == null) return;
       final dir = await getTemporaryDirectory();
-      final safeName = file.name.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+      final safeName = _pickedImage!.name.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
       final savePath = '${dir.path}/preview_$safeName';
       final f = File(savePath);
-      await f.writeAsBytes(bytes, flush: true);
+      await f.writeAsBytes(_imageBytes!, flush: true);
       if (!mounted) return;
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => DocumentPreviewView(
             url: 'file://$savePath',
-            title: file.name,
+            title: _pickedImage!.name,
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ön izleme açılamadı: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ön izleme açılamadı: $e')),
+      );
     }
   }
 
   String _guessMime(String name) {
     final lower = name.toLowerCase();
-    if (lower.endsWith('.pdf')) return 'application/pdf';
     if (lower.endsWith('.png')) return 'image/png';
     if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-    if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    return 'application/octet-stream';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
   }
 
   Future<void> _submit() async {
-    if (_selectedType == null || _pickedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge türü ve dosya seçin')));
+    if (_selectedType == null || _pickedImage == null || _imageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Görsel türü ve resim seçin')),
+      );
       return;
     }
 
     final token = await StorageService.getToken();
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Oturum bulunamadı')),
+      );
       return;
     }
 
     setState(() { _submitting = true; });
     try {
-      final file = _pickedFile!;
-      final String? path = file.path;
-      final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
-      if (bytes == null) throw Exception('Dosya okunamadı');
-      final mime = _guessMime(file.name);
-      final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+      final mime = _guessMime(_pickedImage!.name);
+      final dataUrl = 'data:$mime;base64,${base64Encode(_imageBytes!)}';
 
       final ok = await const CompanyService().addCompanyDocument(
         userToken: token,
         compId: widget.compId,
         documentType: _selectedType!.documentID,
         dataUrl: dataUrl,
-        partnerID: widget.partnerID,
+        partnerID: null,
       );
 
       if (!mounted) return;
       if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.partnerID != null ? 'Ortak belgesi başarıyla eklendi.' : 'Şirket belgesi başarıyla eklendi.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Şirket görseli başarıyla eklendi.')),
+        );
         Navigator.of(context).pop(true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.partnerID != null ? 'Ortak belgesi eklenemedi' : 'Şirket belgesi eklenemedi')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Şirket görseli eklenemedi')),
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hata: $e')),
+      );
     } finally {
       if (mounted) setState(() { _submitting = false; });
     }
@@ -214,7 +284,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.partnerID != null ? 'Ortak Belgesi Ekle' : 'Şirket Belgesi Ekle'),
+        title: const Text('Şirket Görseli Ekle'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
@@ -224,22 +294,22 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSectionTitle(context, 'Belge Yükleme'),
+            _buildSectionTitle(context, 'Görsel Yükleme'),
             const SizedBox(height: 24),
 
-            // Belge türü (Cupertino picker)
+            // Görsel türü (Cupertino picker)
             GestureDetector(
-              onTap: _documentTypes.isEmpty
+              onTap: _imageTypes.isEmpty
                   ? null
                   : () async {
                       final currentIndex = _selectedType == null
                           ? 0
-                          : _documentTypes.indexWhere((e) => e.documentID == _selectedType!.documentID).clamp(0, _documentTypes.length - 1);
+                          : _imageTypes.indexWhere((e) => e.documentID == _selectedType!.documentID).clamp(0, _imageTypes.length - 1);
                       await _showCupertinoSelector<DocumentTypeItem>(
-                        items: _documentTypes,
+                        items: _imageTypes,
                         initialIndex: currentIndex,
                         labelBuilder: (e) => e.documentName,
-                        title: 'Belge Türü Seç',
+                        title: 'Görsel Türü Seç',
                         onSelected: (e) { setState(() { _selectedType = e; }); },
                       );
                     },
@@ -256,7 +326,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                   children: [
                     Expanded(
                       child: Text(
-                        _selectedType?.documentName ?? 'Belge Türü',
+                        _selectedType?.documentName ?? 'Görsel Türü',
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: (_selectedType == null)
@@ -273,13 +343,13 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
 
             const SizedBox(height: 24),
 
-            // Dosya seçimi alanı
-            if (_pickedFile == null) ...[
+            // Görsel seçimi alanı
+            if (_pickedImage == null && _imageBytes == null) ...[
               GestureDetector(
-                onTap: _pickFile,
+                onTap: _showImageSourceDialog,
                 child: DashedBorderContainer(
                   width: double.infinity,
-                  height: 140,
+                  height: 200,
                   borderColor: AppColors.primary.withOpacity(0.6),
                   dashWidth: 6,
                   dashSpace: 4,
@@ -287,12 +357,20 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.attach_file, color: AppColors.primary, size: 28),
-                      const SizedBox(height: 8),
+                      Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary, size: 48),
+                      const SizedBox(height: 12),
                       Text(
-                        'Dosya Seç (PDF, PNG, JPG, DOCX)',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        'Görsel Seç',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Kamera veya Galeriden',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.primary.withOpacity(0.7),
                             ),
                       ),
                     ],
@@ -300,75 +378,71 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: 180,
-                child: ElevatedButton.icon(
-                  onPressed: _pickFile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.onPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _pickImageFromCamera,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    ),
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Kamera'),
                   ),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Dosya Ekle'),
-                ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _pickImageFromGallery,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    ),
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('Galeri'),
+                  ),
+                ],
               ),
             ] else ...[
               DashedBorderContainer(
                 width: double.infinity,
-                height: 140,
+                height: 300,
                 borderColor: Colors.grey.shade400,
                 dashWidth: 6,
                 dashSpace: 4,
                 radius: 8,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_pickedFile != null && _guessMime(_pickedFile!.name).startsWith('image/')) ...[
-                      FutureBuilder<Uint8List?>(
-                        future: (() async {
-                          final pf = _pickedFile!;
-                          if (pf.bytes != null) return pf.bytes;
-                          if (pf.path != null) return await File(pf.path!).readAsBytes();
-                          return null;
-                        })(),
-                        builder: (context, snap) {
-                          if (snap.connectionState == ConnectionState.waiting) {
-                            return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
-                          }
-                          final data = snap.data;
-                          if (data == null) {
-                            return const Icon(Icons.image_not_supported_outlined, size: 28);
-                          }
-                          return Image.memory(data, fit: BoxFit.contain);
-                        },
+                child: _imageBytes != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(
+                          _imageBytes!,
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : const Center(
+                        child: CircularProgressIndicator(),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _pickedFile!.name,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ] else ...[
-                      const Icon(Icons.insert_drive_file_outlined, size: 28),
-                      const SizedBox(height: 8),
-                      Text(
-                        _pickedFile!.name,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ],
-                ),
               ),
+              const SizedBox(height: 8),
+              if (_pickedImage != null)
+                Text(
+                  _pickedImage!.name,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.7),
+                      ),
+                ),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton.icon(
-                    onPressed: _pickFile,
+                    onPressed: _showImageSourceDialog,
                     icon: Icon(Icons.edit, color: AppColors.primary),
                     label: Text(
                       'Değiştir',
@@ -377,7 +451,10 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                   ),
                   const SizedBox(width: 16),
                   TextButton.icon(
-                    onPressed: () => setState(() => _pickedFile = null),
+                    onPressed: () => setState(() {
+                      _pickedImage = null;
+                      _imageBytes = null;
+                    }),
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     label: Text(
                       'Kaldır',
@@ -553,5 +630,3 @@ class _DashedRectPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
