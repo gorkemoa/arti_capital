@@ -18,6 +18,8 @@ class CompanyItem {
   final List<CompanyDocumentItem> documents;
   final List<PartnerItem> partners;
   final List<CompanyBankItem> banks;
+  final List<CompanyPasswordItem> passwords;
+  final List<CompanyImageItem> images;
 
   CompanyItem({
     required this.compID,
@@ -39,6 +41,8 @@ class CompanyItem {
     this.documents = const [],
     this.partners = const [],
     this.banks = const [],
+    this.passwords = const [],
+    this.images = const [],
   });
 
   // Geriye dönük uyumluluk için birincil adres kısa yolları
@@ -49,8 +53,7 @@ class CompanyItem {
   String get compAddress => addresses.isNotEmpty ? (addresses.first.addressAddress ?? '') : '';
 
   factory CompanyItem.fromJson(Map<String, dynamic> json) {
-    // Yeni response: fields + addresses/documents/partners
-    // Eski response ile uyum için adres alanlarını da kontrol ediyoruz
+ 
     final addressesJson = (json['addresses'] as List<dynamic>?) ?? const [];
     final addresses = addressesJson
         .map((e) => CompanyAddressItem.fromJson(e as Map<String, dynamic>))
@@ -99,6 +102,12 @@ class CompanyItem {
           .toList(),
       banks: ((json['banks'] as List<dynamic>?) ?? const [])
           .map((e) => CompanyBankItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      passwords: ((json['passwords'] as List<dynamic>?) ?? const [])
+          .map((e) => CompanyPasswordItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      images: ((json['images'] as List<dynamic>?) ?? const [])
+          .map((e) => CompanyImageItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
@@ -307,6 +316,78 @@ class CompanyDocumentItem {
       createDate: created,
     );
   }
+}
+
+class CompanyPasswordItem {
+  final int passwordID;
+  final int passwordTypeID;
+  final String passwordType;
+  final String passwordUsername;
+  final String passwordPassword;
+  final String createDate;
+
+  CompanyPasswordItem({
+    required this.passwordID,
+    required this.passwordTypeID,
+    required this.passwordType,
+    required this.passwordUsername,
+    required this.passwordPassword,
+    required this.createDate,
+  });
+
+  factory CompanyPasswordItem.fromJson(Map<String, dynamic> json) {
+    return CompanyPasswordItem(
+      passwordID: (json['passwordID'] as num?)?.toInt() ?? 0,
+      passwordTypeID: (json['passwordTypeID'] as num?)?.toInt() ?? 0,
+      passwordType: json['passwordType'] as String? ?? '',
+      passwordUsername: json['passwordUsername'] as String? ?? '',
+      passwordPassword: json['passwordPassword'] as String? ?? '',
+      createDate: json['createDate'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'passwordID': passwordID,
+    'passwordTypeID': passwordTypeID,
+    'passwordType': passwordType,
+    'passwordUsername': passwordUsername,
+    'passwordPassword': passwordPassword,
+    'createDate': createDate,
+  };
+}
+
+class CompanyImageItem {
+  final int imageID;
+  final int imageTypeID;
+  final String imageType;
+  final String imageURL;
+  final String createDate;
+
+  CompanyImageItem({
+    required this.imageID,
+    required this.imageTypeID,
+    required this.imageType,
+    required this.imageURL,
+    required this.createDate,
+  });
+
+  factory CompanyImageItem.fromJson(Map<String, dynamic> json) {
+    return CompanyImageItem(
+      imageID: (json['imageID'] as num?)?.toInt() ?? 0,
+      imageTypeID: (json['imageTypeID'] as num?)?.toInt() ?? 0,
+      imageType: json['imageType'] as String? ?? '',
+      imageURL: json['imageURL'] as String? ?? '',
+      createDate: json['createDate'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'imageID': imageID,
+    'imageTypeID': imageTypeID,
+    'imageType': imageType,
+    'imageURL': imageURL,
+    'createDate': createDate,
+  };
 }
 
 class PartnerItem {

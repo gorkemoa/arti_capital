@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,12 +34,21 @@ class CompanyDetailView extends StatefulWidget {
 class _CompanyDetailViewState extends State<CompanyDetailView> {
   CompanyItem? _company;
   bool _loading = true;
-  // Belge türü ve seçim durumu artık ayrı sayfada yönetiliyor
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; });
+    final comp = await const CompanyService().getCompanyDetail(widget.compId);
+    if (!mounted) return;
+    setState(() {
+      _company = comp;
+      _loading = false;
+    });
   }
 
   List<Widget> _addressRows() {
@@ -56,7 +66,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: addresses.map((a) {
           final theme = Theme.of(context);
-          // ignore: deprecated_member_use
           final border = theme.colorScheme.outline.withOpacity(0.12);
           final type = a.addressType ?? 'Adres';
 
@@ -173,10 +182,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     ];
   }
 
-  // eski bağlantı dialogu kaldırıldı; artık dokümanlar önizleme sayfasında açılıyor
-
-  // uzun basış menüsü kaldırıldı; aksiyonlar doğrudan listede
-
   Future<void> _updateDocument(CompanyDocumentItem doc) async {
     final token = await StorageService.getToken();
     if (token == null) {
@@ -184,7 +189,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
       return;
     }
 
-    // Yeni dosya seç
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       withData: true,
@@ -196,18 +200,15 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
     if (bytes == null) return;
 
-    // MIME türü tahmini
     String mime = 'application/octet-stream';
     final name = (file.name).toLowerCase();
     if (name.endsWith('.pdf')) {
       mime = 'application/pdf';
     } else if (name.endsWith('.png')) {
       mime = 'image/png';
-    }
-    else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
+    } else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
       mime = 'image/jpeg';
-    }
-    else if (name.endsWith('.docx')) {
+    } else if (name.endsWith('.docx')) {
       mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
 
@@ -267,145 +268,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     if (ok) _load();
   }
 
-  Future<void> _load() async {
-    setState(() { _loading = true; });
-    final comp = await const CompanyService().getCompanyDetail(widget.compId);
-    if (!mounted) return;
-    setState(() {
-      _company = comp;
-      _loading = false;
-    });
-  }
-
-  Widget _buildPartnersTable(List<PartnerItem> partners) {
-    return Row(
-      children: [
-        // Yatay kaydırılabilir tablo kısmı
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              showCheckboxColumn: false,
-              columns: const [
-                DataColumn(label: Text('Ad Soyad')),
-                DataColumn(label: Text('T.C. No')),
-                DataColumn(label: Text('Doğum Tarihi')),
-                DataColumn(label: Text('Ünvan')),
-                DataColumn(label: Text('Konum')),
-                DataColumn(label: Text('Vergi Dairesi')),
-                DataColumn(label: Text('Hisse')),
-                DataColumn(label: Text('Tutar')),
-              ],
-              rows: partners.map((PartnerItem p) {
-                return DataRow(
-                  onSelectChanged: (selected) async {
-                    if (selected != true) return;
-                    final res = await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(
-                        builder: (_) => PartnerDetailView(compId: widget.compId, partner: p),
-                      ),
-                    );
-                    if (res == true) {
-                      _load();
-                    }
-                  },
-                  cells: [
-                    DataCell(Text((p.partnerFullname.isNotEmpty ? p.partnerFullname : p.partnerName).toUpperCase())),
-                    DataCell(Text(p.partnerIdentityNo.isNotEmpty ? p.partnerIdentityNo : '-')),
-                    DataCell(Text(p.partnerBirthday.isNotEmpty ? p.partnerBirthday : '-')),
-                    DataCell(Text(p.partnerTitle.isNotEmpty ? p.partnerTitle.toUpperCase() : '-')),
-                    DataCell(Text('${p.partnerCity}/${p.partnerDistrict}')),
-                    DataCell(Text(p.partnerTaxPalace)),
-                    DataCell(Text(p.partnerShareRatio)),
-                    DataCell(Text(p.partnerSharePrice)),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        // Sağda sabit duran aksiyonlar
-        Container(
-          width: 44,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Her satır için aksiyon butonları
-              ...partners.map((PartnerItem p) {
-                return Container(
-                  height: 48, // DataRow yüksekliği
-                  alignment: Alignment.centerRight,
-                  child: PopupMenuButton<String>(
-                    tooltip: 'Aksiyonlar',
-                    icon: const Icon(Icons.more_vert),
-                    iconSize: 20,
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        final res = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
-                          ),
-                        );
-                        if (res == true) _load();
-                      } else if (value == 'delete') {
-                        final token = await StorageService.getToken();
-                        if (token == null) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-                          return;
-                        }
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Ortak Sil'),
-                            content: Text('${p.partnerName} adlı ortağı silmek istediğinize emin misiniz?'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-                              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
-                            ],
-                          ),
-                        );
-                        if (confirm != true) return;
-                        final ok = await const CompanyService().deleteCompanyPartner(
-                          userToken: token,
-                          compId: widget.compId,
-                          partnerId: p.partnerID,
-                        );
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(ok ? 'Ortak silindi.' : 'Ortak silinemedi')),
-                        );
-                        if (ok) _load();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      if (StorageService.hasPermission('companies', 'update'))
-                        const PopupMenuItem<String>(
-                          value: 'edit',
-                          child: ListTile(
-                            leading: Icon(Icons.edit_outlined),
-                            title: Text('Düzenle'),
-                          ),
-                        ),
-                      if (StorageService.hasPermission('companies', 'delete'))
-                        const PopupMenuItem<String>(
-                          value: 'delete',
-                          child: ListTile(
-                            leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                            title: Text('Sil'),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<void> _shareDocument(CompanyDocumentItem doc) async {
     try {
       final String title = doc.documentType;
@@ -423,7 +285,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
           mimeType = header.split(':').last.split(';').first;
         }
         bytes = base64Decode(b64);
-        // Basit uzantı tahmini
         if (mimeType == 'application/pdf') {
           fileName = 'belge.pdf';
         } else if (mimeType == 'image/png') {
@@ -458,7 +319,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
         bytes = builder.takeBytes();
         mimeType = response.headers.value('content-type');
 
-        // Dosya adı çıkarımı
         final String lastSeg = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
         if (lastSeg.isNotEmpty) {
           fileName = lastSeg;
@@ -501,7 +361,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     if (_company == null) return;
 
     try {
-      // PDF oluşturma işlemi başladığını kullanıcıya göster
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -516,18 +375,16 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
         ),
       );
 
-      // PDF oluştur
       final pdfBytes = await PdfGeneratorService.generateCompanyDetailPdf(_company!);
       
       if (!mounted) return;
-      Navigator.pop(context); // Loading dialog'unu kapat
+      Navigator.pop(context);
 
-      // PDF önizleme ve paylaşma seçenekleri göster
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: Text('${_company!.compName} - PDF Raporu'),
-          content: const Text('PDF başarıyla oluşturuldu. Ne yapmak istiyorsunız?'),
+          content: const Text('PDF başarıyla oluşturuldu. Ne yapmak istiyorsunuz?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -536,13 +393,10 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-                
-                // PDF'i doğrudan cihaza kaydet
                 final file = await PdfGeneratorService.savePdfToFile(
                   pdfBytes, 
                   '${_company!.compName}_detay_raporu.pdf'
                 );
-                
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -557,19 +411,15 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
-                
-                // PDF'i dosya olarak paylaş
                 final file = await PdfGeneratorService.savePdfToFile(
                   pdfBytes, 
                   '${_company!.compName}_detay_raporu.pdf'
                 );
-                
                 final xfile = XFile(
                   file.path,
                   mimeType: 'application/pdf',
                   name: '${_company!.compName}_detay_raporu.pdf',
                 );
-                
                 final box = context.findRenderObject() as RenderBox?;
                 await Share.shareXFiles(
                   [xfile],
@@ -585,16 +435,651 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
           ],
         ),
       );
-
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Loading dialog'unu kapat
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('PDF oluşturulurken hata oluştu')),
       );
     }
   }
 
+  Widget _buildPartnersTable(List<PartnerItem> partners) {
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              showCheckboxColumn: false,
+              columns: const [
+                DataColumn(label: Text('Ad Soyad')),
+                DataColumn(label: Text('T.C. No')),
+                DataColumn(label: Text('Doğum Tarihi')),
+                DataColumn(label: Text('Ünvan')),
+                DataColumn(label: Text('Konum')),
+                DataColumn(label: Text('Vergi Dairesi')),
+                DataColumn(label: Text('Hisse')),
+                DataColumn(label: Text('Tutar')),
+              ],
+              rows: partners.map((PartnerItem p) {
+                return DataRow(
+                  onSelectChanged: (selected) async {
+                    if (selected != true) return;
+                    final res = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => PartnerDetailView(compId: widget.compId, partner: p),
+                      ),
+                    );
+                    if (res == true) _load();
+                  },
+                  cells: [
+                    DataCell(Text((p.partnerFullname.isNotEmpty ? p.partnerFullname : p.partnerName).toUpperCase())),
+                    DataCell(Text(p.partnerIdentityNo.isNotEmpty ? p.partnerIdentityNo : '-')),
+                    DataCell(Text(p.partnerBirthday.isNotEmpty ? p.partnerBirthday : '-')),
+                    DataCell(Text(p.partnerTitle.isNotEmpty ? p.partnerTitle.toUpperCase() : '-')),
+                    DataCell(Text('${p.partnerCity}/${p.partnerDistrict}')),
+                    DataCell(Text(p.partnerTaxPalace)),
+                    DataCell(Text(p.partnerShareRatio)),
+                    DataCell(Text(p.partnerSharePrice)),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        Container(
+          width: 44,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: partners.map((PartnerItem p) {
+              return Container(
+                height: 48,
+                alignment: Alignment.centerRight,
+                child: PopupMenuButton<String>(
+                  tooltip: 'Aksiyonlar',
+                  icon: const Icon(Icons.more_vert),
+                  iconSize: 20,
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      final res = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => EditCompanyPartnerView(compId: widget.compId, partner: p),
+                        ),
+                      );
+                      if (res == true) _load();
+                    } else if (value == 'delete') {
+                      final token = await StorageService.getToken();
+                      if (token == null) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                        return;
+                      }
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Ortak Sil'),
+                          content: Text('${p.partnerName} adlı ortağı silmek istediğinize emin misiniz?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                          ],
+                        ),
+                      );
+                      if (confirm != true) return;
+                      final ok = await const CompanyService().deleteCompanyPartner(
+                        userToken: token,
+                        compId: widget.compId,
+                        partnerId: p.partnerID,
+                      );
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(ok ? 'Ortak silindi.' : 'Ortak silinemedi')),
+                      );
+                      if (ok) _load();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (StorageService.hasPermission('companies', 'update'))
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Düzenle'),
+                        ),
+                      ),
+                    if (StorageService.hasPermission('companies', 'delete'))
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                          title: Text('Sil'),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return OutlinedButton.icon(
+      icon: Icon(icon, size: 12),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        side: BorderSide(color: AppColors.primary),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+      ),
+      onPressed: onPressed,
+    );
+  }
+
+  Widget _buildCompanyInfoPanel() {
+    return _Panel(
+      title: 'Firma Bilgileri',
+      icon: Icons.apartment_outlined,
+      actions: [
+        if (StorageService.hasPermission('companies', 'update'))
+          _buildActionButton(
+            icon: Icons.edit_outlined,
+            label: 'Firma Düzenle',
+            onPressed: (_loading || _company == null)
+                ? () {}
+                : () async {
+                    final result = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => EditCompanyView(company: _company!),
+                      ),
+                    );
+                    if (result == true) _load();
+                  },
+          ),
+      ],
+      children: [
+        _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
+        _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? (_company!.compTaxPalaceID?.toString() ?? '-')),
+        _InfoRow(label: 'MERSİS', value: _company!.compMersisNo ?? '-'),
+        _InfoRow(label: 'E-Posta', value: _company!.compEmail ?? '-'),
+        _InfoRow(label: 'Telefon', value: _company!.compPhone ?? '-'),
+        _InfoRow(label: 'Web Sitesi', value: _company!.compWebsite ?? '-'),
+        _InfoRow(label: 'NACE Kodu', value: _company!.compNaceCodeID?.toString() ?? '-'),
+        _InfoRow(label: 'Kep Adresi', value: _company!.compKepAddress ?? '-'),
+        _InfoRow(label: 'Açıklama', value: _company!.compDesc ?? '-'),
+      ],
+    );
+  }
+
+  Widget _buildAddressPanel() {
+    return _Panel(
+      title: 'Adres',
+      icon: Icons.location_on_outlined,
+      actions: [
+        if (StorageService.hasPermission('companies', 'add'))
+          _buildActionButton(
+            icon: Icons.add_location_alt_outlined,
+            label: 'Adres Ekle',
+            onPressed: () async {
+              final res = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyAddressView(compId: widget.compId),
+                ),
+              );
+              if (res == true) _load();
+            },
+          ),
+      ],
+      children: _addressRows(),
+    );
+  }
+
+  Widget _buildPartnersPanel() {
+    return _Panel(
+      title: 'Ortaklar',
+      icon: Icons.group_outlined,
+      actions: [
+        if (StorageService.hasPermission('companies', 'add'))
+          _buildActionButton(
+            icon: Icons.person_add_alt,
+            label: 'Ortak Ekle',
+            onPressed: () async {
+              final res = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyPartnerView(compId: widget.compId),
+                ),
+              );
+              if (res == true) _load();
+            },
+          ),
+      ],
+      contentPadding: const EdgeInsets.only(left: 14, right: 0, top: 10, bottom: 10),
+      children: [
+        if (_company!.partners.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Hiç ortak yok', style: Theme.of(context).textTheme.bodyMedium),
+          )
+        else
+          _buildPartnersTable(_company!.partners),
+      ],
+    );
+  }
+
+  Widget _buildDocumentsPanel() {
+    return _Panel(
+      title: 'Belgeler',
+      icon: Icons.insert_drive_file_outlined,
+      actions: [
+        if (StorageService.hasPermission('companies', 'add'))
+          _buildActionButton(
+            icon: Icons.upload_file,
+            label: 'Belge Ekle',
+            onPressed: () async {
+              final res = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyDocumentView(compId: widget.compId),
+                ),
+              );
+              if (res == true) _load();
+            },
+          ),
+      ],
+      children: [
+        if (_company!.documents.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Hiç belge yok', style: Theme.of(context).textTheme.bodyMedium),
+          )
+        else
+          Column(
+            children: _company!.documents.map((doc) {
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.description_outlined),
+                title: Text(doc.documentType),
+                subtitle: Text(doc.createDate),
+                trailing: PopupMenuButton<String>(
+                  tooltip: 'Aksiyonlar',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _updateDocument(doc);
+                    } else if (value == 'delete') {
+                      _deleteDocument(doc);
+                    } else if (value == 'share') {
+                      _shareDocument(doc);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (StorageService.hasPermission('companies', 'update'))
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Güncelle'),
+                        ),
+                      ),
+                    const PopupMenuItem<String>(
+                      value: 'share',
+                      child: ListTile(
+                        leading: Icon(Icons.ios_share),
+                        title: Text('Paylaş'),
+                      ),
+                    ),
+                    if (StorageService.hasPermission('companies', 'delete'))
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                          title: Text('Sil'),
+                        ),
+                      ),
+                  ],
+                ),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DocumentPreviewView(
+                        url: doc.documentURL,
+                        title: doc.documentType,
+                      ),
+                    ),
+                  );
+                },
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBanksPanel() {
+    return _Panel(
+      title: 'Banka Bilgileri',
+      icon: Icons.account_balance_outlined,
+      actions: [
+        if (StorageService.hasPermission('companies', 'add'))
+          _buildActionButton(
+            icon: Icons.add,
+            label: 'Banka Ekle',
+            onPressed: () async {
+              final res = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => AddCompanyBankView(compId: widget.compId),
+                ),
+              );
+              if (res == true) _load();
+            },
+          ),
+      ],
+      children: [
+        if (_company!.banks.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Hiç banka bilgisi yok', style: Theme.of(context).textTheme.bodyMedium),
+          )
+        else
+          Column(
+            children: _company!.banks.map((bank) {
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: bank.bankLogo != null && bank.bankLogo!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          bank.bankLogo!,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance),
+                        ),
+                      )
+                    : const Icon(Icons.account_balance),
+                title: Text(bank.bankName.isNotEmpty ? bank.bankName : 'Banka ${bank.bankID}'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(bank.bankUsername),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          bank.bankIBAN.length > 16 ? '${bank.bankIBAN.substring(0, 16)}...' : bank.bankIBAN,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                        ),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: bank.bankIBAN));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('IBAN kopyalandı'), duration: Duration(seconds: 1)),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                child: const Icon(Icons.copy, size: 14, color: Colors.blue),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final box = context.findRenderObject() as RenderBox?;
+                            await Share.share(
+                              bank.bankIBAN,
+                              subject: 'IBAN Numarası',
+                              sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            child: const Icon(Icons.ios_share, size: 14, color: Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                isThreeLine: true,
+                trailing: PopupMenuButton<String>(
+                  tooltip: 'Aksiyonlar',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) async {
+                    if (value == 'delete') {
+                      final token = await StorageService.getToken();
+                      if (token == null) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
+                        return;
+                      }
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Banka Bilgisini Sil'),
+                          content: Text('${bank.bankName} banka bilgisini silmek istediğinize emin misiniz?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
+                          ],
+                        ),
+                      );
+                      if (confirm != true) return;
+                      final ok = await const CompanyService().deleteCompanyBank(
+                        userToken: token,
+                        compId: widget.compId,
+                        cbID: bank.cbID != 0 ? bank.cbID : bank.bankID,
+                      );
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(ok ? 'Banka bilgisi silindi.' : 'Banka bilgisi silinemedi')),
+                      );
+                      if (ok) _load();
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (StorageService.hasPermission('companies', 'delete'))
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                          title: Text('Sil'),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordsPanel() {
+    return _Panel(
+      title: 'Şifreler',
+      icon: Icons.lock_outlined,
+      actions: [
+        if (StorageService.hasPermission('companies', 'add'))
+          _buildActionButton(
+            icon: Icons.add,
+            label: 'Şifre Ekle',
+            onPressed: () async {
+              // TODO: Implement add password view
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Şifre ekleme özelliği yakında eklenecek')),
+              );
+            },
+          ),
+      ],
+      children: [
+        if (_company!.passwords.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Hiç şifre yok', style: Theme.of(context).textTheme.bodyMedium),
+          )
+        else
+          Column(
+            children: _company!.passwords.map((password) {
+              return _PasswordListItem(password: password);
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildImagesPanel() {
+    return _Panel(
+      title: 'Görseller',
+      icon: Icons.image_outlined,
+      actions: [
+        if (StorageService.hasPermission('companies', 'add'))
+          _buildActionButton(
+            icon: Icons.add,
+            label: 'Görsel Ekle',
+            onPressed: () async {
+              // TODO: Implement add image view
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Görsel ekleme özelliği yakında eklenecek')),
+              );
+            },
+          ),
+      ],
+      children: [
+        if (_company!.images.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Hiç görsel yok', style: Theme.of(context).textTheme.bodyMedium),
+          )
+        else
+          Column(
+            children: _company!.images.map((image) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      image.imageURL,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 60,
+                          height: 60,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 60,
+                          height: 60,
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  title: Text(image.imageType),
+                  subtitle: Text(image.createDate),
+                  trailing: PopupMenuButton<String>(
+                    tooltip: 'Aksiyonlar',
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (value) async {
+                      if (value == 'view') {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => DocumentPreviewView(
+                              url: image.imageURL,
+                              title: image.imageType,
+                            ),
+                          ),
+                        );
+                      } else if (value == 'share') {
+                        // TODO: Implement share image
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Görsel paylaşma özelliği yakında eklenecek')),
+                        );
+                      } else if (value == 'delete') {
+                        // TODO: Implement delete image
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Görsel silme özelliği yakında eklenecek')),
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem<String>(
+                        value: 'view',
+                        child: ListTile(
+                          leading: Icon(Icons.visibility_outlined),
+                          title: Text('Görüntüle'),
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'share',
+                        child: ListTile(
+                          leading: Icon(Icons.ios_share),
+                          title: Text('Paylaş'),
+                        ),
+                      ),
+                      if (StorageService.hasPermission('companies', 'delete'))
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                            title: Text('Sil'),
+                          ),
+                        ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => DocumentPreviewView(
+                          url: image.imageURL,
+                          title: image.imageType,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -617,812 +1102,29 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
           ? const Center(child: CircularProgressIndicator())
           : (_company == null)
               ? const Center(child: Text('Firma bulunamadı'))
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 640;
-                return ListView(
+              : ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      children: [
-                        _HeaderCard(
-                          logo: _company!.compLogo,
-                          name: _company!.compName,
-                          type: _company!.compType ?? '-',
-                        ),
-                        const SizedBox(height: 12),
-                        if (isWide)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _Panel(
-                                  title: 'Firma Bilgileri',
-                                  icon: Icons.apartment_outlined,
-                                  actions: [
-                                    if (StorageService.hasPermission('companies', 'update'))
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_outlined),
-                                        tooltip: 'Firma Bilgilerini Düzenle',
-                                        onPressed: (_loading || _company == null)
-                                            ? null
-                                            : () async {
-                                                final result = await Navigator.of(context).push<bool>(
-                                                  MaterialPageRoute(
-                                                    builder: (_) => EditCompanyView(company: _company!),
-                                                  ),
-                                                );
-                                                if (result == true) {
-                                                  _load();
-                                                }
-                                              },
-                                      ),
-                                  ],
-                                  children: [
-                                    _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
-                                    _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? (_company!.compTaxPalaceID?.toString() ?? '-')),
-                                    _InfoRow(label: 'MERSİS', value: _company!.compMersisNo ?? '-'),
-                                    _InfoRow(label: 'E-Posta', value: _company!.compEmail ?? '-'),
-                                    _InfoRow(label: 'Telefon', value: _company!.compPhone ?? '-'),
-                                    _InfoRow(label: 'Web Sitesi', value: _company!.compWebsite ?? '-'),
-                                    _InfoRow(label: 'NACE Kodu', value: _company!.compNaceCodeID?.toString() ?? '-'),
-                                    _InfoRow(label: 'Açıklama', value: _company!.compDesc ?? '-'),
-                                    
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _Panel(
-                                  title: 'Adres',
-                                  icon: Icons.location_on_outlined,
-                                  actions: [
-                                    if (StorageService.hasPermission('companies', 'add'))
-                                      IconButton(
-                                        icon: const Icon(Icons.add_location_alt_outlined),
-                                        tooltip: 'Adres Ekle',
-                                        onPressed: () async {
-                                          final res = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => AddCompanyAddressView(compId: widget.compId),
-                                            ),
-                                          );
-                                          if (res == true) {
-                                            _load();
-                                          }
-                                        },
-                                      ),
-                                  ],
-                                  children: _addressRows(),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _Panel(
-                                  title: 'Ortaklar',
-                                  icon: Icons.group_outlined,
-                                  actions: [
-                                    if (StorageService.hasPermission('companies', 'add'))
-                                      IconButton(
-                                        icon: const Icon(Icons.person_add_alt),
-                                        tooltip: 'Ortak Ekle',
-                                        onPressed: () async {
-                                          final res = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => AddCompanyPartnerView(compId: widget.compId),
-                                            ),
-                                          );
-                                          if (res == true) {
-                                            _load();
-                                          }
-                                        },
-                                      ),
-                                  ],
-                                  contentPadding: const EdgeInsets.only(left: 14, right: 0, top: 10, bottom: 10),
-                                  children: [
-                                    if (_company!.partners.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        child: Text(
-                                          'Hiç ortak yok',
-                                          style: Theme.of(context).textTheme.bodyMedium,
-                                        ),
-                                      )
-                                    else
-                                      _buildPartnersTable(_company!.partners),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                child: _Panel(
-                                  title: 'Belgeler',
-                                  icon: Icons.insert_drive_file_outlined,
-                                  actions: [
-                                    if (StorageService.hasPermission('companies', 'add'))
-                                      IconButton(
-                                        icon: const Icon(Icons.upload_file),
-                                        tooltip: 'Belge Ekle',
-                                        onPressed: () async {
-                                          final res = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => AddCompanyDocumentView(compId: widget.compId),
-                                            ),
-                                          );
-                                          if (res == true) {
-                                            _load();
-                                          }
-                                        },
-                                      ),
-                                  ],
-                                  children: [
-                                    if (_company!.documents.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        child: Text(
-                                          'Hiç belge yok',
-                                          style: Theme.of(context).textTheme.bodyMedium,
-                                        ),
-                                      )
-                                    else
-                                      Column(
-                                        children: [
-                                          for (final doc in _company!.documents) ListTile(
-                                            dense: true,
-                                            contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 0),
-                                            leading: const Icon(Icons.description_outlined),
-                                            title: Text(doc.documentType),
-                                            subtitle: Text(doc.createDate),
-                                            trailing: PopupMenuButton<String>(
-                                              tooltip: 'Aksiyonlar',
-                                              icon: const Icon(Icons.more_vert),
-                                              onSelected: (value) {
-                                                if (value == 'edit') {
-                                                  _updateDocument(doc);
-                                                } else if (value == 'delete') {
-                                                  _deleteDocument(doc);
-                                                } else if (value == 'share') {
-                                                  _shareDocument(doc);
-                                                }
-                                              },
-                                              itemBuilder: (context) => [
-                                                if (StorageService.hasPermission('companies', 'update'))
-                                                  const PopupMenuItem<String>(
-                                                    value: 'edit',
-                                                    child: ListTile(
-                                                      leading: Icon(Icons.edit_outlined),
-                                                      title: Text('Güncelle'),
-                                                    ),
-                                                  ),
-                                                const PopupMenuItem<String>(
-                                                  value: 'share',
-                                                  child: ListTile(
-                                                    leading: Icon(Icons.ios_share),
-                                                    title: Text('Paylaş'),
-                                                  ),
-                                                ),
-                                                if (StorageService.hasPermission('companies', 'delete'))
-                                                  const PopupMenuItem<String>(
-                                                    value: 'delete',
-                                                    child: ListTile(
-                                                      leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                                      title: Text('Sil'),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                            onTap: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (_) => DocumentPreviewView(
-                                                    url: doc.documentURL,
-                                                    title: doc.documentType,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        if (isWide) const SizedBox(height: 16),
-                        if (isWide)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _Panel(
-                                  title: 'Banka Bilgileri',
-                                  icon: Icons.account_balance_outlined,
-                                  actions: [
-                                    if (StorageService.hasPermission('companies', 'add'))
-                                      IconButton(
-                                        icon: const Icon(Icons.add),
-                                        tooltip: 'Banka Bilgisi Ekle',
-                                        onPressed: () async {
-                                          final res = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => AddCompanyBankView(compId: widget.compId),
-                                            ),
-                                          );
-                                          if (res == true) {
-                                            _load();
-                                          }
-                                        },
-                                      ),
-                                  ],
-                                  children: [
-                                    if (_company!.banks.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        child: Text(
-                                          'Hiç banka bilgisi yok',
-                                          style: Theme.of(context).textTheme.bodyMedium,
-                                        ),
-                                      )
-                                    else
-                                      Column(
-                                        children: [
-                                          for (final bank in _company!.banks) ListTile(
-                                            dense: true,
-                                            contentPadding: EdgeInsets.zero,
-                                            leading: bank.bankLogo != null && bank.bankLogo!.isNotEmpty
-                                                ? ClipRRect(
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    child: Image.network(
-                                                      bank.bankLogo!,
-                                                      width: 32,
-                                                      height: 32,
-                                                      fit: BoxFit.contain,
-                                                      errorBuilder: (context, error, stackTrace) =>
-                                                          const Icon(Icons.account_balance),
-                                                    ),
-                                                  )
-                                                : const Icon(Icons.account_balance),
-                                            title: Text(bank.bankName.isNotEmpty ? bank.bankName : 'Banka ${bank.bankID}'),
-                                            subtitle: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(bank.bankUsername),
-                                                const SizedBox(height: 4),
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      'IBAN: ',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.grey[600],
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      child: GestureDetector(
-                                                        onTap: () async {
-                                                          await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
-                                                          if (!mounted) return;
-                                                          ScaffoldMessenger.of(context).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text('IBAN kopyalandı'),
-                                                              duration: const Duration(seconds: 1),
-                                                              backgroundColor: Colors.green,
-                                                            ),
-                                                          );
-                                                        },
-                                                        child: Text(
-                                                          bank.bankIBAN.replaceAllMapped(
-                                                            RegExp(r'(.{4})'),
-                                                            (match) => '${match.group(1)} ',
-                                                          ).trim(),
-                                                          style: const TextStyle(
-                                                            fontSize: 12,
-                                                            fontWeight: FontWeight.w600,
-                                                            color: Colors.blue,
-                                                            decoration: TextDecoration.underline,
-                                                            decorationColor: Colors.blue,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    GestureDetector(
-                                                      onTap: () async {
-                                                        await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
-                                                        if (!mounted) return;
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          SnackBar(
-                                                            content: Text('IBAN kopyalandı'),
-                                                            duration: const Duration(seconds: 1),
-                                                            backgroundColor: Colors.green,
-                                                          ),
-                                                        );
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: BoxDecoration(
-                                                          border: Border.all(
-                                                            color: Colors.grey.withOpacity(0.4),
-                                                            width: 1,
-                                                          ),
-                                                          borderRadius: BorderRadius.circular(4),
-                                                          color: Colors.grey.withOpacity(0.05),
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.content_copy,
-                                                          size: 14,
-                                                          color: Colors.grey,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                            trailing: PopupMenuButton<String>(
-                                              tooltip: 'Aksiyonlar',
-                                              icon: const Icon(Icons.more_vert),
-                                              onSelected: (value) async {
-                                                if (value == 'delete') {
-                                                  final token = await StorageService.getToken();
-                                                  if (token == null) {
-                                                    if (!mounted) return;
-                                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-                                                    return;
-                                                  }
-                                                  final confirm = await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (context) => AlertDialog(
-                                                      title: const Text('Banka Bilgisini Sil'),
-                                                      content: Text('${bank.bankName} banka bilgisini silmek istediğinize emin misiniz?'),
-                                                      actions: [
-                                                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-                                                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  if (confirm != true) return;
-                                                  final ok = await const CompanyService().deleteCompanyBank(
-                                                    userToken: token,
-                                                    compId: widget.compId,
-                                                    cbID: bank.cbID != 0 ? bank.cbID : bank.bankID,
-                                                  );
-                                                  if (!mounted) return;
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(content: Text(ok ? 'Banka bilgisi silindi.' : 'Banka bilgisi silinemedi')),
-                                                  );
-                                                  if (ok) _load();
-                                                }
-                                              },
-                                              itemBuilder: (context) => [
-                                                if (StorageService.hasPermission('companies', 'delete'))
-                                                  const PopupMenuItem<String>(
-                                                    value: 'delete',
-                                                    child: ListTile(
-                                                      leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                                      title: Text('Sil'),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              const Expanded(child: SizedBox()), // Empty space for now
-                              const Expanded(child: SizedBox()), // Empty space for now
-                              const Expanded(child: SizedBox()), // Empty space for now
-                            ],
-                          )
-                        else ...[
-                          _Panel(
-                            title: 'Firma Bilgileri',
-                            icon: Icons.apartment_outlined,
-                            actions: [
-                              if (StorageService.hasPermission('companies', 'update'))
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.edit_outlined, size: 12),
-                                  label: const Text('Firma Düzenle'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    side: BorderSide(color: AppColors.primary),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                  ),
-                                  onPressed: (_loading || _company == null)
-                                      ? null
-                                      : () async {
-                                          final result = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => EditCompanyView(company: _company!),
-                                            ),
-                                          );
-                                          if (result == true) {
-                                            _load();
-                                          }
-                                        },
-                                ),
-                            ],
-                            children: [
-                              _InfoRow(label: 'Vergi No', value: _company!.compTaxNo ?? '-'),
-                              _InfoRow(label: 'Vergi Dairesi', value: _company!.compTaxPalace ?? '-'),
-                              _InfoRow(label: 'MERSİS', value: _company!.compMersisNo ?? '-'),
-                              _InfoRow(label: 'E-Posta', value: _company!.compEmail ?? '-'),
-                              _InfoRow(label: 'Telefon', value: _company!.compPhone ?? '-'),
-                              _InfoRow(label: 'Web Sitesi', value: _company!.compWebsite ?? '-'),
-                              _InfoRow(label: 'NACE Kodu', value: _company!.compNaceCodeID?.toString() ?? '-'),
-                              _InfoRow(label: 'Kep Adresi', value: _company!.compKepAddress ?? '-'),
-                              _InfoRow(label: 'Açıklama', value: _company!.compDesc ?? '-'),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _Panel(
-                            title: 'Adres',
-                            icon: Icons.location_on_outlined,
-                            actions: [
-                              if (StorageService.hasPermission('companies', 'add'))
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.add_location_alt_outlined, size: 12),
-                                  label: const Text('Adres Ekle'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    side: BorderSide(color: AppColors.primary),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                  ),
-                                  onPressed: () async {
-                                    final res = await Navigator.of(context).push<bool>(
-                                      MaterialPageRoute(
-                                        builder: (_) => AddCompanyAddressView(compId: widget.compId),
-                                      ),
-                                    );
-                                    if (res == true) {
-                                      _load();
-                                    }
-                                  },
-                                ),
-                            ],
-                            children: _addressRows(),
-                          ),
-                          const SizedBox(height: 16),
-                          _Panel(
-                            title: 'Ortaklar',
-                            icon: Icons.group_outlined,
-                            actions: [
-                              if (StorageService.hasPermission('companies', 'add'))
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.person_add_alt, size: 12),
-                                  label: const Text('Ortak Ekle'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    side: BorderSide(color: AppColors.primary),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                  ),
-                                  onPressed: () async {
-                                    final res = await Navigator.of(context).push<bool>(
-                                      MaterialPageRoute(
-                                        builder: (_) => AddCompanyPartnerView(compId: widget.compId),
-                                      ),
-                                    );
-                                    if (res == true) {
-                                      _load();
-                                    }
-                                  },
-                                ),
-                            ],
-                            contentPadding: const EdgeInsets.only(left: 14, right: 0, top: 10, bottom: 10),
-                            children: [
-                              if (_company!.partners.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Text(
-                                    'Hiç ortak yok',
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                )
-                              else
-                                _buildPartnersTable(_company!.partners),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _Panel(
-                            title: 'Belgeler',
-                            icon: Icons.insert_drive_file_outlined,
-                            actions: [
-                              if (StorageService.hasPermission('companies', 'add'))
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.upload_file, size: 12),
-                                  label: const Text('Belge Ekle'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    side: BorderSide(color: AppColors.primary),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                  ),
-                                  onPressed: () async {
-                                    final res = await Navigator.of(context).push<bool>(
-                                      MaterialPageRoute(
-                                        builder: (_) => AddCompanyDocumentView(compId: widget.compId),
-                                      ),
-                                    );    
-                                    if (res == true) {
-                                      _load();
-                                    }
-                                  },
-                                ),
-                            ],
-                            children: [
-                              if (_company!.documents.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Text(
-                                    'Hiç belge yok',
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                )
-                              else
-                                Column(
-                                  children: [
-                                    for (final doc in _company!.documents) ListTile(
-                                      dense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: const Icon(Icons.description_outlined),
-                                      title: Text(doc.documentType),
-                                      subtitle: Text(doc.createDate),
-                                      trailing: PopupMenuButton<String>(
-                                        tooltip: 'Aksiyonlar',
-                                        icon: const Icon(Icons.more_vert),
-                                        onSelected: (value) {
-                                          if (value == 'edit') {
-                                            _updateDocument(doc);
-                                          } else if (value == 'delete') {
-                                            _deleteDocument(doc);
-                                          } else if (value == 'share') {
-                                            _shareDocument(doc);
-                                          }
-                                        },
-                                        itemBuilder: (context) => [
-                                          if (StorageService.hasPermission('companies', 'update'))
-                                            const PopupMenuItem<String>(
-                                              value: 'edit',
-                                              child: ListTile(
-                                                leading: Icon(Icons.edit_outlined),
-                                                title: Text('Güncelle'),
-                                              ),
-                                            ),
-                                          const PopupMenuItem<String>(
-                                            value: 'share',
-                                            child: ListTile(
-                                              leading: Icon(Icons.ios_share),
-                                              title: Text('Paylaş'),
-                                            ),
-                                          ),
-                                          if (StorageService.hasPermission('companies', 'delete'))
-                                            const PopupMenuItem<String>(
-                                              value: 'delete',
-                                              child: ListTile(
-                                                leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                                title: Text('Sil'),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => DocumentPreviewView(
-                                              url: doc.documentURL,
-                                              title: doc.documentType,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _Panel(
-                            title: 'Banka Bilgileri',
-                            icon: Icons.account_balance_outlined,
-                            actions: [
-                              if (StorageService.hasPermission('companies', 'add'))
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.add, size: 12),
-                                  label: const Text('Banka Ekle'),
-                                  style: OutlinedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    side: BorderSide(color: AppColors.primary),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                                  ),
-                                  onPressed: () async {
-                                    final res = await Navigator.of(context).push<bool>(
-                                      MaterialPageRoute(
-                                        builder: (_) => AddCompanyBankView(compId: widget.compId),
-                                      ),
-                                    );
-                                    if (res == true) {
-                                      _load();
-                                  }
-                                },
-                              ),
-                            ],
-                            children: [
-                              if (_company!.banks.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Text(
-                                    'Hiç banka bilgisi yok',
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                )
-                              else
-                                Column(
-                                  children: [
-                                    for (final bank in _company!.banks) ListTile(
-                                      dense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: bank.bankLogo != null && bank.bankLogo!.isNotEmpty
-                                          ? ClipRRect(
-                                              borderRadius: BorderRadius.circular(4),
-                                              child: Image.network(
-                                                bank.bankLogo!,
-                                                width: 32,
-                                                height: 32,
-                                                fit: BoxFit.contain,
-                                                errorBuilder: (context, error, stackTrace) =>
-                                                    const Icon(Icons.account_balance),
-                                              ),
-                                            )
-                                          : const Icon(Icons.account_balance),
-                                      title: Text(bank.bankName.isNotEmpty ? bank.bankName : 'Banka ${bank.bankID}'),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(bank.bankUsername),
-                                          const SizedBox(height: 6),
-                                          Row(
-                                            children: [
-                                              Text(
-                                                'IBAN: ',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: Colors.grey[600],
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              Expanded(
-                                                child: GestureDetector(
-                                                  onTap: () async {
-                                                    await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
-                                                    if (!mounted) return;
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text('IBAN kopyalandı'),
-                                                        duration: const Duration(seconds: 1),
-                                                        backgroundColor: Colors.green,
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Text(
-                                                    bank.bankIBAN.replaceAllMapped(
-                                                      RegExp(r'(.{4})'),
-                                                      (match) => '${match.group(1)} ',
-                                                    ).trim(),
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: Colors.blue,
-                                                      decoration: TextDecoration.underline,
-                                                      decorationColor: Colors.blue,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              GestureDetector(
-                                                onTap: () async {
-                                                  await Clipboard.setData(ClipboardData(text: bank.bankIBAN));
-                                                  if (!mounted) return;
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text('IBAN kopyalandı'),
-                                                      duration: const Duration(seconds: 1),
-                                                      backgroundColor: Colors.green,
-                                                    ),
-                                                  );
-                                                },
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(5),
-                                                  decoration: BoxDecoration(
-                                                    border: Border.all(
-                                                      color: Colors.grey.withOpacity(0.4),
-                                                      width: 1,
-                                                    ),
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    color: Colors.grey.withOpacity(0.05),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.content_copy,
-                                                    size: 16,
-                                                    color: Colors.grey,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      isThreeLine: true,
-                                      trailing: PopupMenuButton<String>(
-                                        tooltip: 'Aksiyonlar',
-                                        icon: const Icon(Icons.more_vert),
-                                        onSelected: (value) async {
-                                          if (value == 'delete') {
-                                            final token = await StorageService.getToken();
-                                            if (token == null) {
-                                              if (!mounted) return;
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-                                              return;
-                                            }
-                                            final confirm = await showDialog<bool>(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text('Banka Bilgisini Sil'),
-                                                content: Text('${bank.bankName} banka bilgisini silmek istediğinize emin misiniz?'),
-                                                actions: [
-                                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
-                                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Sil')),
-                                                ],
-                                              ),
-                                            );
-                                            if (confirm != true) return;
-                                            final ok = await const CompanyService().deleteCompanyBank(
-                                              userToken: token,
-                                              compId: widget.compId,
-                                              cbID: bank.cbID != 0 ? bank.cbID : bank.bankID,
-                                            );
-                                            if (!mounted) return;
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text(ok ? 'Banka bilgisi silindi.' : 'Banka bilgisi silinemedi')),
-                                            );
-                                            if (ok) _load();
-                                          }
-                                        },
-                                        itemBuilder: (context) => [
-                                          if (StorageService.hasPermission('companies', 'delete'))
-                                            const PopupMenuItem<String>(
-                                              value: 'delete',
-                                              child: ListTile(
-                                                leading: Icon(Icons.delete_outline, color: Colors.redAccent),
-                                                title: Text('Sil'),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    );
-                  },
+                  children: [
+                    _HeaderCard(
+                      logo: _company!.compLogo,
+                      name: _company!.compName,
+                      type: _company!.compType ?? '-',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildCompanyInfoPanel(),
+                    const SizedBox(height: 16),
+                    _buildAddressPanel(),
+                    const SizedBox(height: 16),
+                    _buildPartnersPanel(),
+                    const SizedBox(height: 16),
+                    _buildDocumentsPanel(),
+                    const SizedBox(height: 16),
+                    _buildBanksPanel(),
+                    const SizedBox(height: 16),
+                    _buildPasswordsPanel(),
+                    const SizedBox(height: 16),
+                    _buildImagesPanel(),
+                  ],
                 ),
     );
   }
@@ -1430,7 +1132,6 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
 
 Widget _detailLogoWidget(String logo, ThemeData theme) {
   final bg = theme.colorScheme.surface;
-  // ignore: deprecated_member_use
   final border = theme.colorScheme.outline.withOpacity(0.12);
   Widget child;
   if (logo.isEmpty) {
@@ -1467,7 +1168,6 @@ Widget _detailLogoWidget(String logo, ThemeData theme) {
   );
 }
 
-
 class _HeaderCard extends StatelessWidget {
   const _HeaderCard({required this.logo, required this.name, required this.type});
   final String logo;
@@ -1477,7 +1177,6 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // ignore: deprecated_member_use
     final border = theme.colorScheme.outline.withOpacity(0.12);
     final muted = theme.colorScheme.onSurface.withOpacity(0.7);
     return Container(
@@ -1528,7 +1227,6 @@ class _HeaderCard extends StatelessWidget {
   }
 }
 
-
 class _Panel extends StatelessWidget {
   const _Panel({required this.title, required this.icon, required this.children, this.actions, this.contentPadding});
   final String title;
@@ -1540,7 +1238,6 @@ class _Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // ignore: deprecated_member_use
     final border = theme.colorScheme.outline.withOpacity(0.12);
     final headerBg = theme.colorScheme.surface;
     final muted = theme.colorScheme.onSurface.withOpacity(0.7);
@@ -1605,7 +1302,6 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // ignore: deprecated_member_use
     final subtle = theme.colorScheme.onSurface.withOpacity(0.7);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1631,4 +1327,250 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+class _PasswordListItem extends StatefulWidget {
+  const _PasswordListItem({required this.password});
+  final CompanyPasswordItem password;
 
+  @override
+  State<_PasswordListItem> createState() => _PasswordListItemState();
+}
+
+class _PasswordListItemState extends State<_PasswordListItem> {
+  bool _isPasswordVisible = false;
+  bool _isUsernameVisible = false;
+  Timer? _passwordTimer;
+  Timer? _usernameTimer;
+
+  @override
+  void dispose() {
+    _passwordTimer?.cancel();
+    _usernameTimer?.cancel();
+    super.dispose();
+  }
+
+  void _togglePasswordVisibility() {
+    setState(() {
+      _isPasswordVisible = !_isPasswordVisible;
+    });
+
+    if (_isPasswordVisible) {
+      _passwordTimer?.cancel();
+      _passwordTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _isPasswordVisible = false;
+          });
+        }
+      });
+    }
+  }
+
+  void _toggleUsernameVisibility() {
+    setState(() {
+      _isUsernameVisible = !_isUsernameVisible;
+    });
+
+    if (_isUsernameVisible) {
+      _usernameTimer?.cancel();
+      _usernameTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _isUsernameVisible = false;
+          });
+        }
+      });
+    }
+  }
+
+  String _maskText(String text, bool isVisible) {
+    if (isVisible || text.length <= 4) {
+      return text;
+    }
+    
+    if (text.length <= 4) {
+      return text;
+    }
+    
+    final first = text.substring(0, 2);
+    final last = text.substring(text.length - 2);
+    final middle = '•' * (text.length - 4);
+    
+    return '$first$middle$last';
+  }
+
+  Future<void> _copyToClipboard(String text, String message) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final border = theme.colorScheme.outline.withOpacity(0.12);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.vpn_key_outlined, size: 15, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.password.passwordType,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                widget.password.createDate,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Kullanıcı Adı Başlık
+          Text(
+            'Kullanıcı Adı',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Kullanıcı Adı Satırı
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _maskText(widget.password.passwordUsername, _isUsernameVisible),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: _isUsernameVisible ? 0 : 1,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: _toggleUsernameVisibility,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      _isUsernameVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      size: 18,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => _copyToClipboard(
+                    widget.password.passwordUsername,
+                    'Kullanıcı adı kopyalandı',
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.copy_outlined,
+                      size: 18,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Şifre Başlık
+          Text(
+            'Şifre',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Şifre Satırı
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _maskText(widget.password.passwordPassword, _isPasswordVisible),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: _isPasswordVisible ? 0 : 1,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: _togglePasswordVisibility,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      size: 18,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => _copyToClipboard(
+                    widget.password.passwordPassword,
+                    'Şifre kopyalandı',
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.copy_outlined,
+                      size: 18,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
