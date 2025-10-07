@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -21,6 +22,21 @@ class PdfGeneratorService {
       final font = await PdfGoogleFonts.notoSansRegular();
       final fontBold = await PdfGoogleFonts.notoSansBold();
 
+      // Logo ve görselleri önceden yükle
+      final logoImage = await _loadImage(company.compLogo);
+      final List<pw.MemoryImage?> imagesList = [];
+      for (final img in company.images) {
+        final loadedImage = await _loadImage(img.imageURL);
+        imagesList.add(loadedImage);
+      }
+      
+      // Banka logolarını yükle
+      final List<pw.MemoryImage?> bankLogosList = [];
+      for (final bank in company.banks) {
+        final loadedBankLogo = await _loadImage(bank.bankLogo ?? '');
+        bankLogosList.add(loadedBankLogo);
+      }
+
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
@@ -28,7 +44,7 @@ class PdfGeneratorService {
           build: (pw.Context context) {
             return [
               // Header
-              _buildHeader(company, primaryColor, fontBold, font),
+              _buildHeader(company, primaryColor, fontBold, font, logoImage),
               pw.SizedBox(height: 30),
               
               // Firma Bilgileri
@@ -53,7 +69,13 @@ class PdfGeneratorService {
               
               // Banka Bilgileri
               if (company.banks.isNotEmpty) ...[
-                _buildBanksInfo(company.banks, primaryColor, fontBold, font, lightGray),
+                _buildBanksInfo(company.banks, bankLogosList, primaryColor, fontBold, font, lightGray),
+                pw.SizedBox(height: 25),
+              ],
+              
+              // Görseller
+              if (company.images.isNotEmpty) ...[
+                _buildImagesInfo(company.images, imagesList, primaryColor, fontBold, font, lightGray),
                 pw.SizedBox(height: 25),
               ],
               
@@ -83,8 +105,28 @@ class PdfGeneratorService {
     }
   }
 
-  static pw.Widget _buildHeader(CompanyItem company, PdfColor primaryColor, pw.Font fontBold, pw.Font font) {
+  static pw.Widget _buildHeader(CompanyItem company, PdfColor primaryColor, pw.Font fontBold, pw.Font font, pw.MemoryImage? logoImage) {
     final lightGray = PdfColor.fromHex('#F5F5F5');
+    
+    // Logo widget
+    pw.Widget logoWidget;
+    if (logoImage != null) {
+      logoWidget = pw.Container(
+        width: 80,
+        height: 80,
+        decoration: pw.BoxDecoration(
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+        ),
+        child: pw.ClipRRect(
+          horizontalRadius: 10,
+          verticalRadius: 10,
+          child: pw.Image(logoImage, fit: pw.BoxFit.fill),
+        ),
+      );
+    } else {
+      logoWidget = _buildDefaultLogo(company.compName, primaryColor, fontBold);
+    }
+    
     return pw.Container(
       width: double.infinity,
       decoration: pw.BoxDecoration(
@@ -95,25 +137,8 @@ class PdfGeneratorService {
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
-          // Logo alanı - placeholder
-          pw.Container(
-            width: 80,
-            height: 80,
-            decoration: pw.BoxDecoration(
-              color: primaryColor,
-              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
-            ),
-            child: pw.Center(
-              child: pw.Text(
-                company.compName.isNotEmpty ? company.compName.substring(0, 1).toUpperCase() : 'F',
-                style: pw.TextStyle(
-                  font: fontBold,
-                  fontSize: 32,
-                  color: PdfColors.white,
-                ),
-              ),
-            ),
-          ),
+          // Logo
+          logoWidget,
           pw.SizedBox(width: 20),
           pw.Expanded(
             child: pw.Column(
@@ -365,7 +390,14 @@ class PdfGeneratorService {
     );
   }
 
-  static pw.Widget _buildBanksInfo(List<CompanyBankItem> banks, PdfColor primaryColor, pw.Font fontBold, pw.Font font, PdfColor lightGray) {
+  static pw.Widget _buildBanksInfo(
+    List<CompanyBankItem> banks, 
+    List<pw.MemoryImage?> bankLogosList,
+    PdfColor primaryColor, 
+    pw.Font fontBold, 
+    pw.Font font, 
+    PdfColor lightGray,
+  ) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -380,7 +412,7 @@ class PdfGeneratorService {
           child: pw.Column(
             children: [
               for (int i = 0; i < banks.length; i++) ...[
-                _buildBankRow(banks[i], font, fontBold),
+                _buildBankRow(banks[i], bankLogosList[i], font, fontBold),
                 if (i < banks.length - 1) _buildDivider(),
               ],
             ],
@@ -390,24 +422,32 @@ class PdfGeneratorService {
     );
   }
 
-  static pw.Widget _buildBankRow(CompanyBankItem bank, pw.Font font, pw.Font fontBold) {
+  static pw.Widget _buildBankRow(CompanyBankItem bank, pw.MemoryImage? bankLogo, pw.Font font, pw.Font fontBold) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(12),
       child: pw.Row(
         children: [
+          // Banka logosu veya default icon
           pw.Container(
             width: 40,
             height: 40,
             decoration: pw.BoxDecoration(
-              color: PdfColor.fromHex('#E8F5E9'),
+              color: bankLogo != null ? PdfColors.white : PdfColor.fromHex('#E8F5E9'),
               borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+              border: bankLogo != null ? pw.Border.all(color: PdfColor.fromHex('#E0E0E0')) : null,
             ),
-            child: pw.Center(
-              child: pw.Text(
-                '🏦',
-                style: pw.TextStyle(fontSize: 16),
-              ),
-            ),
+            child: bankLogo != null
+                ? pw.ClipRRect(
+                    horizontalRadius: 6,
+                    verticalRadius: 6,
+                    child: pw.Image(bankLogo, fit: pw.BoxFit.fill),
+                  )
+                : pw.Center(
+                    child: pw.Text(
+                      '🏦',
+                      style: pw.TextStyle(fontSize: 16),
+                    ),
+                  ),
           ),
           pw.SizedBox(width: 12),
           pw.Expanded(
@@ -600,5 +640,149 @@ class PdfGeneratorService {
     final month = date.month.toString().padLeft(2, '0');
     final year = date.year.toString();
     return '$day.$month.$year';
+  }
+
+  // Görsel yükleme metodu
+  static Future<pw.MemoryImage?> _loadImage(String url) async {
+    try {
+      if (url.isEmpty) return null;
+
+      Uint8List bytes;
+
+      if (url.startsWith('data:image/')) {
+        // Base64 encoded image
+        final commaIndex = url.indexOf(',');
+        if (commaIndex == -1) return null;
+        final base64String = url.substring(commaIndex + 1);
+        bytes = base64Decode(base64String);
+      } else if (url.startsWith('http://') || url.startsWith('https://')) {
+        // Network image
+        final response = await HttpClient().getUrl(Uri.parse(url));
+        final httpResponse = await response.close();
+        if (httpResponse.statusCode != 200) return null;
+        
+        final builder = BytesBuilder(copy: false);
+        await for (final chunk in httpResponse) {
+          builder.add(chunk);
+        }
+        bytes = builder.takeBytes();
+      } else {
+        return null;
+      }
+
+      return pw.MemoryImage(bytes);
+    } catch (e) {
+      print('Görsel yüklenirken hata: $e');
+      return null;
+    }
+  }
+
+  // Default logo widget
+  static pw.Widget _buildDefaultLogo(String companyName, PdfColor primaryColor, pw.Font fontBold) {
+    return pw.Container(
+      width: 80,
+      height: 80,
+      decoration: pw.BoxDecoration(
+        color: primaryColor,
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+      ),
+      child: pw.Center(
+        child: pw.Text(
+          companyName.isNotEmpty ? companyName.substring(0, 1).toUpperCase() : 'F',
+          style: pw.TextStyle(
+            font: fontBold,
+            fontSize: 32,
+            color: PdfColors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Görseller bölümü
+  static pw.Widget _buildImagesInfo(
+    List<CompanyImageItem> images,
+    List<pw.MemoryImage?> imagesList,
+    PdfColor primaryColor,
+    pw.Font fontBold,
+    pw.Font font,
+    PdfColor lightGray,
+  ) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Görseller', fontBold, primaryColor),
+        pw.SizedBox(height: 10),
+        pw.Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: List.generate(
+            images.length,
+            (index) {
+              final image = images[index];
+              final loadedImage = imagesList[index];
+              
+              return pw.Container(
+                width: 150,
+                height: 120,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColor.fromHex('#E0E0E0')),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                  children: [
+                    if (loadedImage != null)
+                      pw.Expanded(
+                        child: pw.ClipRRect(
+                          horizontalRadius: 8,
+                          verticalRadius: 8,
+                          child: pw.Image(
+                            loadedImage,
+                            fit: pw.BoxFit.fill,
+                          ),
+                        ),
+                      )
+                    else
+                      pw.Expanded(
+                        child: pw.Container(
+                          color: PdfColor.fromHex('#F5F5F5'),
+                          child: pw.Center(
+                            child: pw.Text(
+                              '📷',
+                              style: pw.TextStyle(fontSize: 32),
+                            ),
+                          ),
+                        ),
+                      ),
+                    pw.Container(
+                      padding: const pw.EdgeInsets.all(8),
+                      decoration: pw.BoxDecoration(
+                        color: PdfColor.fromHex('#F5F5F5'),
+                        borderRadius: const pw.BorderRadius.only(
+                          bottomLeft: pw.Radius.circular(8),
+                          bottomRight: pw.Radius.circular(8),
+                        ),
+                      ),
+                      child: pw.Text(
+                        image.imageType,
+                        style: pw.TextStyle(
+                          font: fontBold,
+                          fontSize: 9,
+                          color: PdfColor.fromHex('#424242'),
+                        ),
+                        textAlign: pw.TextAlign.center,
+                        maxLines: 1,
+                        overflow: pw.TextOverflow.clip,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
