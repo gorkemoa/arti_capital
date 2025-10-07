@@ -20,12 +20,47 @@ class PanelView extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     return Scaffold(
       backgroundColor: colorScheme.background,
+      drawer: _AppInfoDrawer(userName: userName, userVersion: userVersion),
       appBar: AppBar(
         backgroundColor: colorScheme.primary,
-        title: _PanelAppBarTitle(
-          userName: userName,
-          greeting: _greetingForNow(),
-          profilePhoto: profilePhoto,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            const SizedBox(width: 1),
+            Builder(
+              builder: (context) => GestureDetector(
+                onTap: () {
+                  Scaffold.of(context).openDrawer();
+                },
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
+                  backgroundImage: _resolveProfileImage(profilePhoto),
+                  child: _resolveProfileImage(profilePhoto) != null
+                      ? null
+                      : Text(
+                          (userName.isNotEmpty ? userName.trim().characters.first : '?'),
+                          style: theme.textTheme.labelLarge?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _greetingForNow(),
+                  style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.onPrimary.withOpacity(0.9)),
+                ),
+                Text(
+                  userName,
+                  style: theme.textTheme.titleSmall?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
           Padding(
@@ -164,49 +199,6 @@ class PanelView extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PanelAppBarTitle extends StatelessWidget {
-  const _PanelAppBarTitle({required this.userName, required this.greeting, required this.profilePhoto});
-  final String userName;
-  final String greeting;
-  final String profilePhoto;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
-          backgroundImage: _resolveProfileImage(profilePhoto),
-          child: _resolveProfileImage(profilePhoto) != null
-              ? null
-              : Text(
-                  (userName.isNotEmpty ? userName.trim().characters.first : '?'),
-                  style: theme.textTheme.labelLarge?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
-                ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              greeting,
-              style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.onPrimary.withOpacity(0.9)),
-            ),
-            Text(
-              userName,
-              style: theme.textTheme.titleSmall?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   ImageProvider? _resolveProfileImage(String value) {
     if (value.isEmpty) return null;
@@ -228,6 +220,215 @@ class _PanelAppBarTitle extends StatelessWidget {
       }
     }
     return null;
+  }
+}
+
+class _AppInfoDrawer extends StatelessWidget {
+  const _AppInfoDrawer({required this.userName, required this.userVersion});
+  final String userName;
+  final String userVersion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Drawer(
+      width: 280,
+      child: Container(
+        color: colorScheme.primary,
+        child: SafeArea(
+          top: true,
+          child: Container(
+            color: colorScheme.surface,
+            child: Column(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(bottomRight: Radius.circular(20), bottomLeft: Radius.circular(20)),
+                    color: colorScheme.primary,
+
+                  ),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 24),
+                 
+                child: Row(
+  crossAxisAlignment: CrossAxisAlignment.center,
+  children: [
+    const SizedBox(height: 100),
+    ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.asset(
+        'assets/arti_capital_logo.png',
+        height: 40,
+        errorBuilder: (context, error, stackTrace) => Icon(
+          Icons.business,
+          size: 40,
+          color: colorScheme.onPrimary,
+        ),
+      ),
+    ),
+    const SizedBox(width: 12),
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Artı Capital',
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: colorScheme.onPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Finansal Danışmanlık',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: colorScheme.onPrimary.withOpacity(0.85),
+          ),
+        ),
+      ],
+    ),
+  ],
+),
+
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    children: [
+                      _DrawerInfoItem(
+                        icon: Icons.person_outline,
+                        label: 'Kullanıcı',
+                        value: userName,
+                      ),
+                      _DrawerInfoItem(
+                        icon: Icons.info_outline,
+                        label: 'Versiyon',
+                        value: userVersion,
+                      ),
+                      _DrawerInfoItem(
+                        icon: Icons.access_time_outlined,
+                        label: 'Son Giriş',
+                        value: _getLastLoginText(),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        child: Divider(height: 1),
+                      ),
+                      _DrawerInfoItem(
+                        icon: Icons.email_outlined,
+                        label: 'E-posta',
+                        value: 'destek@articapital.com',
+                      ),
+                      _DrawerInfoItem(
+                        icon: Icons.language_outlined,
+                        label: 'Web',
+                        value: 'www.articapital.com',
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        '© Powered by Office701',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.4),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getLastLoginText() {
+    final dt = StorageService.getLastLoginAt();
+    if (dt == null) return '-';
+    
+    final now = DateTime.now();
+    final local = dt.toLocal();
+    String hh = local.hour.toString().padLeft(2, '0');
+    String mm = local.minute.toString().padLeft(2, '0');
+    
+    final isSameDay = now.year == local.year && 
+                      now.month == local.month && 
+                      now.day == local.day;
+    
+    if (isSameDay) {
+      return '$hh:$mm';
+    } else {
+      String day = local.day.toString().padLeft(2, '0');
+      String month = local.month.toString().padLeft(2, '0');
+      return '$day.$month $hh:$mm';
+    }
+  }
+}
+
+class _DrawerInfoItem extends StatelessWidget {
+  const _DrawerInfoItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.6),
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
