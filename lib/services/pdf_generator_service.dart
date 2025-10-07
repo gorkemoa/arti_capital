@@ -9,66 +9,78 @@ import '../models/company_models.dart';
 
 class PdfGeneratorService {
   static Future<Uint8List> generateCompanyDetailPdf(CompanyItem company) async {
-    final pdf = pw.Document();
+    try {
+      final pdf = pw.Document();
 
-    // Custom renkler
-    final primaryColor = PdfColor.fromHex('#1976D2');
-    final lightGray = PdfColor.fromHex('#F5F5F5');
-    final mediumGray = PdfColor.fromHex('#757575');
+      // Custom renkler
+      final primaryColor = PdfColor.fromHex('#1976D2');
+      final lightGray = PdfColor.fromHex('#F5F5F5');
+      final mediumGray = PdfColor.fromHex('#757575');
 
-    // Font yükleme
-    final font = await PdfGoogleFonts.notoSansRegular();
-    final fontBold = await PdfGoogleFonts.notoSansBold();
+      // Font yükleme - Türkçe karakter desteği için
+      final font = await PdfGoogleFonts.notoSansRegular();
+      final fontBold = await PdfGoogleFonts.notoSansBold();
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
-        build: (pw.Context context) {
-          return [
-            // Header
-            _buildHeader(company, primaryColor, fontBold, font),
-            pw.SizedBox(height: 30),
-            
-            // Firma Bilgileri
-            _buildCompanyInfo(company, primaryColor, fontBold, font, lightGray),
-            pw.SizedBox(height: 25),
-            
-            // Adres Bilgileri
-            _buildAddressInfo(company, primaryColor, fontBold, font, lightGray),
-            pw.SizedBox(height: 25),
-            
-            // Ortaklar
-            if (company.partners.isNotEmpty) ...[
-              _buildPartnersInfo(company.partners, primaryColor, fontBold, font, lightGray),
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(40),
+          build: (pw.Context context) {
+            return [
+              // Header
+              _buildHeader(company, primaryColor, fontBold, font),
+              pw.SizedBox(height: 30),
+              
+              // Firma Bilgileri
+              _buildCompanyInfo(company, primaryColor, fontBold, font, lightGray),
               pw.SizedBox(height: 25),
-            ],
-            
-            // Belgeler
-            if (company.documents.isNotEmpty) ...[
-              _buildDocumentsInfo(company.documents, primaryColor, fontBold, font, lightGray),
-            ],
-            
-            pw.Spacer(),
-            
-            // Footer
-            _buildFooter(font, mediumGray),
-          ];
-        },
-        footer: (pw.Context context) {
-          return pw.Container(
-            alignment: pw.Alignment.centerRight,
-            margin: const pw.EdgeInsets.only(top: 20),
-            child: pw.Text(
-              'Sayfa ${context.pageNumber} / ${context.pagesCount}',
-              style: pw.TextStyle(font: font, fontSize: 10, color: mediumGray),
-            ),
-          );
-        },
-      ),
-    );
+              
+              // Adres Bilgileri
+              _buildAddressInfo(company, primaryColor, fontBold, font, lightGray),
+              pw.SizedBox(height: 25),
+              
+              // Ortaklar
+              if (company.partners.isNotEmpty) ...[
+                _buildPartnersInfo(company.partners, primaryColor, fontBold, font, lightGray),
+                pw.SizedBox(height: 25),
+              ],
+              
+              // Belgeler
+              if (company.documents.isNotEmpty) ...[
+                _buildDocumentsInfo(company.documents, primaryColor, fontBold, font, lightGray),
+                pw.SizedBox(height: 25),
+              ],
+              
+              // Banka Bilgileri
+              if (company.banks.isNotEmpty) ...[
+                _buildBanksInfo(company.banks, primaryColor, fontBold, font, lightGray),
+                pw.SizedBox(height: 25),
+              ],
+              
+              pw.Spacer(),
+              
+              // Footer
+              _buildFooter(font, mediumGray),
+            ];
+          },
+          footer: (pw.Context context) {
+            return pw.Container(
+              alignment: pw.Alignment.centerRight,
+              margin: const pw.EdgeInsets.only(top: 20),
+              child: pw.Text(
+                'Sayfa ${context.pageNumber} / ${context.pagesCount}',
+                style: pw.TextStyle(font: font, fontSize: 10, color: mediumGray),
+              ),
+            );
+          },
+        ),
+      );
 
-    return pdf.save();
+      return pdf.save();
+    } catch (e) {
+      print('PDF oluşturulurken hata: $e');
+      rethrow;
+    }
   }
 
   static pw.Widget _buildHeader(CompanyItem company, PdfColor primaryColor, pw.Font fontBold, pw.Font font) {
@@ -148,7 +160,7 @@ class PdfGeneratorService {
                 ),
               ),
               pw.Text(
-                DateTime.now().toString().substring(0, 10),
+                _formatDate(DateTime.now()),
                 style: pw.TextStyle(
                   font: fontBold,
                   fontSize: 12,
@@ -202,6 +214,22 @@ class PdfGeneratorService {
               _buildInfoRow('MERSİS Numarası', company.compMersisNo ?? '-', font, fontBold),
               _buildDivider(),
               _buildInfoRow('KEP Adresi', company.compKepAddress ?? '-', font, fontBold),
+              if (company.compEmail != null && company.compEmail!.isNotEmpty) ...[
+                _buildDivider(),
+                _buildInfoRow('E-Posta', company.compEmail!, font, fontBold),
+              ],
+              if (company.compPhone != null && company.compPhone!.isNotEmpty) ...[
+                _buildDivider(),
+                _buildInfoRow('Telefon', company.compPhone!, font, fontBold),
+              ],
+              if (company.compWebsite != null && company.compWebsite!.isNotEmpty) ...[
+                _buildDivider(),
+                _buildInfoRow('Web Sitesi', company.compWebsite!, font, fontBold),
+              ],
+              if (company.compNaceCode != null && company.compNaceCode!.isNotEmpty) ...[
+                _buildDivider(),
+                _buildInfoRow('NACE Kodu', company.compNaceCode!, font, fontBold),
+              ],
             ],
           ),
         ),
@@ -334,6 +362,89 @@ class PdfGeneratorService {
           ),
         ),
       ],
+    );
+  }
+
+  static pw.Widget _buildBanksInfo(List<CompanyBankItem> banks, PdfColor primaryColor, pw.Font fontBold, pw.Font font, PdfColor lightGray) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Banka Bilgileri', fontBold, primaryColor),
+        pw.SizedBox(height: 10),
+        pw.Container(
+          width: double.infinity,
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: PdfColor.fromHex('#E0E0E0')),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+          ),
+          child: pw.Column(
+            children: [
+              for (int i = 0; i < banks.length; i++) ...[
+                _buildBankRow(banks[i], font, fontBold),
+                if (i < banks.length - 1) _buildDivider(),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static pw.Widget _buildBankRow(CompanyBankItem bank, pw.Font font, pw.Font fontBold) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(12),
+      child: pw.Row(
+        children: [
+          pw.Container(
+            width: 40,
+            height: 40,
+            decoration: pw.BoxDecoration(
+              color: PdfColor.fromHex('#E8F5E9'),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+            ),
+            child: pw.Center(
+              child: pw.Text(
+                '🏦',
+                style: pw.TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+          pw.SizedBox(width: 12),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  bank.bankName.isNotEmpty ? bank.bankName : 'Banka',
+                  style: pw.TextStyle(
+                    font: fontBold,
+                    fontSize: 12,
+                    color: PdfColor.fromHex('#424242'),
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Hesap Sahibi: ${bank.bankUsername}',
+                  style: pw.TextStyle(
+                    font: font,
+                    fontSize: 10,
+                    color: PdfColor.fromHex('#757575'),
+                  ),
+                ),
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'IBAN: ${bank.bankIBAN}',
+                  style: pw.TextStyle(
+                    font: font,
+                    fontSize: 9,
+                    color: PdfColor.fromHex('#757575'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -482,5 +593,12 @@ class PdfGeneratorService {
     final file = File('${directory.path}/$fileName');
     await file.writeAsBytes(pdfBytes);
     return file;
+  }
+
+  static String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return '$day.$month.$year';
   }
 }

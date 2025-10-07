@@ -364,6 +364,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     if (_company == null) return;
 
     try {
+      // Loading dialog göster
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -372,21 +373,33 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
             children: [
               CircularProgressIndicator(),
               SizedBox(width: 16),
-              Text('PDF oluşturuluyor...'),
+              Expanded(
+                child: Text('PDF oluşturuluyor...\nLütfen bekleyin.'),
+              ),
             ],
           ),
         ),
       );
 
+      // PDF oluştur
       final pdfBytes = await PdfGeneratorService.generateCompanyDetailPdf(_company!);
       
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pop(context); // Loading dialog'u kapat
 
+      // Başarı dialog'u göster
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('${_company!.compName} - PDF Raporu'),
+          title: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('${_company!.compName} - PDF Raporu'),
+              ),
+            ],
+          ),
           content: const Text('PDF başarıyla oluşturuldu. Ne yapmak istiyorsunuz?'),
           actions: [
             TextButton(
@@ -396,42 +409,67 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-                final file = await PdfGeneratorService.savePdfToFile(
-                  pdfBytes, 
-                  '${_company!.compName}_detay_raporu.pdf'
-                );
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('PDF kaydedildi: ${file.path}'),
-                    backgroundColor: Colors.green,
-                    duration: const Duration(seconds: 4),
-                  ),
-                );
+                try {
+                  final file = await PdfGeneratorService.savePdfToFile(
+                    pdfBytes, 
+                    '${_company!.compName}_detay_raporu.pdf'
+                  );
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('PDF kaydedildi: ${file.path}'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 4),
+                      action: SnackBarAction(
+                        label: 'TAMAM',
+                        textColor: Colors.white,
+                        onPressed: () {},
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('PDF kaydedilemedi: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               child: const Text('Kaydet'),
             ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
-                final file = await PdfGeneratorService.savePdfToFile(
-                  pdfBytes, 
-                  '${_company!.compName}_detay_raporu.pdf'
-                );
-                final xfile = XFile(
-                  file.path,
-                  mimeType: 'application/pdf',
-                  name: '${_company!.compName}_detay_raporu.pdf',
-                );
-                final box = context.findRenderObject() as RenderBox?;
-                await Share.shareXFiles(
-                  [xfile],
-                  subject: '${_company!.compName} - Firma Detay Raporu',
-                  text: 'Firma detay raporu ekte bulunmaktadır.',
-                  sharePositionOrigin: box != null 
-                    ? box.localToGlobal(Offset.zero) & box.size
-                    : null,
-                );
+                try {
+                  final file = await PdfGeneratorService.savePdfToFile(
+                    pdfBytes, 
+                    '${_company!.compName}_detay_raporu.pdf'
+                  );
+                  final xfile = XFile(
+                    file.path,
+                    mimeType: 'application/pdf',
+                    name: '${_company!.compName}_detay_raporu.pdf',
+                  );
+                  final box = context.findRenderObject() as RenderBox?;
+                  await Share.shareXFiles(
+                    [xfile],
+                    subject: '${_company!.compName} - Firma Detay Raporu',
+                    text: 'Firma detay raporu ekte bulunmaktadır.',
+                    sharePositionOrigin: box != null 
+                      ? box.localToGlobal(Offset.zero) & box.size
+                      : null,
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('PDF paylaşılamadı: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               child: const Text('Paylaş'),
             ),
@@ -440,10 +478,20 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
       );
     } catch (e) {
       if (!mounted) return;
+      // Eğer dialog açıksa kapat
       Navigator.pop(context);
+      
+      // Hata mesajı göster
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF oluşturulurken hata oluştu')),
+        SnackBar(
+          content: Text('PDF oluşturulurken hata oluştu: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
       );
+      
+      // Debug için konsola yazdır
+      print('PDF oluşturma hatası: $e');
     }
   }
 
