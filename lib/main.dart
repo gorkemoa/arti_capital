@@ -1,4 +1,3 @@
-import 'package:arti_capital/theme/splash_view.dart';
 import 'package:arti_capital/views/panel_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

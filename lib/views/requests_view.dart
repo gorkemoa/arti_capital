@@ -1,4 +1,3 @@
-import 'package:arti_capital/views/notifications_view.dart';
 import 'package:flutter/material.dart';
 import 'package:arti_capital/views/request_detail_view.dart';
 

@@ -66,7 +66,6 @@ class _AddCompanyBankViewState extends State<AddCompanyBankView> {
   bool _companyLoading = true;
   List<BankItem> _banks = [];
   BankItem? _selectedBank;
-  String _companyName = '';
 
   @override
   void initState() {
@@ -111,7 +110,6 @@ class _AddCompanyBankViewState extends State<AddCompanyBankView> {
       final company = await const CompanyService().getCompanyDetail(widget.compId);
       if (mounted && company != null) {
         setState(() {
-          _companyName = company.compName;
           _bankUsernameController.text = company.compName.toUpperCase();
           _companyLoading = false;
         });

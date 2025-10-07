@@ -1,9 +1,7 @@
 import 'package:arti_capital/theme/app_colors.dart';
-import 'package:arti_capital/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../services/appointments_service.dart';
-// removed: company imports no longer needed after moving to separate page
 import '../models/appointment_models.dart';
 import 'appointment_detail_view.dart';
 import '../services/storage_service.dart';
@@ -127,29 +125,7 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-  void _goToPrevMonth() {
-    setState(() {
-      _currentMonth = _firstDayOfMonth(DateTime(_currentMonth.year, _currentMonth.month - 1, 1));
-      final last = _lastDayOfMonth(_currentMonth);
-      if (_selectedDate.year == _currentMonth.year && _selectedDate.month == _currentMonth.month) {
-        // aynı ayda ise dokunma
-      } else {
-        _selectedDate = DateTime(_currentMonth.year, _currentMonth.month, last.day);
-      }
-    });
-  }
 
-  void _goToNextMonth() {
-    setState(() {
-      _currentMonth = _firstDayOfMonth(DateTime(_currentMonth.year, _currentMonth.month + 1, 1));
-      final last = _lastDayOfMonth(_currentMonth);
-      if (_selectedDate.year == _currentMonth.year && _selectedDate.month == _currentMonth.month) {
-        // aynı ayda ise dokunma
-      } else {
-        _selectedDate = DateTime(_currentMonth.year, _currentMonth.month, last.day);
-      }
-    });
-  }
 
   List<DateTime> _buildCalendarDays(DateTime month) {
     final List<DateTime> days = [];
@@ -291,171 +267,257 @@ class _CalendarViewState extends State<CalendarView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_note, size: 48, color: Colors.grey),
-            SizedBox(height: 12),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.calendar_today_outlined,
+                size: 28,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(
               'Henüz randevu yok',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey,
-              ),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Randevu eklemek için + butonunu kullanın',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: allAppointments.length,
-      separatorBuilder: (context, index) {
-        final current = allAppointments[index].key;
-        final next = index < allAppointments.length - 1 ? allAppointments[index + 1].key : null;
+    // Separate future/today and past appointments
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final upcomingAppointments = <MapEntry<DateTime, _CalendarEvent>>[];
+    final pastAppointments = <MapEntry<DateTime, _CalendarEvent>>[];
+    
+    for (final entry in allAppointments) {
+      if (entry.key.isBefore(today)) {
+        pastAppointments.add(entry);
+      } else {
+        upcomingAppointments.add(entry);
+      }
+    }
+    
+    // Reverse past appointments to show most recent first
+    pastAppointments.sort((a, b) => b.key.compareTo(a.key));
+    
+    // Group appointments by date
+    final Map<DateTime, List<_CalendarEvent>> upcomingGrouped = {};
+    for (final entry in upcomingAppointments) {
+      upcomingGrouped.putIfAbsent(entry.key, () => []).add(entry.value);
+    }
+    
+    final Map<DateTime, List<_CalendarEvent>> pastGrouped = {};
+    for (final entry in pastAppointments) {
+      pastGrouped.putIfAbsent(entry.key, () => []).add(entry.value);
+    }
+    
+    final upcomingDates = upcomingGrouped.keys.toList()..sort();
+    final pastDates = pastGrouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    
+    final totalSections = upcomingDates.length + (pastDates.isNotEmpty ? pastDates.length + 1 : 0);
+    
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      itemCount: totalSections,
+      itemBuilder: (context, index) {
+        // Upcoming appointments
+        if (index < upcomingDates.length) {
+          final date = upcomingDates[index];
+          final events = upcomingGrouped[date]!;
+          final dateLabel = _getDateLabel(date);
+          
+          return _buildDateSection(date, events, dateLabel, index == 0, false);
+        }
         
-        // Add date separator if next appointment is on different day
-        if (next != null && !_isSameDay(current, next)) {
+        // "Geçmiş" header
+        if (index == upcomingDates.length && pastDates.isNotEmpty) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    formatDateTr(next),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const Expanded(child: Divider()),
-              ],
+            padding: const EdgeInsets.only(top: 20, bottom: 8),
+            child: Text(
+              'Geçmiş',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: 18,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                height: 1.0,
+              ),
             ),
           );
         }
-        return const SizedBox(height: 1);
-      },
-      itemBuilder: (context, index) {
-        final entry = allAppointments[index];
-        final date = entry.key;
-        final event = entry.value;
         
-        // Show date header for first item or when date changes
-        final showDateHeader = index == 0 || 
-            (index > 0 && !_isSameDay(allAppointments[index - 1].key, date));
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (showDateHeader)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4, top: 8),
-                child: Text(
-                  formatDateTr(date),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
-            GestureDetector(
-              onTap: () async {
-                final result = await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => AppointmentDetailView(
-                      title: event.title,
-                      companyName: event.compName,
-                      time: '${formatDateTr(date)} · ${event.timeRange}',
-                      statusName: event.statusName,
-                      statusColor: event.statusColor,
-                      description: event.description,
-                      appointmentID: event.appointmentID,
-                      compID: event.compID,
-                      appointmentDateRaw: event.appointmentDateRaw,
-                      statusID: event.statusID, // Event objesinden statusID al
-                    ),
-                  ),
-                );
-                if (result == true) {
-                  await _fetchAppointments();
-                }
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  children: [
-                    // Sol renkli nokta
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: event.statusColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Ana içerik
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              event.title,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black87,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              event.compName,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black54,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.left,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Sağ taraf - zaman
-                    Text(
-                      event.timeRange,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black45,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
+        // Past appointments
+        final pastIndex = index - upcomingDates.length - 1;
+        final date = pastDates[pastIndex];
+        final events = pastGrouped[date]!;
+        final dateLabel = _getDateLabel(date);
+        
+        return _buildDateSection(date, events, dateLabel, false, true);
       },
     );
   }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+  
+  Widget _buildDateSection(DateTime date, List<_CalendarEvent> events, String dateLabel, bool isFirst, bool isPast) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tarih başlığı - iOS tarzı
+        Padding(
+          padding: EdgeInsets.only(left: 0, top: isFirst ? 6 : 12, bottom: 4),
+          child: Text(
+            dateLabel,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontSize: 18,
+              color: isPast ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5) : Theme.of(context).colorScheme.onSurface,
+              height: 1.0,
+            ),
+          ),
+        ),
+        
+        // Randevular listesi
+        ...events.map((event) {
+          return GestureDetector(
+            onTap: () async {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AppointmentDetailView(
+                    title: event.title,
+                    companyName: event.compName,
+                    time: '${formatDateTr(date)} · ${event.timeRange}',
+                    statusName: event.statusName,
+                    statusColor: event.statusColor,
+                    description: event.description,
+                    appointmentID: event.appointmentID,
+                    compID: event.compID,
+                    appointmentDateRaw: event.appointmentDateRaw,
+                    statusID: event.statusID,
+                  ),
+                ),
+              );
+              if (result == true) {
+                await _fetchAppointments();
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.withOpacity(0.12),
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Sol - Checkbox (durum rengi)
+                  Container(
+                    width: 18,
+                    height: 18,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isPast ? event.statusColor.withOpacity(0.4) : event.statusColor,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: isPast ? event.statusColor.withOpacity(0.4) : event.statusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Orta - İçerik
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.title,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w400,
+                            fontSize: 14,
+                            color: isPast ? Theme.of(context).colorScheme.onSurface.withOpacity(0.4) : Theme.of(context).colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '${event.timeRange} · ${event.compName}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            color: isPast ? Theme.of(context).colorScheme.onSurface.withOpacity(0.25) : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Sağ - Durum badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isPast ? event.statusColor.withOpacity(0.08) : event.statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      event.statusName,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontSize: 9,
+                        color: isPast ? event.statusColor.withOpacity(0.6) : event.statusColor,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 3),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+  
+  String _getDateLabel(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(date.year, date.month, date.day);
+    
+    if (targetDate == today) {
+      return 'Bugün';
+    } else {
+      const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+      final monthName = months[date.month - 1];
+      final dayName = _weekdaysShortTr[_weekdayFromMonday(date.weekday)];
+      return '${date.day} $monthName $dayName';
+    }
   }
 
   @override
@@ -466,6 +528,21 @@ class _CalendarViewState extends State<CalendarView> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: IconButton(
+            onPressed: () {
+              setState(() {
+                _isListView = !_isListView;
+              });
+            },
+            icon: Icon(
+              _isListView ? Icons.calendar_month : Icons.view_list,
+              color: AppColors.onPrimary,
+            ),
+            tooltip: _isListView ? 'Takvim Görünümü' : 'Liste Görünümü',
+          ),
+        ),
         title: Text(
           'Takvim',
           style: TextStyle(
@@ -517,7 +594,31 @@ class _CalendarViewState extends State<CalendarView> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Sol taraf - geri butonu (sadece takvim modunda)
+                  if (!_isListView)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.chevron_left,
+                          size: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 32),
                 
+                  // Orta - ay/yıl veya başlık
                   GestureDetector(
                     onTap: _isListView ? null : _openMonthPicker,
                     child: Column(
@@ -536,30 +637,30 @@ class _CalendarViewState extends State<CalendarView> {
                       ],
                     ),
                   ),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isListView = !_isListView;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            _isListView ? Icons.calendar_month : Icons.view_list,
-                            size: 20,
-                            color: Colors.black87,
-                          ),
+                  
+                  // Sağ taraf - ileri butonu
+                  if (!_isListView)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.chevron_right,
+                          size: 20,
+                          color: Colors.black87,
                         ),
                       ),
-              
-                    ],
-                  ),
+                    )
+                  else
+                    const SizedBox(width: 32),
                 ],
               ),
             ),
