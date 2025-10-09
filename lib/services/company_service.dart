@@ -211,6 +211,7 @@ class CompanyService {
     required int documentType,
     required String dataUrl,
     int? partnerID,
+    String? documentDesc,
   }) async {
     try {
       final endpoint = AppConstants.addCompanyDocument;
@@ -220,6 +221,7 @@ class CompanyService {
         'documentType': documentType,
         'file': dataUrl,
         'partnerID': partnerID ?? 0,
+        'documentDesc': documentDesc ?? '',
       };
       AppLogger.i('POST $endpoint', tag: 'ADD_DOCUMENT');
       AppLogger.i(payload.toString(), tag: 'ADD_DOCUMENT_REQ');

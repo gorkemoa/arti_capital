@@ -30,11 +30,18 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
   DocumentTypeItem? _selectedType;
   PlatformFile? _pickedFile;
   bool _submitting = false;
+  final TextEditingController _descController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadTypes();
+  }
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTypes() async {
@@ -192,6 +199,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
         documentType: _selectedType!.documentID,
         dataUrl: dataUrl,
         partnerID: widget.partnerID,
+        documentDesc: _descController.text.trim().isNotEmpty ? _descController.text.trim() : null,
       );
 
       if (!mounted) return;
@@ -268,6 +276,45 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                     Icon(CupertinoIcons.chevron_down, size: 18, color: AppColors.onSurface.withOpacity(0.6)),
                   ],
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Açıklama alanı
+            Text(
+              'Açıklama (İsteğe bağlı)',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onSurface,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _descController,
+              maxLines: 3,
+              maxLength: 500,
+              decoration: InputDecoration(
+                hintText: 'Belge hakkında açıklama ekleyebilirsiniz...',
+                hintStyle: TextStyle(
+                  color: AppColors.onSurface.withOpacity(0.5),
+                  fontSize: 14,
+                ),
+                filled: true,
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.primary, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             ),
 

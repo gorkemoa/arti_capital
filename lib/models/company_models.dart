@@ -275,6 +275,7 @@ class CompanyDocumentItem {
   final String documentType;
   final String documentURL;
   final String createDate;
+  final String? documentDesc;
 
   CompanyDocumentItem({
     required this.documentID,
@@ -282,6 +283,7 @@ class CompanyDocumentItem {
     required this.documentType,
     required this.documentURL,
     required this.createDate,
+    this.documentDesc,
   });
 
   factory CompanyDocumentItem.fromJson(Map<String, dynamic> json) {
@@ -313,6 +315,7 @@ class CompanyDocumentItem {
     final typeName = (json['documentType'] as String?) ?? (json['typeName'] as String?) ?? '';
     final url = (json['documentURL'] as String?) ?? (json['documentUrl'] as String?) ?? (json['url'] as String?) ?? '';
     final created = (json['createDate'] as String?) ?? (json['createdAt'] as String?) ?? '';
+    final desc = (json['documentDesc'] as String?) ?? (json['description'] as String?);
 
     return CompanyDocumentItem(
       documentID: id,
@@ -320,6 +323,7 @@ class CompanyDocumentItem {
       documentType: typeName,
       documentURL: url,
       createDate: created,
+      documentDesc: desc,
     );
   }
 }
@@ -475,6 +479,7 @@ class CompanyImageItem {
   final String imageType;
   final String imageURL;
   final String createDate;
+  final String? imageDesc;
 
   CompanyImageItem({
     required this.imageID,
@@ -482,6 +487,7 @@ class CompanyImageItem {
     required this.imageType,
     required this.imageURL,
     required this.createDate,
+    this.imageDesc,
   });
 
   factory CompanyImageItem.fromJson(Map<String, dynamic> json) {
@@ -491,6 +497,7 @@ class CompanyImageItem {
       imageType: json['imageType'] as String? ?? '',
       imageURL: json['imageURL'] as String? ?? '',
       createDate: json['createDate'] as String? ?? '',
+      imageDesc: (json['imageDesc'] as String?) ?? (json['description'] as String?),
     );
   }
 
@@ -500,6 +507,7 @@ class CompanyImageItem {
     'imageType': imageType,
     'imageURL': imageURL,
     'createDate': createDate,
+    'imageDesc': imageDesc,
   };
 }
 
