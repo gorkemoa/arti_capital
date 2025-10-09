@@ -495,6 +495,116 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
     }
   }
 
+  Future<void> _deleteCompany() async {
+    if (_company == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Firmayı Sil'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Bu firmayı silmek istediğinizden emin misiniz?',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Text('Firma Adı: ${_company!.compName}'),
+            if (_company!.compTaxNo != null && _company!.compTaxNo!.isNotEmpty)
+              Text('Vergi No: ${_company!.compTaxNo}'),
+            const SizedBox(height: 16),
+            const Text(
+              'Bu işlem geri alınamaz ve firma ile ilgili tüm bilgiler silinecektir.',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final token = await StorageService.getToken();
+    if (token == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Oturum bulunamadı')),
+      );
+      return;
+    }
+
+    // Loading dialog göster
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Expanded(child: Text('Firma siliniyor...')),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final success = await const CompanyService().deleteCompany(
+        userToken: token,
+        compId: widget.compId,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Loading dialog'u kapat
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Firma başarıyla silindi'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Firma silindikten sonra bir önceki sayfaya dön
+        Navigator.pop(context, true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Firma silinemedi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Loading dialog'u kapat
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Firma silinirken hata oluştu: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _updateImage(CompanyImageItem image) async {
     final token = await StorageService.getToken();
     if (token == null) {
@@ -1362,6 +1472,27 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                     _buildPasswordsPanel(),
                     const SizedBox(height: 16),
                     _buildImagesPanel(),
+                    const SizedBox(height: 24),
+                    // Firma Sil Butonu
+                    if (StorageService.hasPermission('companies', 'delete'))
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _deleteCompany,
+                          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          label: const Text(
+                            'Firmayı Sil',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
                   ],
                 ),
     );

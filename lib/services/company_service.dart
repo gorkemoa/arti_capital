@@ -926,6 +926,29 @@ class CompanyService {
       return false;
     }
   }
+
+  Future<bool> deleteCompany({
+    required String userToken,
+    required int compId,
+  }) async {
+    try {
+      final endpoint = AppConstants.deleteCompany;
+      final payload = {
+        'userToken': userToken,
+        'compID': compId,
+      };
+      AppLogger.i('DELETE $endpoint', tag: 'DELETE_COMPANY');
+      AppLogger.i(payload.toString(), tag: 'DELETE_COMPANY_REQ');
+      final Response resp = await ApiClient.deleteJson(endpoint, data: payload);
+      final body = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DELETE_COMPANY');
+      AppLogger.i(body.toString(), tag: 'DELETE_COMPANY_RES');
+      return body['success'] as bool? ?? false;
+    } catch (e) {
+      AppLogger.e('Delete company error: $e', tag: 'DELETE_COMPANY');
+      return false;
+    }
+  }
 }
 
 
