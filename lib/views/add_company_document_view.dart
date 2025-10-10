@@ -31,6 +31,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
   PlatformFile? _pickedFile;
   bool _submitting = false;
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _validityDateController = TextEditingController();
 
   @override
   void initState() {
@@ -41,6 +42,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
   @override
   void dispose() {
     _descController.dispose();
+    _validityDateController.dispose();
     super.dispose();
   }
 
@@ -200,6 +202,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
         dataUrl: dataUrl,
         partnerID: widget.partnerID,
         documentDesc: _descController.text.trim().isNotEmpty ? _descController.text.trim() : null,
+        documentValidityDate: _validityDateController.text.trim().isNotEmpty ? _validityDateController.text.trim() : null,
       );
 
       if (!mounted) return;
@@ -315,6 +318,137 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                   borderSide: BorderSide(color: AppColors.primary, width: 2),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Geçerlilik Tarihi
+            Text(
+              'Geçerlilik Tarihi (İsteğe bağlı)',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onSurface,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () async {
+                FocusScope.of(context).unfocus();
+                final now = DateTime.now();
+                DateTime initial = now.add(const Duration(days: 365));
+                
+                // Mevcut metinden tarihi çöz
+                final text = _validityDateController.text.trim();
+                if (RegExp(r'^\d{2}\.\d{2}\.\d{4}$').hasMatch(text)) {
+                  final parts = text.split('.');
+                  final dd = int.tryParse(parts[0]);
+                  final mm = int.tryParse(parts[1]);
+                  final yyyy = int.tryParse(parts[2]);
+                  if (dd != null && mm != null && yyyy != null) {
+                    final candidate = DateTime(yyyy, mm, dd);
+                    if (!candidate.isBefore(now) && yyyy >= now.year) {
+                      initial = candidate;
+                    }
+                  }
+                }
+
+                if (Platform.isIOS) {
+                  DateTime tempPicked = initial;
+                  await showCupertinoModalPopup<void>(
+                    context: context,
+                    builder: (ctx) {
+                      return Container(
+                        height: 300,
+                        color: Colors.grey.shade200,
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: 44,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  CupertinoButton(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: const Text('İptal'),
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                  ),
+                                  CupertinoButton(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: const Text('Tamam'),
+                                    onPressed: () {
+                                      final dd = tempPicked.day.toString().padLeft(2, '0');
+                                      final mm = tempPicked.month.toString().padLeft(2, '0');
+                                      final yyyy = tempPicked.year.toString();
+                                      _validityDateController.text = '$dd.$mm.$yyyy';
+                                      Navigator.of(ctx).pop();
+                                      setState(() {});
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: CupertinoDatePicker(
+                                mode: CupertinoDatePickerMode.date,
+                                initialDateTime: initial,
+                                minimumDate: now,
+                                maximumDate: now.add(const Duration(days: 3650)),
+                                onDateTimeChanged: (DateTime newDate) {
+                                  tempPicked = newDate;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                } else {
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: initial,
+                    firstDate: now,
+                    lastDate: now.add(const Duration(days: 3650)),
+                    helpText: 'Geçerlilik Tarihi',
+                    locale: const Locale('tr', 'TR'),
+                  );
+                  if (picked != null) {
+                    final dd = picked.day.toString().padLeft(2, '0');
+                    final mm = picked.month.toString().padLeft(2, '0');
+                    final yyyy = picked.year.toString();
+                    _validityDateController.text = '$dd.$mm.$yyyy';
+                    setState(() {});
+                  }
+                }
+              },
+              child: AbsorbPointer(
+                child: TextField(
+                  controller: _validityDateController,
+                  decoration: InputDecoration(
+                    hintText: 'GG.AA.YYYY',
+                    suffixIcon: Icon(Icons.calendar_today, color: AppColors.primary),
+                    hintStyle: TextStyle(
+                      color: AppColors.onSurface.withOpacity(0.5),
+                      fontSize: 14,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                ),
               ),
             ),
 

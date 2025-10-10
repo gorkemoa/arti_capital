@@ -212,6 +212,7 @@ class CompanyService {
     required String dataUrl,
     int? partnerID,
     String? documentDesc,
+    String? documentValidityDate,
   }) async {
     try {
       final endpoint = AppConstants.addCompanyDocument;
@@ -222,13 +223,23 @@ class CompanyService {
         'file': dataUrl,
         'partnerID': partnerID ?? 0,
         'documentDesc': documentDesc ?? '',
+        'documentValidityDate': documentValidityDate ?? '',
       };
       AppLogger.i('POST $endpoint', tag: 'ADD_DOCUMENT');
       AppLogger.i(payload.toString(), tag: 'ADD_DOCUMENT_REQ');
       final Response resp = await ApiClient.postJson(endpoint, data: payload);
-      final body = resp.data as Map<String, dynamic>;
-      final success = body['success'] as bool? ?? false;
-      return success;
+      
+      // Response String olarak dönebilir, kontrol et
+      if (resp.data is String) {
+        // String response'u parse et
+        final jsonData = jsonDecode(resp.data as String);
+        final success = jsonData['success'] as bool? ?? false;
+        return success;
+      } else {
+        final body = resp.data as Map<String, dynamic>;
+        final success = body['success'] as bool? ?? false;
+        return success;
+      }
     } catch (e) {
       AppLogger.e('Add document error: $e', tag: 'ADD_DOCUMENT');
       return false;

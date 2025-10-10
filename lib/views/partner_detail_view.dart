@@ -232,8 +232,97 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
                                     leading: const Icon(Icons.description_outlined),
-                                    title: Text(doc.documentType),
-                                    subtitle: Text(doc.createDate),
+                                    title: Text(
+                                      doc.documentType,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              'Yükleme Tarihi: ',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                doc.createDate,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          
+                                          ],
+                                        ),
+                                        if (doc.documentValidityDate.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'Geçerlilik Tarihi: ',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  doc.documentValidityDate,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                             
+                                            ],
+                                          ),
+                                        ],
+                                        if (doc.documentDesc != null && doc.documentDesc!.isNotEmpty) ...[
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                'Açıklama:',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text(
+                                                  doc.documentDesc!,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                                                    fontWeight: FontWeight.w500,
+                                                    height: 1.3,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    isThreeLine: (doc.documentValidityDate.isNotEmpty) || 
+                                                 (doc.documentDesc != null && doc.documentDesc!.isNotEmpty),
                                     onTap: () {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
@@ -244,18 +333,32 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
                                         ),
                                       );
                                     },
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit_outlined),
-                                          onPressed: () => _updateDocument(doc),
-                                          tooltip: 'Güncelle',
+                                    trailing: PopupMenuButton<String>(
+                                      tooltip: 'Aksiyonlar',
+                                      icon: const Icon(Icons.more_vert),
+                                      onSelected: (value) {
+                                        if (value == 'edit') {
+                                          _updateDocument(doc);
+                                        } else if (value == 'delete') {
+                                          _deleteDocument(doc);
+                                        }
+                                      },
+                                      itemBuilder: (context) => [
+                                        const PopupMenuItem<String>(
+                                          value: 'edit',
+                                          child: ListTile(
+                                            leading: Icon(Icons.edit_outlined),
+                                            title: Text('Güncelle'),
+                                            contentPadding: EdgeInsets.zero,
+                                          ),
                                         ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline),
-                                          onPressed: () => _deleteDocument(doc),
-                                          tooltip: 'Sil',
+                                        const PopupMenuItem<String>(
+                                          value: 'delete',
+                                          child: ListTile(
+                                            leading: Icon(Icons.delete_outline, color: Colors.redAccent),
+                                            title: Text('Sil'),
+                                            contentPadding: EdgeInsets.zero,
+                                          ),
                                         ),
                                       ],
                                     ),
