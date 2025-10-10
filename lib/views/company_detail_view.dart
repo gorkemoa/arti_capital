@@ -5,7 +5,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/company_models.dart';
@@ -15,7 +14,9 @@ import '../services/pdf_generator_service.dart';
 import '../theme/app_colors.dart';
 import 'edit_company_view.dart';
 import 'add_company_document_view.dart';
+import 'edit_company_document_view.dart';
 import 'add_company_image_view.dart';
+import 'edit_company_image_view.dart';
 import 'add_company_bank_view.dart';
 import 'add_company_password_view.dart';
 import 'edit_company_password_view.dart';
@@ -186,50 +187,15 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
   }
 
   Future<void> _updateDocument(CompanyDocumentItem doc) async {
-    final token = await StorageService.getToken();
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-      return;
-    }
-
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      withData: true,
+    final res = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditCompanyDocumentView(
+          compId: widget.compId,
+          document: doc,
+        ),
+      ),
     );
-    if (result == null || result.files.isEmpty) return;
-
-    final file = result.files.first;
-    final String? path = file.path;
-    final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
-    if (bytes == null) return;
-
-    String mime = 'application/octet-stream';
-    final name = (file.name).toLowerCase();
-    if (name.endsWith('.pdf')) {
-      mime = 'application/pdf';
-    } else if (name.endsWith('.png')) {
-      mime = 'image/png';
-    } else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
-      mime = 'image/jpeg';
-    } else if (name.endsWith('.docx')) {
-      mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    }
-
-    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
-
-    final ok = await const CompanyService().updateCompanyDocument(
-      userToken: token,
-      compId: widget.compId,
-      documentId: doc.documentID,
-      documentType: doc.documentTypeID,
-      dataUrl: dataUrl,
-      partnerID: 0,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? 'Belge güncellendi.' : 'Belge güncellenemedi')),
-    );
-    if (ok) _load();
+    if (res == true) _load();
   }
 
   Future<void> _deleteDocument(CompanyDocumentItem doc) async {
@@ -606,49 +572,15 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
   }
 
   Future<void> _updateImage(CompanyImageItem image) async {
-    final token = await StorageService.getToken();
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-      return;
-    }
-
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      withData: true,
-      type: FileType.image,
+    final res = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditCompanyImageView(
+          compId: widget.compId,
+          image: image,
+        ),
+      ),
     );
-    if (result == null || result.files.isEmpty) return;
-
-    final file = result.files.first;
-    final String? path = file.path;
-    final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
-    if (bytes == null) return;
-
-    String mime = 'image/jpeg';
-    final name = (file.name).toLowerCase();
-    if (name.endsWith('.png')) {
-      mime = 'image/png';
-    } else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) {
-      mime = 'image/jpeg';
-    } else if (name.endsWith('.webp')) {
-      mime = 'image/webp';
-    }
-
-    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
-
-    final ok = await const CompanyService().updateCompanyDocument(
-      userToken: token,
-      compId: widget.compId,
-      documentId: image.imageID,
-      documentType: image.imageTypeID,
-      dataUrl: dataUrl,
-      partnerID: 0,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? 'Görsel güncellendi.' : 'Görsel güncellenemedi')),
-    );
-    if (ok) _load();
+    if (res == true) _load();
   }
 
   Future<void> _deleteImage(CompanyImageItem image) async {

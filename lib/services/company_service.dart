@@ -229,15 +229,19 @@ class CompanyService {
       AppLogger.i(payload.toString(), tag: 'ADD_DOCUMENT_REQ');
       final Response resp = await ApiClient.postJson(endpoint, data: payload);
       
+      AppLogger.i('Response: ${resp.data}', tag: 'ADD_DOCUMENT_RESP');
+      
       // Response String olarak dönebilir, kontrol et
       if (resp.data is String) {
         // String response'u parse et
         final jsonData = jsonDecode(resp.data as String);
-        final success = jsonData['success'] as bool? ?? false;
+        final success = !(jsonData['error'] as bool? ?? true);
+        AppLogger.i('Success: $success', tag: 'ADD_DOCUMENT');
         return success;
       } else {
         final body = resp.data as Map<String, dynamic>;
-        final success = body['success'] as bool? ?? false;
+        final success = !(body['error'] as bool? ?? true);
+        AppLogger.i('Success: $success', tag: 'ADD_DOCUMENT');
         return success;
       }
     } catch (e) {
@@ -253,6 +257,8 @@ class CompanyService {
     required int documentType,
     required String dataUrl,
     int? partnerID,
+    String? documentDesc,
+    String? documentValidityDate,
   }) async {
     try {
       final endpoint = AppConstants.updateCompanyDocument;
@@ -263,12 +269,27 @@ class CompanyService {
         'documentType': documentType,
         'file': dataUrl,
         'partnerID': partnerID ?? 0,
+        'documentDesc': documentDesc ?? '',
+        'documentValidityDate': documentValidityDate ?? '',
       };
       AppLogger.i('POST $endpoint', tag: 'UPDATE_DOCUMENT');
       AppLogger.i(payload.toString(), tag: 'UPDATE_DOCUMENT_REQ');
       final Response resp = await ApiClient.postJson(endpoint, data: payload);
-      final body = resp.data as Map<String, dynamic>;
-      return body['success'] as bool? ?? false;
+      
+      AppLogger.i('Response: ${resp.data}', tag: 'UPDATE_DOCUMENT_RESP');
+      
+      // Response String olarak dönebilir, kontrol et
+      if (resp.data is String) {
+        final jsonData = jsonDecode(resp.data as String);
+        final success = !(jsonData['error'] as bool? ?? true);
+        AppLogger.i('Success: $success', tag: 'UPDATE_DOCUMENT');
+        return success;
+      } else {
+        final body = resp.data as Map<String, dynamic>;
+        final success = !(body['error'] as bool? ?? true);
+        AppLogger.i('Success: $success', tag: 'UPDATE_DOCUMENT');
+        return success;
+      }
     } catch (e) {
       AppLogger.e('Update document error: $e', tag: 'UPDATE_DOCUMENT');
       return false;

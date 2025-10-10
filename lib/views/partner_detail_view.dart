@@ -1,14 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 
 import '../models/company_models.dart';
 import '../services/company_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import 'add_company_document_view.dart';
+import 'edit_company_document_view.dart';
 import 'document_preview_view.dart';
 import 'edit_company_partner_view.dart';
 
@@ -49,51 +46,16 @@ class _PartnerDetailViewState extends State<PartnerDetailView> {
   }
 
   Future<void> _updateDocument(CompanyDocumentItem doc) async {
-    final res = await FilePicker.platform.pickFiles(allowMultiple: false, withData: true);
-    if (res == null || res.files.isEmpty) return;
-    
-    final token = await StorageService.getToken();
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
-      return;
-    }
-
-    final file = res.files.first;
-    final String? path = file.path;
-    final bytes = file.bytes ?? (path != null ? await File(path).readAsBytes() : null);
-    if (bytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dosya okunamadı')));
-      return;
-    }
-
-    String _guessMime(String name) {
-      final lower = name.toLowerCase();
-      if (lower.endsWith('.pdf')) return 'application/pdf';
-      if (lower.endsWith('.png')) return 'image/png';
-      if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-      if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      return 'application/octet-stream';
-    }
-
-    final mime = _guessMime(file.name);
-    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
-
-    final ok = await CompanyService().updateCompanyDocument(
-      userToken: token,
-      compId: widget.compId,
-      documentId: doc.documentID,
-      documentType: doc.documentTypeID,
-      dataUrl: dataUrl,
-      partnerID: _partner?.partnerID ?? 0,
+    final res = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditCompanyDocumentView(
+          compId: widget.compId,
+          document: doc,
+          partnerID: _partner?.partnerID,
+        ),
+      ),
     );
-
-    if (!mounted) return;
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge güncellendi')));
-      _load();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belge güncellenemedi')));
-    }
+    if (res == true) _load();
   }
 
   Future<void> _deleteDocument(CompanyDocumentItem doc) async {
