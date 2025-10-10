@@ -1036,58 +1036,97 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
           )
         else
           Column(
-            children: _company!.documents.map((doc) {
-              return ListTile(
+            children: _company!.documents.asMap().entries.map((entry) {
+              final index = entry.key;
+              final doc = entry.value;
+              return Column(
+                children: [
+                  if (index > 0) 
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
+                  ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.description_outlined),
-                title: Text(doc.documentType),
+                title: Text(doc.documentType, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      doc.createDate,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  SizedBox(height: 6),
+                    Row(children: [
+                      Text(
+                        'Yükleme Tarihi: ',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
+                      Text(
+                        doc.createDate,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ]
+),
+                    if (doc.documentValidityDate.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            'Geçerlilik Tarihi: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            doc.documentValidityDate,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (doc.documentDesc != null && doc.documentDesc!.isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.2),
-                            width: 1,
+                      Row(
+                        children: [
+                          Text(
+                            'Açıklama:',
+                            style: TextStyle(
+                              fontSize: 12,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 14,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                doc.documentDesc!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.3,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              doc.documentDesc!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                                fontWeight: FontWeight.w500,
+                                height: 1.3,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
+                         
+                          ),
+
+                        ],
                       ),
+                  
                     ],
                   ],
                 ),
@@ -1140,6 +1179,8 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                     ),
                   );
                 },
+              ),
+                ],
               );
             }).toList(),
           ),
@@ -1251,6 +1292,7 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                         return;
                       }
                       final confirm = await showDialog<bool>(
+                        // ignore: use_build_context_synchronously
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Banka Bilgisini Sil'),
@@ -1887,8 +1929,7 @@ class _PasswordListItemState extends State<_PasswordListItem> {
         title: const Text('Şifreyi Sil'),
         content: Text(
           'Bu şifreyi silmek istediğinizden emin misiniz?\n\n'
-          'Şifre Türü: ${widget.password.passwordType}\n'
-          'Kullanıcı Adı: ${widget.password.passwordUsername}',
+          'Şifre Türü: ${widget.password.passwordType}'
         ),
         actions: [
           TextButton(

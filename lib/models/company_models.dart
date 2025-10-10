@@ -275,6 +275,7 @@ class CompanyDocumentItem {
   final String documentType;
   final String documentURL;
   final String createDate;
+  final String documentValidityDate;  
   final String? documentDesc;
 
   CompanyDocumentItem({
@@ -283,6 +284,7 @@ class CompanyDocumentItem {
     required this.documentType,
     required this.documentURL,
     required this.createDate,
+    required this.documentValidityDate,
     this.documentDesc,
   });
 
@@ -316,13 +318,14 @@ class CompanyDocumentItem {
     final url = (json['documentURL'] as String?) ?? (json['documentUrl'] as String?) ?? (json['url'] as String?) ?? '';
     final created = (json['createDate'] as String?) ?? (json['createdAt'] as String?) ?? '';
     final desc = (json['documentDesc'] as String?) ?? (json['description'] as String?);
-
+    final validityDate = (json['documentValidityDate'] as String?) ?? '';
     return CompanyDocumentItem(
       documentID: id,
       documentTypeID: typeId,
       documentType: typeName,
       documentURL: url,
       createDate: created,
+      documentValidityDate: validityDate,
       documentDesc: desc,
     );
   }

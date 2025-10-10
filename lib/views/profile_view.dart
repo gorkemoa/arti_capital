@@ -152,11 +152,10 @@ class _ProfileContent extends StatelessWidget {
               );
             },
           ),
+          _Tile(label: 'Kimlik No', value: user.userIdentityNo, icon: Icons.person_outline),
           _Tile(label: 'Adı Soyadı', value: user.userFullname, icon: Icons.account_circle_outlined),
           _Tile(label: 'Telefon', value: user.userPhone, icon: Icons.phone_outlined),
           _Tile(label: 'Cinsiyet', value: user.userGender, icon: Icons.wc_outlined),
-          _Tile(label: 'Rütbe', value: user.userRank, icon: Icons.verified_user_outlined),
-          _Tile(label: 'Kimlik No', value: user.userIdentityNo, icon: Icons.person_outline),
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: () async {
