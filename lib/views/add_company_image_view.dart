@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:arti_capital/views/document_preview_view.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -30,6 +31,10 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
   bool _submitting = false;
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _videoLinkController = TextEditingController();
+  
+  // Görsel mi video linki mi eklenecek
+  String _uploadType = 'image'; // 'image' veya 'videoLink'
 
   @override
   void initState() {
@@ -40,6 +45,7 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
   @override
   void dispose() {
     _descController.dispose();
+    _videoLinkController.dispose();
     super.dispose();
   }
 
@@ -203,6 +209,59 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
     }
   }
 
+  Future<void> _pickVideoFromDrive() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.video,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        
+        // Dosya yolu var mı kontrol et
+        if (file.path != null) {
+          // Yerel dosya seçilmiş - bu durumda kullanıcıya bilgi verelim
+          if (!mounted) return;
+          
+          // Google Drive URL'i mi kontrol et
+          if (file.path!.contains('drive.google.com') || 
+              file.path!.contains('docs.google.com')) {
+            // Drive linki
+            setState(() {
+              _videoLinkController.text = file.path!;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Drive video linki eklendi')),
+            );
+          } else {
+            // Yerel video dosyası seçilmiş
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Lütfen Google Drive\'dan paylaşılabilir bir video linki girin veya video linkini manuel olarak yapıştırın'),
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        } else if (file.identifier != null) {
+          // Cloud dosyası (Drive vb.)
+          setState(() {
+            _videoLinkController.text = file.identifier!;
+          });
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Video linki eklendi')),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dosya seçilirken hata oluştu: $e')),
+      );
+    }
+  }
+
   Future<void> _openPreview() async {
     if (_pickedImage == null || _imageBytes == null) return;
     try {
@@ -237,11 +296,30 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
   }
 
   Future<void> _submit() async {
-    if (_selectedType == null || _pickedImage == null || _imageBytes == null) {
+    if (_selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Görsel türü ve resim seçin')),
+        const SnackBar(content: Text('Görsel türü seçin')),
       );
       return;
+    }
+
+    // Video linki seçeneği kontrolü
+    if (_uploadType == 'videoLink') {
+      final link = _videoLinkController.text.trim();
+      if (link.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Drive video linki girin')),
+        );
+        return;
+      }
+    } else {
+      // Görsel dosyası kontrolü
+      if (_pickedImage == null || _imageBytes == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Görsel seçin')),
+        );
+        return;
+      }
     }
 
     final token = await StorageService.getToken();
@@ -254,8 +332,17 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
 
     setState(() { _submitting = true; });
     try {
-      final mime = _guessMime(_pickedImage!.name);
-      final dataUrl = 'data:$mime;base64,${base64Encode(_imageBytes!)}';
+      String dataUrl = '';
+      String? documentLink;
+
+      if (_uploadType == 'videoLink') {
+        // Video linki kullanılacak
+        documentLink = _videoLinkController.text.trim();
+      } else {
+        // Görsel dosyası yüklenecek
+        final mime = _guessMime(_pickedImage!.name);
+        dataUrl = 'data:$mime;base64,${base64Encode(_imageBytes!)}';
+      }
 
       final ok = await const CompanyService().addCompanyDocument(
         userToken: token,
@@ -264,17 +351,18 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
         dataUrl: dataUrl,
         partnerID: null,
         documentDesc: _descController.text.trim().isNotEmpty ? _descController.text.trim() : null,
+        documentLink: documentLink,
       );
 
       if (!mounted) return;
       if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Şirket görseli başarıyla eklendi.')),
+          SnackBar(content: Text(_uploadType == 'videoLink' ? 'Drive video linki başarıyla eklendi.' : 'Şirket görseli başarıyla eklendi.')),
         );
         Navigator.of(context).pop(true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Şirket görseli eklenemedi')),
+          SnackBar(content: Text(_uploadType == 'videoLink' ? 'Drive video linki eklenemedi' : 'Şirket görseli eklenemedi')),
         );
       }
     } catch (e) {
@@ -302,7 +390,7 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSectionTitle(context, 'Görsel Yükleme'),
+            _buildSectionTitle(context, 'Görsel / Video Yükleme'),
             const SizedBox(height: 24),
 
             // Görsel türü (Cupertino picker)
@@ -351,6 +439,110 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
 
             const SizedBox(height: 24),
 
+            // Yükleme Tipi Seçimi
+            Text(
+              'Yükleme Tipi',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.onSurface,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _uploadType = 'image';
+                        _videoLinkController.clear();
+                        // Görsel seçildiğinde ilk görsel türünü seç (25 değil)
+                        if (_imageTypes.isNotEmpty) {
+                          _selectedType = _imageTypes.first;
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _uploadType == 'image' ? AppColors.primary : AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _uploadType == 'image' ? AppColors.primary : Colors.grey.shade300,
+                          width: _uploadType == 'image' ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.image,
+                            color: _uploadType == 'image' ? AppColors.onPrimary : AppColors.onSurface.withOpacity(0.7),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Görsel Dosyası',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: _uploadType == 'image' ? AppColors.onPrimary : AppColors.onSurface.withOpacity(0.7),
+                                  fontWeight: _uploadType == 'image' ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _uploadType = 'videoLink';
+                        _pickedImage = null;
+                        _imageBytes = null;
+                        // Video seçildiğinde documentID = 25 olan türü seç
+                        final videoType = _imageTypes.firstWhere(
+                          (type) => type.documentID == 25,
+                          orElse: () => _imageTypes.isNotEmpty ? _imageTypes.first : DocumentTypeItem(documentID: 25, documentName: 'Video'),
+                        );
+                        _selectedType = videoType;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _uploadType == 'videoLink' ? AppColors.primary : AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _uploadType == 'videoLink' ? AppColors.primary : Colors.grey.shade300,
+                          width: _uploadType == 'videoLink' ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.video_library,
+                            color: _uploadType == 'videoLink' ? AppColors.onPrimary : AppColors.onSurface.withOpacity(0.7),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Drive Video',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: _uploadType == 'videoLink' ? AppColors.onPrimary : AppColors.onSurface.withOpacity(0.7),
+                                  fontWeight: _uploadType == 'videoLink' ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
             // Açıklama alanı
             Text(
               'Açıklama (İsteğe bağlı)',
@@ -390,8 +582,101 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
 
             const SizedBox(height: 24),
 
-            // Görsel seçimi alanı
-            if (_pickedImage == null && _imageBytes == null) ...[
+            // Video Linki veya Görsel seçimi
+            if (_uploadType == 'videoLink') ...[
+              // Video linki input alanı
+              Text(
+                'Google Drive Video Linki',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.onSurface,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _videoLinkController,
+                decoration: InputDecoration(
+                  hintText: 'https://drive.google.com/file/d/...',
+                  hintStyle: TextStyle(
+                    color: AppColors.onSurface.withOpacity(0.5),
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(Icons.link, color: AppColors.primary),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.primary, width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Google Drive\'dan video linki ekleyebilirsiniz',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.onSurface.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              // Bilgi kutusu
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Google Drive\'dan video eklemek için:\n1. Drive\'da videoyu açın\n2. Sağ üst köşeden "Paylaş" butonuna tıklayın\n3. "Linki kopyala" seçeneğini kullanın\n4. Kopyalanan linki yukarıdaki alana yapıştırın',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.blue.shade900,
+                              fontSize: 11,
+                              height: 1.4,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Drive'dan video seç butonu
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickVideoFromDrive,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: Icon(Icons.videocam, color: AppColors.primary),
+                      label: const Text('Drive\'dan Video Seç'),
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (_pickedImage == null && _imageBytes == null) ...[
+              // Görsel seçimi - boş durum
               GestureDetector(
                 onTap: _showImageSourceDialog,
                 child: DashedBorderContainer(

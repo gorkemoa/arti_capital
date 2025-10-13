@@ -126,15 +126,7 @@ class _EditCompanyBankViewState extends State<EditCompanyBankView> {
       if (mounted) {
         setState(() {
           _banks = response.banks;
-          
-          // Debug: Print bank info
-          print('=== BANKA DÜZENLEME DEBUG ===');
-          print('Aranan Bank ID: ${widget.bank.bankID}');
-          print('Banka Adı: ${widget.bank.bankName}');
-          print('Mevcut Bankalar:');
-          for (var bank in _banks) {
-            print('  - ID: ${bank.bankID}, Name: ${bank.bankName}');
-          }
+        
           
           // Find the current bank in the list - ÖNCE İSME GÖRE, sonra ID'ye göre
           BankItem? foundBank;
@@ -144,17 +136,14 @@ class _EditCompanyBankViewState extends State<EditCompanyBankView> {
             foundBank = _banks.firstWhere(
               (bank) => bank.bankName.toLowerCase().trim() == widget.bank.bankName.toLowerCase().trim(),
             );
-            print('✓ Banka isim ile bulundu: ${foundBank.bankName} (ID: ${foundBank.bankID})');
           } catch (e) {
-            print('⚠ İsim ile bulunamadı, ID ile aranıyor...');
             // İsim ile bulunamadıysa ID ile ara
             try {
               foundBank = _banks.firstWhere(
                 (bank) => bank.bankID == widget.bank.bankID,
               );
-              print('✓ Banka ID ile bulundu: ${foundBank.bankName}');
             } catch (e) {
-              print('✗ Banka hiç bulunamadı, yeni oluşturuluyor');
+              print('✗ Banka ID ile bulunamadı');
             }
           }
           
@@ -171,9 +160,7 @@ class _EditCompanyBankViewState extends State<EditCompanyBankView> {
             _selectedBank = currentBank;
           }
           
-          print('Seçili Banka: ${_selectedBank?.bankName} (ID: ${_selectedBank?.bankID})');
-          print('=== DEBUG SONU ===\n');
-          
+        
           _banksLoading = false;
         });
       }
