@@ -1293,6 +1293,67 @@ class AddCompanyBankResponse {
   }
 }
 
+class UpdateCompanyBankRequest {
+  final String userToken;
+  final int compID;
+  final int cbID;
+  final int bankID;
+  final String bankUsername;
+  final String bankBranchName;
+  final String bankBranchCode;
+  final String compIban;
+
+  UpdateCompanyBankRequest({
+    required this.userToken,
+    required this.compID,
+    required this.cbID,
+    required this.bankID,
+    required this.bankUsername,
+    required this.bankBranchName,
+    required this.bankBranchCode,
+    required this.compIban,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'compID': compID,
+      'cbID': cbID,
+      'bankID': bankID,
+      'bankUsername': bankUsername,
+      'bankBranchName': bankBranchName,
+      'bankBranchCode': bankBranchCode,
+      'compIban': compIban,
+    };
+  }
+}
+
+class UpdateCompanyBankResponse {
+  final bool error;
+  final bool success;
+  final String message;
+  final String? errorMessage;
+  final int? statusCode;
+
+  UpdateCompanyBankResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+    this.errorMessage,
+    this.statusCode,
+  });
+
+  factory UpdateCompanyBankResponse.fromJson(Map<String, dynamic> json, int? code) {
+    return UpdateCompanyBankResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      errorMessage: json['error_message'] as String?,
+      statusCode: code,
+    );
+  }
+}
+
 // Bank lookup models
 class BankItem {
   final int bankID;

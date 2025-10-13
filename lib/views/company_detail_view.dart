@@ -18,6 +18,7 @@ import 'edit_company_document_view.dart';
 import 'add_company_image_view.dart';
 import 'edit_company_image_view.dart';
 import 'add_company_bank_view.dart';
+import 'edit_company_bank_view.dart';
 import 'add_company_password_view.dart';
 import 'edit_company_password_view.dart';
 import 'document_preview_view.dart';
@@ -1168,11 +1169,10 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(bank.bankUsername),
-                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Text(
-                          bank.bankIBAN.length > 16 ? '${bank.bankIBAN.substring(0, 16)}...' : bank.bankIBAN,
+                          bank.bankIBAN.length > 16 ? '${bank.bankIBAN.toString().substring(0, 25)}...' : bank.bankIBAN.toString(),
                           style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
                         ),
                         Expanded(
@@ -1216,7 +1216,26 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                   tooltip: 'Aksiyonlar',
                   icon: const Icon(Icons.more_vert),
                   onSelected: (value) async {
-                    if (value == 'delete') {
+                    if (value == 'edit') {
+                      print('=== DÜZENLE TIKLANDI ===');
+                      print('Bank ID: ${bank.bankID}');
+                      print('Bank cbID: ${bank.cbID}');
+                      print('Bank Name: ${bank.bankName}');
+                      print('Bank Username: ${bank.bankUsername}');
+                      print('Bank Branch: ${bank.bankBranch}');
+                      print('Bank IBAN: ${bank.bankIBAN}');
+                      print('========================\n');
+                      
+                      final res = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => EditCompanyBankView(
+                            compId: widget.compId,
+                            bank: bank,
+                          ),
+                        ),
+                      );
+                      if (res == true) _load();
+                    } else if (value == 'delete') {
                       final token = await StorageService.getToken();
                       if (token == null) {
                         if (!mounted) return;
@@ -1249,6 +1268,14 @@ class _CompanyDetailViewState extends State<CompanyDetailView> {
                     }
                   },
                   itemBuilder: (context) => [
+                    if (StorageService.hasPermission('companies', 'update'))
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Düzenle'),
+                        ),
+                      ),
                     if (StorageService.hasPermission('companies', 'delete'))
                       const PopupMenuItem<String>(
                         value: 'delete',

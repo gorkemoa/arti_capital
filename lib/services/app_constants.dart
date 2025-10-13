@@ -51,6 +51,7 @@ class AppConstants {
   static const String updatePartner = '/service/user/account/company/partnerUpdate';
   static const String deletePartner = '/service/user/account/company/partnerDelete';
   static const String addCompanyBank = '/service/user/account/company/bankAdd';
+  static const String updateCompanyBank = '/service/user/account/company/bankUpdate';
   static const String deleteCompanyBank = '/service/user/account/company/bankDelete';
   static const String addCompanyPassword = '/service/user/account/company/passwordAdd';
   static const String updateCompanyPassword = '/service/user/account/company/passwordUpdate';

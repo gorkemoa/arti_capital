@@ -675,6 +675,66 @@ class CompanyService {
     }
   }
 
+  Future<UpdateCompanyBankResponse> updateCompanyBank(UpdateCompanyBankRequest request) async {
+    try {
+      final endpoint = AppConstants.updateCompanyBank;
+
+      AppLogger.i('POST $endpoint', tag: 'UPDATE_COMPANY_BANK');
+      AppLogger.i(request.toJson().toString(), tag: 'UPDATE_COMPANY_BANK_REQ');
+
+      final Response resp = await ApiClient.putJson(
+        endpoint,
+        data: request.toJson(),
+      );
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_COMPANY_BANK');
+          return UpdateCompanyBankResponse(
+            error: true,
+            success: false,
+            message: 'Geçersiz yanıt',
+            statusCode: resp.statusCode,
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return UpdateCompanyBankResponse(
+          error: true,
+          success: false,
+          message: 'Beklenmeyen yanıt',
+          statusCode: resp.statusCode,
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_COMPANY_BANK');
+      AppLogger.i(body.toString(), tag: 'UPDATE_COMPANY_BANK_RES');
+
+      return UpdateCompanyBankResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      return UpdateCompanyBankResponse(
+        error: true,
+        success: false,
+        message: e.message ?? 'API Hatası',
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Update company bank error: $e', tag: 'UPDATE_COMPANY_BANK');
+      return UpdateCompanyBankResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen hata',
+      );
+    }
+  }
+
   Future<GetBanksResponse> getBanks() async {
     try {
       final endpoint = AppConstants.getBanks;
