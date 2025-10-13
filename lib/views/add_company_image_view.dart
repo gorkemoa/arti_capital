@@ -5,9 +5,9 @@ import 'dart:typed_data';
 import 'package:arti_capital/views/document_preview_view.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/company_models.dart';
 import '../services/general_service.dart';
@@ -209,55 +209,55 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
     }
   }
 
-  Future<void> _pickVideoFromDrive() async {
+  Future<void> _openDriveApp() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.video,
-        allowMultiple: false,
-      );
+      // Google Drive uygulamasını açmak için URL scheme'leri
+      Uri driveUri;
+      
+      if (Platform.isAndroid) {
+        // Android için Google Drive app intent
+        driveUri = Uri.parse('com.google.android.apps.docs://');
+      } else if (Platform.isIOS) {
+        // iOS için Google Drive app URL scheme
+        driveUri = Uri.parse('googledrive://');
+      } else {
+        // Web veya diğer platformlar için browser'da Drive aç
+        driveUri = Uri.parse('https://drive.google.com/drive/my-drive');
+      }
 
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        
-        // Dosya yolu var mı kontrol et
-        if (file.path != null) {
-          // Yerel dosya seçilmiş - bu durumda kullanıcıya bilgi verelim
-          if (!mounted) return;
-          
-          // Google Drive URL'i mi kontrol et
-          if (file.path!.contains('drive.google.com') || 
-              file.path!.contains('docs.google.com')) {
-            // Drive linki
-            setState(() {
-              _videoLinkController.text = file.path!;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Drive video linki eklendi')),
-            );
-          } else {
-            // Yerel video dosyası seçilmiş
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Lütfen Google Drive\'dan paylaşılabilir bir video linki girin veya video linkini manuel olarak yapıştırın'),
-                duration: Duration(seconds: 4),
-              ),
-            );
-          }
-        } else if (file.identifier != null) {
-          // Cloud dosyası (Drive vb.)
-          setState(() {
-            _videoLinkController.text = file.identifier!;
-          });
+      // URL'yi açmayı dene
+      if (await canLaunchUrl(driveUri)) {
+        await launchUrl(driveUri, mode: LaunchMode.externalApplication);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Drive uygulaması açıldı. Video linkini kopyalayıp buraya yapıştırın.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        // Drive uygulaması yüklü değilse, web'de aç
+        final webUri = Uri.parse('https://drive.google.com/drive/my-drive');
+        if (await canLaunchUrl(webUri)) {
+          await launchUrl(webUri, mode: LaunchMode.externalApplication);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Video linki eklendi')),
+            const SnackBar(
+              content: Text('Drive web sayfası açıldı. Video linkini kopyalayıp buraya yapıştırın.'),
+              duration: Duration(seconds: 3),
+            ),
           );
+        } else {
+          throw 'Drive açılamadı';
         }
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Dosya seçilirken hata oluştu: $e')),
+        SnackBar(
+          content: Text('Drive açılırken hata oluştu: $e'),
+          duration: const Duration(seconds: 3),
+        ),
       );
     }
   }
@@ -655,12 +655,12 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Drive'dan video seç butonu
+              // Drive uygulamasını aç butonu
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _pickVideoFromDrive,
+                      onPressed: _openDriveApp,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: BorderSide(color: AppColors.primary),
@@ -669,8 +669,8 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      icon: Icon(Icons.videocam, color: AppColors.primary),
-                      label: const Text('Drive\'dan Video Seç'),
+                      icon: Icon(Icons.drive_file_move_outlined, color: AppColors.primary),
+                      label: const Text('Drive\'ı Aç'),
                     ),
                   ),
                 ],
