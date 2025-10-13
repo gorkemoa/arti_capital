@@ -261,6 +261,7 @@ class CompanyService {
     int? partnerID,
     String? documentDesc,
     String? documentValidityDate,
+    String? documentLink,
   }) async {
     try {
       final endpoint = AppConstants.updateCompanyDocument;
@@ -273,6 +274,7 @@ class CompanyService {
         'partnerID': partnerID ?? 0,
         'documentDesc': documentDesc ?? '',
         'documentValidityDate': documentValidityDate ?? '',
+        'documentLink': documentLink ?? '',
       };
       AppLogger.i('POST $endpoint', tag: 'UPDATE_DOCUMENT');
       AppLogger.i(payload.toString(), tag: 'UPDATE_DOCUMENT_REQ');
