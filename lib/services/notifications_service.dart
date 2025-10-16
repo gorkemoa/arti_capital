@@ -54,12 +54,45 @@ class NotificationsService {
     }
   }
 
+  // User ID'ye göre topic'e abone ol
+  static Future<bool> subscribeToUserTopic(int userId) async {
+    try {
+      // User ID bazlı topic'e abone ol
+      final topicName = '$userId';
+      await _firebaseMessaging.subscribeToTopic(topicName);
+      AppLogger.i('User topic\'e abone olundu: $topicName', tag: 'FCM_TOPIC');
+      return true;
+    } catch (e) {
+      AppLogger.e('Topic\'e abone olunamadı: $e', tag: 'FCM_TOPIC');
+      return false;
+    }
+  }
+
+  // User ID topic'inden çık
+  static Future<bool> unsubscribeFromUserTopic(int userId) async {
+    try {
+      final topicName = '$userId';
+      await _firebaseMessaging.unsubscribeFromTopic(topicName);
+      AppLogger.i('User topic\'den çıkıldı: $topicName', tag: 'FCM_TOPIC');
+      return true;
+    } catch (e) {
+      AppLogger.e('Topic\'den çıkılamadı: $e', tag: 'FCM_TOPIC');
+      return false;
+    }
+  }
+
   // FCM token'ı sunucuya gönder
   static Future<bool> sendTokenToServer() async {
     try {
       final token = await getFCMToken();
       if (token == null) {
         return false;
+      }
+      
+      // User ID'yi al ve topic'e abone ol
+      final userId = StorageService.getUserId();
+      if (userId != null) {
+        await subscribeToUserTopic(userId);
       }
       
       return true;

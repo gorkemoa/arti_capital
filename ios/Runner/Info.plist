@@ -52,11 +52,13 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>fetch</string>
 	</array>
 	
 	<!-- Firebase Cloud Messaging için gerekli ayarlar -->
+	<!-- FirebaseAppDelegateProxyEnabled true yapıldı -->
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
+	<true/>
 	
 	<!-- Bildirim izinleri -->
 	<key>NSUserNotificationAlertStyle</key>

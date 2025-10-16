@@ -6,6 +6,7 @@ import 'api_client.dart';
 import 'app_constants.dart';
 import 'logger.dart';
 import 'storage_service.dart';
+import 'notifications_service.dart';
 
 class AuthService {
   Future<LoginResponse> login(LoginRequest request) async {
@@ -28,6 +29,9 @@ class AuthService {
         await StorageService.saveUserId(loginResponse.data!.userId);
         // Last login zamanını kaydet
         await StorageService.saveLastLoginAt(DateTime.now());
+        
+        // User ID'ye göre FCM topic'e abone ol
+        await NotificationsService.subscribeToUserTopic(loginResponse.data!.userId);
       }
       
       return loginResponse;
@@ -47,6 +51,12 @@ class AuthService {
 
 
   Future<void> logout() async {
+    // Çıkış yaparken kullanıcı topic'inden abone ol
+    final userId = StorageService.getUserId();
+    if (userId != null) {
+      await NotificationsService.unsubscribeFromUserTopic(userId);
+    }
+    
     await StorageService.clearUserData();
   }
 

@@ -13,38 +13,40 @@ import Photos
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Firebase'i başlat
     FirebaseApp.configure()
     
-    // FCM token'ı al
+    // FCM delegate'i ayarla
     Messaging.messaging().delegate = self
     
-    // Uzak bildirimleri etkinleştir
+    // Bildirim delegate'ini ayarla - ÖNEMLİ: Firebase proxy true olduğu için
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self
-      let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-      UNUserNotificationCenter.current().requestAuthorization(
-        options: authOptions,
-        completionHandler: { granted, error in
-          if granted {
-            print("Bildirim izni verildi")
-            DispatchQueue.main.async {
-              application.registerForRemoteNotifications()
-            }
-          } else {
-            print("Bildirim izni reddedildi: \(error?.localizedDescription ?? "Bilinmeyen hata")")
-          }
-        }
-      )
-    } else {
-      let settings: UIUserNotificationSettings =
-        UIUserNotificationSettings(types: [.alert, .badge, .sound], categories: nil)
-      application.registerUserNotificationSettings(settings)
-      application.registerForRemoteNotifications()
     }
     
-    // APNS token'ının hazır olması için kısa bir gecikme
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-      application.registerForRemoteNotifications()
+    // Uzak bildirimleri etkinleştir
+    let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+    UNUserNotificationCenter.current().requestAuthorization(
+      options: authOptions,
+      completionHandler: { granted, error in
+        if granted {
+          print("✅ Bildirim izni verildi")
+          DispatchQueue.main.async {
+            application.registerForRemoteNotifications()
+          }
+        } else {
+          print("❌ Bildirim izni reddedildi: \(error?.localizedDescription ?? "Bilinmeyen hata")")
+        }
+      }
+    )
+    
+    // APNS kaydını hemen başlat - duplicate kayıt yok
+    application.registerForRemoteNotifications()
+    
+    // Uygulama kapalıyken gelen bildirimi kontrol et
+    if let notification = launchOptions?[.remoteNotification] as? [String: AnyObject] {
+      print("📱 Uygulama bildirimle başlatıldı")
+      Messaging.messaging().appDidReceiveMessage(notification)
     }
     
     GeneratedPluginRegistrant.register(with: self)
@@ -167,7 +169,7 @@ extension AppDelegate {
 // MARK: - MessagingDelegate
 extension AppDelegate: MessagingDelegate {
   func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-    print("Firebase registration token: \(String(describing: fcmToken))")
+    print("🔥 Firebase registration token: \(String(describing: fcmToken))")
     
     let dataDict: [String: String] = ["token": fcmToken ?? ""]
     NotificationCenter.default.post(
@@ -175,18 +177,58 @@ extension AppDelegate: MessagingDelegate {
       object: nil,
       userInfo: dataDict
     )
+    
+    // Flutter tarafına FCM token'ı gönder (isteğe bağlı)
+    if let token = fcmToken {
+      print("✅ FCM Token başarıyla alındı ve kaydedildi")
+    }
   }
 }
 
 // MARK: - APNS Token Handling
 extension AppDelegate {
   override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-    print("APNS token alındı: \(deviceToken)")
+    print("✅ APNS token alındı")
+    
+    // Token'ı hex string'e çevir (debug için)
+    let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+    let token = tokenParts.joined()
+    print("📱 APNS Token: \(token)")
+    
+    // Firebase Messaging için APNS token'ını ayarla
+    // iOS 13+ için yeni format
     Messaging.messaging().apnsToken = deviceToken
+    
+    // Token type'ı da ayarla (production/sandbox)
+    #if DEBUG
+    Messaging.messaging().setAPNSToken(deviceToken, type: .sandbox)
+    print("🔧 APNS Token Type: Sandbox (Debug)")
+    #else
+    Messaging.messaging().setAPNSToken(deviceToken, type: .prod)
+    print("🔧 APNS Token Type: Production")
+    #endif
   }
   
   override func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-    print("APNS token alınamadı: \(error.localizedDescription)")
+    print("❌ APNS token alınamadı: \(error.localizedDescription)")
+  }
+}
+
+// MARK: - Remote Notification Handling (Background)
+extension AppDelegate {
+  override func application(_ application: UIApplication,
+                            didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+                            fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+    print("🔔 Remote notification alındı")
+    
+    if let messageID = userInfo["gcm.message_id"] {
+      print("📨 Message ID: \(messageID)")
+    }
+    
+    // Mesajı Firebase'e bildir
+    Messaging.messaging().appDidReceiveMessage(userInfo)
+    
+    completionHandler(UIBackgroundFetchResult.newData)
   }
 }
 
@@ -199,13 +241,22 @@ extension AppDelegate {
                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
     let userInfo = notification.request.content.userInfo
     
+    print("📬 Bildirim alındı (uygulama açık)")
+    
     // FCM mesajından gelen verileri işle
     if let messageID = userInfo["gcm.message_id"] {
-      print("Message ID: \(messageID)")
+      print("📨 Foreground Message ID: \(messageID)")
     }
     
-    // Bildirimi göster
-    completionHandler([[.alert, .sound]])
+    // Mesajı Firebase'e bildir
+    Messaging.messaging().appDidReceiveMessage(userInfo)
+    
+    // Bildirimi göster (iOS 14+)
+    if #available(iOS 14.0, *) {
+      completionHandler([[.banner, .sound, .badge]])
+    } else {
+      completionHandler([[.alert, .sound, .badge]])
+    }
   }
   
   // Kullanıcı bildirime tıkladığında
@@ -214,10 +265,15 @@ extension AppDelegate {
                               withCompletionHandler completionHandler: @escaping () -> Void) {
     let userInfo = response.notification.request.content.userInfo
     
+    print("👆 Bildirime tıklandı")
+    
     // FCM mesajından gelen verileri işle
     if let messageID = userInfo["gcm.message_id"] {
-      print("Message ID: \(messageID)")
+      print("📨 Tapped Message ID: \(messageID)")
     }
+    
+    // Mesajı Firebase'e bildir
+    Messaging.messaging().appDidReceiveMessage(userInfo)
     
     completionHandler()
   }
