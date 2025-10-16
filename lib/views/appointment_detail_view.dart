@@ -4,6 +4,7 @@ import 'package:add_2_calendar/add_2_calendar.dart';
 import 'edit_appointment_view.dart';
 import '../services/appointments_service.dart';
 import '../services/storage_service.dart';
+import '../models/appointment_models.dart';
 
 class AppointmentDetailView extends StatelessWidget {
   const AppointmentDetailView({
@@ -18,6 +19,11 @@ class AppointmentDetailView extends StatelessWidget {
     this.compID,
     this.appointmentDateRaw,
     this.statusID,
+    this.location,
+    this.priority,
+    this.priorityName,
+    this.priorityColor,
+    this.logs,
   });
 
   final String title;
@@ -30,6 +36,11 @@ class AppointmentDetailView extends StatelessWidget {
   final int? compID;
   final String? appointmentDateRaw;
   final int? statusID;
+  final String? location;
+  final int? priority;
+  final String? priorityName;
+  final Color? priorityColor;
+  final List<AppointmentLog>? logs;
 
   Event _toCalendarEvent() {
     // Zamanı ayırmak için basit ayrıştırma beklenen format: ".. · HH:MM" veya "HH:MM"
@@ -54,7 +65,7 @@ class AppointmentDetailView extends StatelessWidget {
     return Event(
       title: title,
       description: description.isNotEmpty ? description : companyName,
-      location: companyName,
+      location: location?.isNotEmpty == true ? location : companyName,
       startDate: start,
       endDate: end,
       androidParams: const AndroidParams(emailInvites: []),
@@ -103,7 +114,7 @@ class AppointmentDetailView extends StatelessWidget {
                           Text(
                             title,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
                             ),
@@ -111,12 +122,12 @@ class AppointmentDetailView extends StatelessWidget {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.access_time, size: 16, color: Colors.black),
+                              Icon(Icons.access_time, size: 12, color: Colors.black),
                               const SizedBox(width: 6),
                               Text(
                                 time,
                                 style: const TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 11,
                                   color: Colors.black87,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -132,13 +143,36 @@ class AppointmentDetailView extends StatelessWidget {
                                   statusName,
                                   style: TextStyle(
                                     color: statusColor,
-                                    fontSize: 12,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
                             ],
                           ),
+                          if (priorityName != null && priorityName!.isNotEmpty) ...[
+                            const SizedBox(height: 1),
+                            Row(
+                              children: [
+                                Text("Öncelik:" , style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),  ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  child: Text(
+                                    priorityName!,
+                                    style: TextStyle(
+                                      color: priorityColor ?? Colors.grey,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -153,6 +187,15 @@ class AppointmentDetailView extends StatelessWidget {
                 content: companyName,
               ),
 
+              if (location != null && location!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _SectionCard(
+                  leading: const Icon(Icons.location_on_outlined, color: Colors.black54),
+                  title: 'Konum',
+                  content: location!,
+                ),
+              ],
+
               const SizedBox(height: 12),
               _SectionCard(
                 leading: const Icon(Icons.description_outlined, color: Colors.black54),
@@ -160,6 +203,11 @@ class AppointmentDetailView extends StatelessWidget {
                 content: description.isNotEmpty ? description : 'Açıklama bulunmuyor.',
                 multiline: true,
               ),
+
+              if (logs != null && logs!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _LogsSection(logs: logs!),
+              ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -240,6 +288,8 @@ class AppointmentDetailView extends StatelessWidget {
           initialDesc: description,
           initialDateTimeStr: appointmentDateRaw ?? '',
           initialStatusID: statusID,
+          initialLocation: location,
+          initialPriority: priority,
         ),
       ),
     );
@@ -374,6 +424,120 @@ class _SectionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LogsSection extends StatelessWidget {
+  const _LogsSection({required this.logs});
+
+  final List<AppointmentLog> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.history, size: 20, color: Colors.black54),
+              const SizedBox(width: 8),
+              const Text(
+                'Geçmiş',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...logs.asMap().entries.map((entry) {
+            final index = entry.key;
+            final log = entry.value;
+            return Column(
+              children: [
+                if (index > 0) const Divider(height: 16),
+                _LogItem(log: log),
+              ],
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogItem extends StatelessWidget {
+  const _LogItem({required this.log});
+
+  final AppointmentLog log;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                log.logTitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              log.logDate,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+        if (log.logDesc.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            log.logDesc,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black87,
+              height: 1.35,
+            ),
+          ),
+        ],
+        if (log.logUser.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.person_outline, size: 14, color: Colors.black54),
+              const SizedBox(width: 4),
+              Text(
+                log.logUser,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.black54,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

@@ -19,26 +19,32 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
   final AppointmentsService _appointmentsService = AppointmentsService();
 
   // Şirket seçimi ayrı sayfada yapılacak; burada liste tutulmuyor
   CompanyItem? _selectedCompany;
   List<AppointmentStatus> _appointmentStatuses = [];
   AppointmentStatus? _selectedStatus;
+  List<AppointmentPriority> _appointmentPriorities = [];
+  AppointmentPriority? _selectedPriority;
   DateTime _selectedDateTime = DateTime.now().add(const Duration(minutes: 30));
   bool _submitting = false;
   bool _loadingStatuses = false;
+  bool _loadingPriorities = false;
 
   @override
   void initState() {
     super.initState();
     _loadAppointmentStatuses();
+    _loadAppointmentPriorities();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -60,6 +66,24 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       // Hata durumunda sessizce devam et
     } finally {
       if (mounted) setState(() => _loadingStatuses = false);
+    }
+  }
+
+  Future<void> _loadAppointmentPriorities() async {
+    setState(() => _loadingPriorities = true);
+    try {
+      final response = await _appointmentsService.getAppointmentPriorities();
+      if (response.success && mounted) {
+        setState(() {
+          _appointmentPriorities = response.priorities;
+          // Default olarak ilk priority'yi seç (genelde "Düşük")
+          _selectedPriority = _appointmentPriorities.isNotEmpty ? _appointmentPriorities.first : null;
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingPriorities = false);
     }
   }
 
@@ -248,6 +272,92 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
     );
   }
 
+  Future<void> _showPriorityPicker() async {
+    if (_appointmentPriorities.isEmpty) return;
+    
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Öncelik Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 44,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: _appointmentPriorities.indexWhere((p) => p.priorityID == (_selectedPriority?.priorityID ?? 1)).clamp(0, _appointmentPriorities.length - 1),
+                  ),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _selectedPriority = _appointmentPriorities[index];
+                    });
+                  },
+                  children: _appointmentPriorities.map((priority) {
+                    final Color priorityColor = _parseColor(priority.priorityColor);
+                    return Container(
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: priorityColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Text(
+                            priority.priorityName,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Color _parseColor(String colorStr) {
+    try {
+      if (colorStr.startsWith('#')) {
+        return Color(int.parse(colorStr.substring(1), radix: 16) + 0xFF000000);
+      }
+      return Colors.grey;
+    } catch (_) {
+      return Colors.grey;
+    }
+  }
+
   // Cupertino selector bu sayfada kullanılmıyor
 
   Widget _buildCupertinoField({
@@ -363,7 +473,9 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
         compID: _selectedCompany!.compID,
         appointmentTitle: _titleController.text.trim(),
         appointmentDesc: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+        appointmentLocation: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
         appointmentDate: _formatApiDate(_selectedDateTime),
+        appointmentPriority: _selectedPriority?.priorityID ?? 1,
         appointmentStatus: _selectedStatus?.statusID ?? 1,
       );
       if (!mounted) return;
@@ -481,6 +593,46 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _locationController,
+                      decoration: InputDecoration(
+                        labelText: 'Konum (opsiyonel)',
+                        prefixIcon: const Icon(Icons.location_on_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderSide: BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        isDense: true,
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCupertinoField(
+                      placeholder: 'Öncelik',
+                      value: _selectedPriority?.priorityName ?? 'Öncelik seçin',
+                      onTap: _loadingPriorities ? null : _showPriorityPicker,
+                      trailing: _selectedPriority != null ? [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: _parseColor(_selectedPriority!.priorityColor),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ] : null,
                     ),
                     const SizedBox(height: 12),
                     _buildCupertinoField(

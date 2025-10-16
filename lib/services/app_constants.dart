@@ -18,6 +18,7 @@ class AppConstants {
   static const String sendContactMessage = '/service/general/contact/sendMessage';
   static const String getContactSubjects = '/service/general/contact/subjects';
   static const String getAppointmentStatuses = '/service/general/general/appointmentStatuses/all';
+  static const String getAppointmentPriorities = '/service/general/general/appointmentPriorities/all';
   static const String allReadNotifications = '/service/user/account/notification/allRead';
   static const String deleteNotification = '/service/user/account/notification/delete';
   static const String deleteAllNotifications = '/service/user/account/notification/allDelete';

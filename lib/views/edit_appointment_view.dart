@@ -13,6 +13,8 @@ class EditAppointmentView extends StatefulWidget {
     required this.initialDesc,
     required this.initialDateTimeStr, // dd.MM.yyyy HH:mm
     this.initialStatusID,
+    this.initialLocation,
+    this.initialPriority,
   });
 
   final int appointmentID;
@@ -21,6 +23,8 @@ class EditAppointmentView extends StatefulWidget {
   final String initialDesc;
   final String initialDateTimeStr;
   final int? initialStatusID;
+  final String? initialLocation;
+  final int? initialPriority;
 
   @override
   State<EditAppointmentView> createState() => _EditAppointmentViewState();
@@ -32,19 +36,25 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
 
   late TextEditingController _titleController;
   late TextEditingController _descController;
+  late TextEditingController _locationController;
   late DateTime _selectedDateTime;
   List<AppointmentStatus> _appointmentStatuses = [];
   AppointmentStatus? _selectedStatus;
+  List<AppointmentPriority> _appointmentPriorities = [];
+  AppointmentPriority? _selectedPriority;
   bool _saving = false;
   bool _loadingStatuses = false;
+  bool _loadingPriorities = false;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.initialTitle);
     _descController = TextEditingController(text: widget.initialDesc);
+    _locationController = TextEditingController(text: widget.initialLocation ?? '');
     _selectedDateTime = _parseTrDateTime(widget.initialDateTimeStr) ?? DateTime.now();
     _loadAppointmentStatuses();
+    _loadAppointmentPriorities();
   }
 
   Future<void> _loadAppointmentStatuses() async {
@@ -68,10 +78,36 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     }
   }
 
+  Future<void> _loadAppointmentPriorities() async {
+    setState(() => _loadingPriorities = true);
+    try {
+      final response = await _service.getAppointmentPriorities();
+      if (response.success && mounted) {
+        setState(() {
+          _appointmentPriorities = response.priorities;
+          // Mevcut priority'yi seç veya default olarak ilk priority'yi seç
+          if (widget.initialPriority != null) {
+            _selectedPriority = _appointmentPriorities.firstWhere(
+              (priority) => priority.priorityID == widget.initialPriority,
+              orElse: () => _appointmentPriorities.isNotEmpty ? _appointmentPriorities.first : _appointmentPriorities.first,
+            );
+          } else {
+            _selectedPriority = _appointmentPriorities.isNotEmpty ? _appointmentPriorities.first : null;
+          }
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingPriorities = false);
+    }
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -273,6 +309,92 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     );
   }
 
+  Future<void> _showPriorityPicker() async {
+    if (_appointmentPriorities.isEmpty) return;
+    
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Öncelik Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 44,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: _appointmentPriorities.indexWhere((p) => p.priorityID == (_selectedPriority?.priorityID ?? 1)).clamp(0, _appointmentPriorities.length - 1),
+                  ),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _selectedPriority = _appointmentPriorities[index];
+                    });
+                  },
+                  children: _appointmentPriorities.map((priority) {
+                    final Color priorityColor = _parseColor(priority.priorityColor);
+                    return Container(
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: priorityColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Text(
+                            priority.priorityName,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Color _parseColor(String colorStr) {
+    try {
+      if (colorStr.startsWith('#')) {
+        return Color(int.parse(colorStr.substring(1), radix: 16) + 0xFF000000);
+      }
+      return Colors.grey;
+    } catch (_) {
+      return Colors.grey;
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
@@ -282,7 +404,9 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
         appointmentID: widget.appointmentID,
         appointmentTitle: _titleController.text.trim(),
         appointmentDesc: _descController.text.trim(),
+        appointmentLocation: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
         appointmentDate: _formatApiDate(_selectedDateTime),
+        appointmentPriority: _selectedPriority?.priorityID ?? 1,
         appointmentStatus: _selectedStatus?.statusID ?? 1,
       );
       if (!mounted) return;
@@ -349,6 +473,21 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                       maxLines: 3,
                     ),
                     const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _locationController,
+                      decoration: InputDecoration(
+                        labelText: 'Konum (opsiyonel)',
+                        prefixIcon: const Icon(Icons.location_on_outlined),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: AppColors.primary, width: 2)),
+                        isDense: true,
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     GestureDetector(
                       onTap: _pickDateTime,
                       child: Container(
@@ -369,6 +508,45 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                                 style: const TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ),
+                            const Icon(Icons.chevron_right),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _loadingPriorities ? null : _showPriorityPicker,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flag_outlined),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _selectedPriority?.priorityName ?? 'Öncelik seçin',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: _selectedPriority != null ? Colors.black87 : Colors.grey,
+                                ),
+                              ),
+                            ),
+                            if (_selectedPriority != null)
+                              Container(
+                                width: 12,
+                                height: 12,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: _parseColor(_selectedPriority!.priorityColor),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                             const Icon(Icons.chevron_right),
                           ],
                         ),

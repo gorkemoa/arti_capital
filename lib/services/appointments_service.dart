@@ -52,8 +52,10 @@ class AppointmentsService {
     required int compID,
     required String appointmentTitle,
     required String appointmentDate,
+    required int appointmentPriority,
     int? appointmentStatus,
     String? appointmentDesc,
+    String? appointmentLocation,
   }) async {
     try {
       final token = StorageService.getToken();
@@ -74,7 +76,9 @@ class AppointmentsService {
         'compID': compID,
         'appointmentTitle': appointmentTitle,
         'appointmentDesc': appointmentDesc ?? '',
+        'appointmentLocation': appointmentLocation ?? '',
         'appointmentDate': appointmentDate,
+        'appointmentPriority': appointmentPriority,
         if (appointmentStatus != null) 'appointmentStatus': appointmentStatus,
       };
 
@@ -109,8 +113,10 @@ class AppointmentsService {
     required int appointmentID,
     required String appointmentTitle,
     required String appointmentDate,
+    required int appointmentPriority,
     int? appointmentStatus,
     String? appointmentDesc,
+    String? appointmentLocation,
   }) async {
     try {
       final token = StorageService.getToken();
@@ -132,7 +138,9 @@ class AppointmentsService {
         'appointmentID': appointmentID,
         'appointmentTitle': appointmentTitle,
         'appointmentDesc': appointmentDesc ?? '',
+        'appointmentLocation': appointmentLocation ?? '',
         'appointmentDate': appointmentDate,
+        'appointmentPriority': appointmentPriority,
         if (appointmentStatus != null) 'appointmentStatus': appointmentStatus,
       };
 
@@ -228,6 +236,31 @@ class AppointmentsService {
         error: true,
         success: false,
         statuses: const <AppointmentStatus>[],
+        message: e.message ?? 'Beklenmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.message,
+      );
+    }
+  }
+
+  Future<GetAppointmentPrioritiesResponse> getAppointmentPriorities() async {
+    try {
+      final endpoint = AppConstants.getAppointmentPriorities;
+      AppLogger.i('GET $endpoint', tag: 'GET_APPOINTMENT_PRIORITIES');
+
+      final Response resp = await ApiClient.getJson(endpoint);
+
+      final body = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_APPOINTMENT_PRIORITIES');
+      AppLogger.i(body.toString(), tag: 'GET_APPOINTMENT_PRIORITIES_RES');
+
+      return GetAppointmentPrioritiesResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Get appointment priorities error ${e.statusCode} ${e.message}', tag: 'GET_APPOINTMENT_PRIORITIES');
+      return GetAppointmentPrioritiesResponse(
+        error: true,
+        success: false,
+        priorities: const <AppointmentPriority>[],
         message: e.message ?? 'Beklenmeyen hata',
         statusCode: e.statusCode,
         errorMessage: e.message,

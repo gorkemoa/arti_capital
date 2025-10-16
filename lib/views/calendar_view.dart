@@ -52,6 +52,7 @@ class _CalendarViewState extends State<CalendarView> {
         final list = map.putIfAbsent(key, () => <_CalendarEvent>[]);
         final timeStr = _formatTime(dt);
         final color = _parseStatusColor(item.statusColor);
+        final priorityColor = _parseStatusColor(item.priorityColor);
         list.add(
           _CalendarEvent(
             appointmentID: item.appointmentID,
@@ -64,6 +65,11 @@ class _CalendarViewState extends State<CalendarView> {
             statusColor: color,
             description: item.appointmentDesc,
             statusID: item.statusID,
+            location: item.appointmentLocation,
+            priority: item.appointmentPriority,
+            priorityName: item.priorityName,
+            priorityColor: priorityColor,
+            logs: item.logs,
           ),
         );
       }
@@ -402,6 +408,11 @@ class _CalendarViewState extends State<CalendarView> {
                     compID: event.compID,
                     appointmentDateRaw: event.appointmentDateRaw,
                     statusID: event.statusID,
+                    location: event.location,
+                    priority: event.priority,
+                    priorityName: event.priorityName,
+                    priorityColor: event.priorityColor,
+                    logs: event.logs,
                   ),
                 ),
               );
@@ -886,6 +897,11 @@ class _CalendarViewState extends State<CalendarView> {
                                   compID: ev.compID,
                                   appointmentDateRaw: ev.appointmentDateRaw,
                                   statusID: ev.statusID,
+                                  location: ev.location,
+                                  priority: ev.priority,
+                                  priorityName: ev.priorityName,
+                                  priorityColor: ev.priorityColor,
+                                  logs: ev.logs,
                                 ),
                               ),
                             );
@@ -960,6 +976,11 @@ class _CalendarEvent {
   final Color statusColor;
   final String description;
   final int statusID;
+  final String location;
+  final int priority;
+  final String priorityName;
+  final Color priorityColor;
+  final List<AppointmentLog> logs;
 
   const _CalendarEvent({
     required this.appointmentID,
@@ -972,6 +993,11 @@ class _CalendarEvent {
     required this.statusColor,
     required this.description,
     required this.statusID,
+    required this.location,
+    required this.priority,
+    required this.priorityName,
+    required this.priorityColor,
+    required this.logs,
   });
 }
 
@@ -1103,6 +1129,11 @@ class _InlineSelectedEvents extends StatelessWidget {
                             compID: ev.compID,
                             appointmentDateRaw: ev.appointmentDateRaw,
                             statusID: ev.statusID,
+                            location: ev.location,
+                            priority: ev.priority,
+                            priorityName: ev.priorityName,
+                            priorityColor: ev.priorityColor,
+                            logs: ev.logs,
                           ),
                         ),
                       );
@@ -1182,6 +1213,11 @@ class _InlineSelectedEvents extends StatelessWidget {
                           compID: ev.compID,
                           appointmentDateRaw: ev.appointmentDateRaw,
                           statusID: ev.statusID,
+                          location: ev.location,
+                          priority: ev.priority,
+                          priorityName: ev.priorityName,
+                          priorityColor: ev.priorityColor,
+                          logs: ev.logs,
                         ),
                       ),
                     );
