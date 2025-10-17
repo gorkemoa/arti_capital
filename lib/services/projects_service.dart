@@ -7,6 +7,60 @@ import 'storage_service.dart';
 
 class ProjectsService {
 
+  // Projeleri getir
+  Future<List<ProjectItem>> getProjects({String? searchText}) async {
+    try {
+      final endpoint = AppConstants.getProjects;
+      final query = <String, dynamic>{};
+      
+      // UserToken'ı StorageService'ten al
+      final userToken = StorageService.getToken();
+      if (userToken != null && userToken.isNotEmpty) {
+        query['userToken'] = userToken;
+      }
+      
+      if (searchText != null && searchText.isNotEmpty) {
+        query['searchText'] = searchText;
+      }
+
+      AppLogger.i('GET $endpoint?${query.entries.map((e) => '${e.key}=${e.value}').join('&')}', tag: 'GET_PROJECTS');
+
+      final resp = await ApiClient.getJson(endpoint, query: query);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_PROJECTS');
+          return [];
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'GET_PROJECTS');
+        return [];
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_PROJECTS');
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) return [];
+
+      final projectsJson = (data['projects'] as List<dynamic>?) ?? [];
+      return projectsJson
+          .map((e) => ProjectItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      AppLogger.e('Get projects error ${e.statusCode} ${e.message}', tag: 'GET_PROJECTS');
+      return [];
+    } catch (e) {
+      AppLogger.e('Unexpected error in getProjects: $e', tag: 'GET_PROJECTS');
+      return [];
+    }
+  }
+
   // Yeni proje ekle
   Future<AddProjectResponse> addProject({
     required int compID,

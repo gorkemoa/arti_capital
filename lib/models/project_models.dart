@@ -1,4 +1,60 @@
 
+class ProjectItem {
+  final int appID;
+  final String appCode;
+  final String appTitle;
+  final String? appDesc;
+  final String appProgress;
+  final int compID;
+  final String compName;
+  final int? serviceID;
+  final String? serviceName;
+  final int userID;
+  final String personName;
+  final int appStatus;
+  final String statusName;
+  final String statusColor;
+  final String createDate;
+
+  ProjectItem({
+    required this.appID,
+    required this.appCode,
+    required this.appTitle,
+    this.appDesc,
+    required this.appProgress,
+    required this.compID,
+    required this.compName,
+    this.serviceID,
+    this.serviceName,
+    required this.userID,
+    required this.personName,
+    required this.appStatus,
+    required this.statusName,
+    required this.statusColor,
+    required this.createDate,
+  });
+
+  factory ProjectItem.fromJson(Map<String, dynamic> json) {
+    return ProjectItem(
+      appID: (json['appID'] as num).toInt(),
+      appCode: json['appCode'] as String? ?? '',
+      appTitle: json['appTitle'] as String? ?? '',
+      appDesc: json['appDesc'] as String?,
+      appProgress: json['appProgress'] as String? ?? '%0',
+      compID: (json['compID'] as num).toInt(),
+      compName: json['compName'] as String? ?? '',
+      serviceID: (json['serviceID'] as num?)?.toInt(),
+      serviceName: json['serviceName'] as String?,
+      userID: (json['userID'] as num).toInt(),
+      personName: json['personName'] as String? ?? '',
+      appStatus: (json['appStatus'] as num).toInt(),
+      statusName: json['statusName'] as String? ?? '',
+      statusColor: json['statusColor'] as String? ?? '#009ef7',
+      createDate: json['createDate'] as String? ?? '',
+    );
+  }
+}
+
 class AddProjectRequest {
   final String userToken;
   final int compID;

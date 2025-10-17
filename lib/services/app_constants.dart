@@ -59,6 +59,7 @@ class AppConstants {
   static const String deleteCompanyPassword = '/service/user/account/company/passwordDelete';
   
   // Project endpoints
+  static const String getProjects = '/service/user/account/projects';
   static const String addProject = '/service/user/account/projects/add';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)

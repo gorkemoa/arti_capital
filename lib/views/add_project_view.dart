@@ -237,7 +237,7 @@ class _AddProjectViewState extends State<AddProjectView> {
               const Divider(height: 1),
               Expanded(
                 child: CupertinoPicker(
-                  itemExtent: 44,
+                  itemExtent: 50,
                   scrollController: FixedExtentScrollController(initialItem: selectedIndex),
                   onSelectedItemChanged: (index) {
                     setState(() {
@@ -246,11 +246,13 @@ class _AddProjectViewState extends State<AddProjectView> {
                   },
                   children: _addresses.map((address) {
                     return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                       alignment: Alignment.center,
                       child: Text(
-                        '${address.addressType ?? 'Adres'} - ${address.addressCity ?? ''}',
-                        style: const TextStyle(fontSize: 16),
+                        '${address.addressType ?? 'Adres'} - ${address.addressAddress ?? ''}',
+                        style: const TextStyle(fontSize: 15),
                         overflow: TextOverflow.ellipsis,
+                        maxLines: 4,
                       ),
                     );
                   }).toList(),
