@@ -3,6 +3,7 @@ import 'package:arti_capital/views/companies_view.dart';
 import 'package:arti_capital/views/documents_view.dart';
 import 'package:arti_capital/services/storage_service.dart';
 import 'package:arti_capital/views/support_view.dart';
+import 'package:arti_capital/views/projects_view.dart';
 import 'package:flutter/material.dart';
 import 'package:arti_capital/views/requests_view.dart';
 import 'package:arti_capital/views/messages_view.dart';
@@ -144,6 +145,7 @@ class PanelView extends StatelessWidget {
                   icon: Icons.folder_outlined,
                   label: 'Projeler',
                   routeTitle: 'Projeler',
+                  builder: (context) => const ProjectsView(),
                 ),
                 _QuickAction(
                   icon: Icons.warning_outlined,

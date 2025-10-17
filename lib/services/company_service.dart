@@ -1047,6 +1047,46 @@ class CompanyService {
       return false;
     }
   }
+
+  Future<List<CompanyAddressItem>> getCompanyAddresses(int compId) async {
+    try {
+      final endpoint = AppConstants.getCompanyAddressesFor(compId);
+      AppLogger.i('GET $endpoint', tag: 'GET_COMP_ADDRESSES');
+      
+      final Response resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          final jsonData = jsonDecode(responseData);
+          body = Map<String, dynamic>.from(jsonData);
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_COMP_ADDRESSES');
+          return [];
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        return [];
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_COMP_ADDRESSES');
+      AppLogger.i(body.toString(), tag: 'GET_COMP_ADDRESSES_RES');
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) return [];
+      
+      final addressesJson = (data['addresses'] as List<dynamic>?) ?? [];
+      return addressesJson
+          .map((e) => CompanyAddressItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      AppLogger.e('Get addresses error ${e.statusCode} ${e.message}', tag: 'GET_COMP_ADDRESSES');
+      return [];
+    } catch (e) {
+      AppLogger.e('Unexpected error in getCompanyAddresses: $e', tag: 'GET_COMP_ADDRESSES');
+      return [];
+    }
+  }
 }
-
-

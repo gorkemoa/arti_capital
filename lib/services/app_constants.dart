@@ -57,12 +57,16 @@ class AppConstants {
   static const String addCompanyPassword = '/service/user/account/company/passwordAdd';
   static const String updateCompanyPassword = '/service/user/account/company/passwordUpdate';
   static const String deleteCompanyPassword = '/service/user/account/company/passwordDelete';
+  
+  // Project endpoints
+  static const String addProject = '/service/user/account/projects/add';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/notifications';
   static String updateUserFor(int userId) => '$updateUserBase/$userId/account';
   static String updateAuthFor(int userId) => '$updateUserBase/$userId/auth';
   static String getCompanyFor(int compId) => '$getNotificationsBase/$compId/company';
+  static String getCompanyAddressesFor(int compId) => '/service/user/account/compAddresses/$compId';
   
 
   // Basic Auth credentials
