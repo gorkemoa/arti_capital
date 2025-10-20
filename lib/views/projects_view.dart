@@ -4,6 +4,7 @@ import '../services/projects_service.dart';
 import '../theme/app_colors.dart';
 import '../services/storage_service.dart';
 import 'add_project_view.dart';
+import 'project_detail_view.dart';
 
 class ProjectsView extends StatefulWidget {
   const ProjectsView({super.key});
@@ -220,125 +221,138 @@ class _ProjectsViewState extends State<ProjectsView> {
     final cardBg = onSurface.withOpacity(0.02);
     const cardRadius = 10.0;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(cardRadius),
-        border: Border.all(color: onSurface.withOpacity(0.08), width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 10,
-          children: [
-            // Başlık + Durum Satırı
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 3,
-                    children: [
-                      Text(
-                        project.appTitle,
-                        style: theme.textTheme.titleSmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        project.appCode,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: onSurface.withOpacity(0.5),
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => ProjectDetailView(projectId: project.appID),
+          ),
+        );
+        // Eğer proje silindiyse veya güncellendiyse listeyi yenile
+        if (result == true) {
+          _loadProjects();
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(cardRadius),
+          border: Border.all(color: onSurface.withOpacity(0.08), width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 10,
+            children: [
+              // Başlık + Durum Satırı
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 3,
+                      children: [
+                        Text(
+                          project.appTitle,
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        Text(
+                          project.appCode,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: onSurface.withOpacity(0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: statusColor.withOpacity(0.3), width: 0.5),
+                    ),
+                    child: Text(
+                      project.statusName,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: statusColor,
+                        fontSize: 10,
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: statusColor.withOpacity(0.3), width: 0.5),
-                  ),
-                  child: Text(
-                    project.statusName,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: statusColor,
-                      fontSize: 10,
                     ),
                   ),
-                ),
-              ],
-            ),
-            // Meta Bilgileri (Firma, Kişi, Servis)
-            Row(
-              spacing: 8,
-              children: [
-                Expanded(
-                  child: _buildMetaItem(
-                    context,
-                    Icons.business,
-                    project.compName,
-                    theme,
+                ],
+              ),
+              // Meta Bilgileri (Firma, Kişi, Servis)
+              Row(
+                spacing: 8,
+                children: [
+                  Expanded(
+                    child: _buildMetaItem(
+                      context,
+                      Icons.business,
+                      project.compName,
+                      theme,
+                    ),
                   ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      project.personName.trim(),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              // Servis (eğer varsa)
+              if (project.serviceName != null && project.serviceName!.isNotEmpty)
+                _buildMetaItem(
+                  context,
+                  Icons.category,
+                  project.serviceName!,
+                  theme,
+                  
                 ),
+              // Tarih
+              _buildMetaItem(
+                context,
+                Icons.access_time,
+                project.createDate,
+                theme,
+              ),
+              // Açıklama (eğer varsa)
+              if (project.appDesc != null && project.appDesc!.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(5),
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(7),
                   ),
                   child: Text(
-                    project.personName.trim(),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: AppColors.primary,
-                      fontSize: 10,
+                    project.appDesc!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: onSurface.withOpacity(0.65),
+                      height: 1.4,
                     ),
-                    maxLines: 1,
+                    maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ],
-            ),
-            // Servis (eğer varsa)
-            if (project.serviceName != null && project.serviceName!.isNotEmpty)
-              _buildMetaItem(
-                context,
-                Icons.category,
-                project.serviceName!,
-                theme,
-                
-              ),
-            // Tarih
-            _buildMetaItem(
-              context,
-              Icons.access_time,
-              project.createDate,
-              theme,
-            ),
-            // Açıklama (eğer varsa)
-            if (project.appDesc != null && project.appDesc!.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: Text(
-                  project.appDesc!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: onSurface.withOpacity(0.65),
-                    height: 1.4,
-                  ),
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

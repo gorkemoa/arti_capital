@@ -59,8 +59,11 @@ class AppConstants {
   static const String deleteCompanyPassword = '/service/user/account/company/passwordDelete';
   
   // Project endpoints
-  static const String getProjects = '/service/user/account/projects';
+  static const String getProjects = '/service/user/account/projects/all';
   static const String addProject = '/service/user/account/projects/add';
+  static const String updateProject = '/service/user/account/projects/update';
+  static const String deleteProject = '/service/user/account/projects/delete';
+  static String getProjectDetail(int projectId) => '/service/user/account/projects/$projectId';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)
   static String getNotificationsFor(int userId) => '$getNotificationsBase/$userId/notifications';
