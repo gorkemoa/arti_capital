@@ -72,7 +72,7 @@ class _EditProjectViewState extends State<EditProjectView> {
           if (widget.project.serviceID != null) {
             _selectedService = _services.firstWhere(
               (s) => s.serviceID == widget.project.serviceID,
-              orElse: () => _services.isNotEmpty ? _services.first : ServiceItem(serviceID: 0, serviceName: '', serviceDesc: '', serviceIcon: '', duties: []),
+              orElse: () => _services.isNotEmpty ? _services.first : ServiceItem(serviceID: 0, serviceName: '', serviceDesc: '', serviceIcon: ''),
             );
           }
         });

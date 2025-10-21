@@ -78,11 +78,18 @@ class _SupportDetailViewState extends State<SupportDetailView> {
                           const SizedBox(height: 24),
                           _SectionTitle(text: 'Gerekli Belgeler'),
                           const SizedBox(height: 12),
-                          _DocumentsGrid(
-                            items: (_detail?.duties ?? const <DutyItem>[]) 
-                                .map((d) => _DocItem(icon: Icons.description_outlined, label: d.dutyName))
-                                .toList(),
-                          ),
+                          if (_detail?.documents.isNotEmpty ?? false)
+                            _DocumentsGrid(
+                              items: _detail!.documents
+                                  .map((e) => _DocItem(
+                                    icon: e.isRequired ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                                    label: e.documentName,
+                                  ))
+                                  .toList(),
+                            )
+                          else
+                            Text('Belge bulunamadı', style: theme.textTheme.bodySmall),
+                          
                         ],
                       ),
                     ),

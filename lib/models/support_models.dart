@@ -22,22 +22,7 @@ class ServiceDocument {
   }
 }
 
-// Duty Model
-class DutyItem {
-  final int dutyID;
-  final String dutyName;
-  final String dutyDesc;
 
-  DutyItem({required this.dutyID, required this.dutyName, required this.dutyDesc});
-
-  factory DutyItem.fromJson(Map<String, dynamic> json) {
-    return DutyItem(
-      dutyID: json['dutyID'] is String ? int.tryParse(json['dutyID']) ?? 0 : (json['dutyID'] ?? 0) as int,
-      dutyName: (json['dutyName'] ?? '').toString(),
-      dutyDesc: (json['dutyDesc'] ?? '').toString(),
-    );
-  }
-}
 
 // Service Item Model
 class ServiceItem {
@@ -45,7 +30,6 @@ class ServiceItem {
   final String serviceName;
   final String serviceDesc;
   final String serviceIcon;
-  final List<DutyItem> duties;
   final List<ServiceDocument> documents;
 
   ServiceItem({
@@ -53,23 +37,10 @@ class ServiceItem {
     required this.serviceName,
     required this.serviceDesc,
     required this.serviceIcon,
-    List<DutyItem>? duties,
     List<ServiceDocument>? documents,
-  })  : duties = duties ?? const <DutyItem>[],
-        documents = documents ?? const <ServiceDocument>[];
+  })  : documents = documents ?? const <ServiceDocument>[];
 
   factory ServiceItem.fromJson(Map<String, dynamic> json) {
-    final rawDuties = json['duties'];
-    final List<DutyItem> parsedDuties;
-    if (rawDuties is List) {
-      parsedDuties = rawDuties
-          .whereType<Map<String, dynamic>>()
-          .map((e) => DutyItem.fromJson(e))
-          .toList();
-    } else {
-      parsedDuties = const <DutyItem>[];
-    }
-
     final rawDocuments = json['documents'];
     final List<ServiceDocument> parsedDocuments;
     if (rawDocuments is List) {
@@ -86,7 +57,6 @@ class ServiceItem {
       serviceName: (json['serviceName'] ?? '').toString(),
       serviceDesc: (json['serviceDesc'] ?? '').toString(),
       serviceIcon: (json['serviceIcon'] ?? '').toString(),
-      duties: parsedDuties,
       documents: parsedDocuments,
     );
   }
