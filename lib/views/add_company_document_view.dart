@@ -180,8 +180,9 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
       return;
     }
 
-    final token = await StorageService.getToken();
+    final token = StorageService.getToken();
     if (token == null) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oturum bulunamadı')));
       return;
     }
@@ -271,11 +272,13 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: (_selectedType == null)
+                                  // ignore: deprecated_member_use
                                   ? AppColors.onSurface.withOpacity(0.6)
                                   : AppColors.onSurface,
                             ),
                       ),
                     ),
+                    // ignore: deprecated_member_use
                     Icon(CupertinoIcons.chevron_down, size: 18, color: AppColors.onSurface.withOpacity(0.6)),
                   ],
                 ),
@@ -300,6 +303,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
               decoration: InputDecoration(
                 hintText: 'Belge hakkında açıklama ekleyebilirsiniz...',
                 hintStyle: TextStyle(
+                  // ignore: deprecated_member_use
                   color: AppColors.onSurface.withOpacity(0.5),
                   fontSize: 14,
                 ),
@@ -429,6 +433,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                     hintText: 'GG.AA.YYYY',
                     suffixIcon: Icon(Icons.calendar_today, color: AppColors.primary),
                     hintStyle: TextStyle(
+                      // ignore: deprecated_member_use
                       color: AppColors.onSurface.withOpacity(0.5),
                       fontSize: 14,
                     ),
@@ -461,6 +466,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
                 child: DashedBorderContainer(
                   width: double.infinity,
                   height: 140,
+                  // ignore: deprecated_member_use
                   borderColor: AppColors.primary.withOpacity(0.6),
                   dashWidth: 6,
                   dashSpace: 4,
@@ -586,6 +592,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
           color: AppColors.surface,
           boxShadow: [
             BoxShadow(
+              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, -2),

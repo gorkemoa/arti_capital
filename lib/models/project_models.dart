@@ -1,29 +1,72 @@
 // Döküman modeli
 class ProjectDocument {
   final int documentID;
+  final int documentTypeID;
   final String documentType;
   final String partner;
   final String validityDate;
   final String documentURL;
   final String createDate;
+  final String? documentDesc;
+  final bool isCompDocument;
 
   ProjectDocument({
     required this.documentID,
+    required this.documentTypeID,
     required this.documentType,
     required this.partner,
     required this.validityDate,
     required this.documentURL,
     required this.createDate,
+    this.documentDesc,
+    this.isCompDocument = false,
   });
 
   factory ProjectDocument.fromJson(Map<String, dynamic> json) {
     return ProjectDocument(
       documentID: (json['documentID'] as num).toInt(),
+      documentTypeID: (json['documentTypeID'] as num?)?.toInt() ?? 0,
       documentType: json['documentType'] as String? ?? '',
       partner: json['partner'] as String? ?? '',
       validityDate: json['validityDate'] as String? ?? '',
       documentURL: json['documentURL'] as String? ?? '',
       createDate: json['createDate'] as String? ?? '',
+      documentDesc: json['documentDesc'] as String?,
+      isCompDocument: _parseBoolean(json['isCompDocument']),
+    );
+  }
+
+  static bool _parseBoolean(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value.toInt() == 1;
+    if (value is String) return value.toLowerCase() == 'true' || value == '1';
+    return false;
+  }
+}
+
+// Gerekli belge modeli
+class RequiredDocument {
+  final int documentID;
+  final String documentName;
+  final String statusText;
+  final bool isRequired;
+  final bool isAdded;
+
+  RequiredDocument({
+    required this.documentID,
+    required this.documentName,
+    required this.statusText,
+    required this.isRequired,
+    required this.isAdded,
+  });
+
+  factory RequiredDocument.fromJson(Map<String, dynamic> json) {
+    return RequiredDocument(
+      documentID: (json['documentID'] as num).toInt(),
+      documentName: json['documentName'] as String? ?? '',
+      statusText: json['statusText'] as String? ?? '',
+      isRequired: json['isRequired'] as bool? ?? false,
+      isAdded: json['isAdded'] as bool? ?? false,
     );
   }
 }
@@ -297,6 +340,7 @@ class ProjectDetail {
   final String statusColor;
   final String createDate;
   final List<ProjectDocument> documents;
+  final List<RequiredDocument> requiredDocuments;
 
   ProjectDetail({
     required this.appID,
@@ -320,12 +364,18 @@ class ProjectDetail {
     required this.statusColor,
     required this.createDate,
     required this.documents,
+    required this.requiredDocuments,
   });
 
   factory ProjectDetail.fromJson(Map<String, dynamic> json) {
     final documentsJson = json['documents'] as List<dynamic>? ?? [];
     final documents = documentsJson
         .map((e) => ProjectDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final requiredDocsJson = json['requiredDocuments'] as List<dynamic>? ?? [];
+    final requiredDocuments = requiredDocsJson
+        .map((e) => RequiredDocument.fromJson(e as Map<String, dynamic>))
         .toList();
 
     return ProjectDetail(
@@ -350,6 +400,7 @@ class ProjectDetail {
       statusColor: json['statusColor'] as String? ?? '#009ef7',
       createDate: json['createDate'] as String? ?? '',
       documents: documents,
+      requiredDocuments: requiredDocuments,
     );
   }
 }
@@ -379,6 +430,102 @@ class GetProjectDetailResponse {
       project: projectJson != null ? ProjectDetail.fromJson(projectJson) : null,
       errorMessage: (json['message'] as String?) ?? 
                     (json['error_message'] as String?),
+      statusCode: statusCode,
+    );
+  }
+}
+
+// Proje belge ekleme request
+class AddProjectDocumentRequest {
+  final String userToken;
+  final int appID;
+  final int compID;
+  final int documentType;
+  final String documentDesc;
+  final String file;
+
+  AddProjectDocumentRequest({
+    required this.userToken,
+    required this.appID,
+    required this.compID,
+    required this.documentType,
+    required this.documentDesc,
+    required this.file,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'appID': appID,
+      'compID': compID,
+      'documentType': documentType,
+      'documentDesc': documentDesc,
+      'file': file,
+    };
+  }
+}
+
+// Proje belge güncelleme request
+class UpdateProjectDocumentRequest {
+  final String userToken;
+  final int appID;
+  final int compID;
+  final int documentID;
+  final int documentType;
+  final String documentDesc;
+  final String file;
+  final int isCompDocument;
+
+  UpdateProjectDocumentRequest({
+    required this.userToken,
+    required this.appID,
+    required this.compID,
+    required this.documentID,
+    required this.documentType,
+    required this.documentDesc,
+    required this.file,
+    this.isCompDocument = 0,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'appID': appID,
+      'compID': compID,
+      'documentID': documentID,
+      'documentType': documentType,
+      'documentDesc': documentDesc,
+      'file': file,
+      'isCompDocument': isCompDocument,
+    };
+  }
+}
+
+// Proje belge ekleme response
+class AddProjectDocumentResponse {
+  final bool error;
+  final bool success;
+  final String? message;
+  final int? documentID;
+  final int? statusCode;
+
+  AddProjectDocumentResponse({
+    required this.error,
+    required this.success,
+    this.message,
+    this.documentID,
+    this.statusCode,
+  });
+
+  factory AddProjectDocumentResponse.fromJson(Map<String, dynamic> json, int? statusCode) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return AddProjectDocumentResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: (json['message'] as String?) ?? 
+               (json['success_message'] as String?) ?? 
+               (json['error_message'] as String?),
+      documentID: data != null ? (data['documentID'] as num?)?.toInt() : null,
       statusCode: statusCode,
     );
   }

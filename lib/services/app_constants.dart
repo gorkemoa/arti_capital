@@ -63,6 +63,8 @@ class AppConstants {
   static const String addProject = '/service/user/account/projects/add';
   static const String updateProject = '/service/user/account/projects/update';
   static const String deleteProject = '/service/user/account/projects/delete';
+  static const String addProjectDocument = '/service/user/account/projects/documentAdd';
+  static const String updateProjectDocument = '/service/user/account/projects/documentUpdate';
   static String getProjectDetail(int projectId) => '/service/user/account/projects/$projectId';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)

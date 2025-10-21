@@ -357,4 +357,168 @@ class ProjectsService {
       );
     }
   }
+
+  // Proje belge ekleme
+  Future<AddProjectDocumentResponse> addProjectDocument({
+    required int appID,
+    required int compID,
+    required int documentType,
+    required String file,
+    String documentDesc = '',
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.addProjectDocument;
+      AppLogger.i('POST $endpoint', tag: 'ADD_PROJECT_DOCUMENT');
+
+      final request = AddProjectDocumentRequest(
+        userToken: token,
+        appID: appID,
+        compID: compID,
+        documentType: documentType,
+        documentDesc: documentDesc,
+        file: file,
+      );
+
+      AppLogger.i('Request: appID=$appID, compID=$compID, documentType=$documentType', tag: 'ADD_PROJECT_DOCUMENT');
+
+      final resp = await ApiClient.postJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_PROJECT_DOCUMENT');
+          return AddProjectDocumentResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'ADD_PROJECT_DOCUMENT');
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_PROJECT_DOCUMENT');
+      AppLogger.i(body.toString(), tag: 'ADD_PROJECT_DOCUMENT_RES');
+
+      return AddProjectDocumentResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Add project document error ${e.statusCode} ${e.message}', tag: 'ADD_PROJECT_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in addProjectDocument: $e', tag: 'ADD_PROJECT_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  // Belgeyi güncelle
+  Future<AddProjectDocumentResponse> updateProjectDocument({
+    required int appID,
+    required int compID,
+    required int documentID,
+    required int documentType,
+    required String file,
+    String documentDesc = '',
+    int isCompDocument = 0,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.updateProjectDocument;
+      AppLogger.i('POST $endpoint', tag: 'UPDATE_PROJECT_DOCUMENT');
+
+      final request = UpdateProjectDocumentRequest(
+        userToken: token,
+        appID: appID,
+        compID: compID,
+        documentID: documentID,
+        documentType: documentType,
+        documentDesc: documentDesc,
+        file: file,
+        isCompDocument: isCompDocument,
+      );
+
+      AppLogger.i('Request: appID=$appID, compID=$compID, documentID=$documentID, documentType=$documentType', tag: 'UPDATE_PROJECT_DOCUMENT');
+
+      final resp = await ApiClient.postJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_PROJECT_DOCUMENT');
+          return AddProjectDocumentResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'UPDATE_PROJECT_DOCUMENT');
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_PROJECT_DOCUMENT');
+      AppLogger.i(body.toString(), tag: 'UPDATE_PROJECT_DOCUMENT_RES');
+
+      return AddProjectDocumentResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Update project document error ${e.statusCode} ${e.message}', tag: 'UPDATE_PROJECT_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in updateProjectDocument: $e', tag: 'UPDATE_PROJECT_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
 }

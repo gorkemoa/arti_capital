@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/project_models.dart';
-import '../models/support_models.dart';
 import '../services/projects_service.dart';
-import '../services/general_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import 'document_viewer.dart';
 import 'edit_project_view.dart';
+import 'add_project_document_view.dart';
 
 class ProjectDetailView extends StatefulWidget {
   final int projectId;
@@ -22,12 +21,9 @@ class ProjectDetailView extends StatefulWidget {
 
 class _ProjectDetailViewState extends State<ProjectDetailView> {
   final ProjectsService _service = ProjectsService();
-  final GeneralService _generalService = GeneralService();
   
   ProjectDetail? _project;
-  ServiceItem? _serviceDetail;
   bool _loading = true;
-  bool _loadingService = false;
   String? _errorMessage;
 
   @override
@@ -51,10 +47,6 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
             _project = response.project;
             _loading = false;
           });
-          // Servis detayını yükle
-          if (_project!.serviceID != null) {
-            _loadServiceDetail(_project!.serviceID!);
-          }
         } else {
           setState(() {
             _errorMessage = response.errorMessage ?? 'Proje yüklenemedi';
@@ -72,23 +64,6 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     }
   }
 
-  Future<void> _loadServiceDetail(int serviceID) async {
-    setState(() => _loadingService = true);
-    try {
-      final service = await _generalService.getServiceDetail(serviceID);
-      if (mounted) {
-        setState(() {
-          _serviceDetail = service;
-          _loadingService = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loadingService = false);
-      }
-    }
-  }
-
   void _openDocument(String url, String documentType) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -98,6 +73,134 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
         ),
       ),
     );
+  }
+
+  void _openAddDocumentPage() async {
+    if (_project == null) return;
+
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddProjectDocumentView(
+          projectID: _project!.appID,
+          compID: _project!.compID,
+          requiredDocuments: _project!.requiredDocuments,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _loadProjectDetail();
+    }
+  }
+
+  void _openEditDocumentDialog(ProjectDocument doc) {
+    final descController = TextEditingController(text: doc.documentDesc ?? '');
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Belgeyi Güncelle'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Belge Türü: ${doc.documentType}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descController,
+                decoration: InputDecoration(
+                  labelText: 'Açıklama',
+                  hintText: 'Belge açıklaması',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _updateDocument(doc, descController.text.trim());
+              descController.dispose();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.onPrimary,
+            ),
+            child: const Text('Güncelle'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateDocument(ProjectDocument doc, String newDescription) async {
+    if (_project == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+    );
+
+    try {
+      final response = await _service.updateProjectDocument(
+        appID: _project!.appID,
+        compID: _project!.compID,
+        documentID: doc.documentID,
+        documentType: doc.documentTypeID,
+        file: '', // Dosya güncellenmiyor, sadece açıklama
+        documentDesc: newDescription,
+        isCompDocument: 0,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Loading dialog'u kapat
+
+        if (response.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Belge başarıyla güncellendi'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadProjectDetail();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Belge güncellenemedi'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Loading dialog'u kapat
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata oluştu: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showDeleteConfirmation() async {
@@ -268,24 +371,59 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
         foregroundColor: AppColors.onPrimary,
         elevation: 0,
         actions: [
-          if (_project != null && StorageService.hasPermission('projects', 'update'))
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () async {
-                final result = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => EditProjectView(project: _project!),
-                  ),
-                );
-                if (result == true) {
-                  _loadProjectDetail();
-                }
-              },
-            ),
-          if (_project != null && StorageService.hasPermission('projects', 'delete'))
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => _showDeleteConfirmation(),
+          if (_project != null && 
+              (StorageService.hasPermission('projects', 'update') || 
+               StorageService.hasPermission('projects', 'delete')))
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                color: AppColors.surface,
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.all(1),
+                position: PopupMenuPosition.under,
+                itemBuilder: (BuildContext context) => [
+                  if (StorageService.hasPermission('projects', 'update'))
+                    const PopupMenuItem<String>(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18, color: AppColors.onBackground),
+                          SizedBox(width: 12),
+                          Text('Düzenle'),
+                        ],
+                      ),
+                    ),
+                  if (StorageService.hasPermission('projects', 'delete'))
+                    const PopupMenuItem<String>(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                          SizedBox(width: 12),
+                          Text('Sil', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                ],
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    final result = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => EditProjectView(project: _project!),
+                      ),
+                    );
+                    if (result == true) {
+                      _loadProjectDetail();
+                    }
+                  } else if (value == 'delete') {
+                    _showDeleteConfirmation();
+                  }
+                },
+              ),
             ),
         ],
       ),
@@ -347,12 +485,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                           const SizedBox(height: 16),
                           _buildDescriptionCard(theme),
                         ],
-                        if (_loadingService) ...[
-                          const SizedBox(height: 16),
-                          Center(
-                            child: CircularProgressIndicator(color: AppColors.primary),
-                          ),
-                        ] else if (_serviceDetail != null && _serviceDetail!.documents.isNotEmpty) ...[
+                        if (_project!.requiredDocuments.isNotEmpty) ...[
                           const SizedBox(height: 16),
                           _buildRequiredDocumentsCard(theme),
                         ],
@@ -698,12 +831,21 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                'Dökümanlar',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'Dökümanlar',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+              if (StorageService.hasPermission('projects', 'update'))
+                IconButton(
+                  onPressed: _openAddDocumentPage,
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: AppColors.primary,
+                  iconSize: 24,
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -802,6 +944,15 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                                 iconSize: 20,
                                 color: AppColors.primary,
                               ),
+                              if (StorageService.hasPermission('projects', 'update') && !doc.isCompDocument)
+                                IconButton(
+                                  onPressed: () {
+                                    _openEditDocumentDialog(doc);
+                                  },
+                                  icon: const Icon(Icons.edit),
+                                  iconSize: 20,
+                                  color: AppColors.primary,
+                                ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -887,25 +1038,29 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: _serviceDetail!.documents.length,
+            itemCount: _project!.requiredDocuments.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final doc = _serviceDetail!.documents[index];
+              final doc = _project!.requiredDocuments[index];
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: doc.isRequired
-                      ? Colors.red.withOpacity(0.05)
-                      : AppColors.onSurface.withOpacity(0.03),
+                  color: doc.isAdded
+                      ? Colors.green.withOpacity(0.04)
+                      : (doc.isRequired
+                          ? Colors.red.withOpacity(0.04)
+                          : AppColors.onSurface.withOpacity(0.03)),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: doc.isRequired
-                        ? Colors.red.withOpacity(0.2)
-                        : AppColors.onSurface.withOpacity(0.08),
+                    color: doc.isAdded
+                        ? Colors.green.withOpacity(0.2)
+                        : (doc.isRequired
+                            ? Colors.red.withOpacity(0.2)
+                            : AppColors.onSurface.withOpacity(0.08)),
                     width: 1,
                   ),
                 ),
@@ -914,15 +1069,21 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: doc.isRequired
-                            ? Colors.red.withOpacity(0.1)
-                            : AppColors.primary.withOpacity(0.1),
+                        color: doc.isAdded
+                            ? Colors.green.withOpacity(0.1)
+                            : (doc.isRequired
+                                ? Colors.red.withOpacity(0.1)
+                                : AppColors.primary.withOpacity(0.1)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        doc.isRequired ? Icons.priority_high : Icons.check_circle_outline,
+                        doc.isAdded
+                            ? Icons.check_circle
+                            : (doc.isRequired ? Icons.priority_high : Icons.check_circle_outline),
                         size: 20,
-                        color: doc.isRequired ? Colors.red : AppColors.primary,
+                        color: doc.isAdded
+                            ? Colors.green
+                            : (doc.isRequired ? Colors.red : AppColors.primary),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -938,12 +1099,14 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            doc.statusText,
+                            doc.isAdded ? 'Eklendi' : doc.statusText,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: doc.isRequired
-                                  ? Colors.red
-                                  : AppColors.onSurface.withOpacity(0.6),
-                              fontWeight: doc.isRequired ? FontWeight.w500 : FontWeight.normal,
+                              color: doc.isAdded
+                                  ? Colors.green
+                                  : (doc.isRequired
+                                      ? Colors.red
+                                      : AppColors.onSurface.withOpacity(0.6)),
+                              fontWeight: doc.isRequired || doc.isAdded ? FontWeight.w500 : FontWeight.normal,
                             ),
                           ),
                         ],
