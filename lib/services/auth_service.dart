@@ -11,7 +11,7 @@ import 'notifications_service.dart';
 class AuthService {
   Future<LoginResponse> login(LoginRequest request) async {
     try {
-      AppLogger.i('PUT ${AppConstants.login}', tag: 'AUTH');
+      AppLogger.i('Post ${AppConstants.login}', tag: 'AUTH');
       AppLogger.i(request.toJson().toString(), tag: 'AUTH_REQ');
       final resp = await ApiClient.postJson(
         AppConstants.login,

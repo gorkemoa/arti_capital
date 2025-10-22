@@ -1,7 +1,70 @@
 import 'package:flutter/material.dart';
+import '../models/project_models.dart';
+import '../services/projects_service.dart';
 
-class MissingDocumentsView extends StatelessWidget {
+class MissingDocumentsView extends StatefulWidget {
   const MissingDocumentsView({super.key});
+
+  @override
+  State<MissingDocumentsView> createState() => _MissingDocumentsViewState();
+}
+
+class _MissingDocumentsViewState extends State<MissingDocumentsView> {
+  final ProjectsService _service = ProjectsService();
+  List<ProjectItem> _projects = [];
+  Map<int, List<RequiredDocument>> _missingDocumentsByProject = {};
+  bool _loading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMissingDocuments();
+  }
+
+  Future<void> _loadMissingDocuments() async {
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Tüm projeleri getir
+      final projects = await _service.getProjects();
+      
+      if (!mounted) return;
+
+      Map<int, List<RequiredDocument>> missingDocs = {};
+
+      // Her proje için detay getir ve eksik evrakları filtrele
+      for (final project in projects) {
+        final response = await _service.getProjectDetail(project.appID);
+        if (response.success && response.project != null) {
+          final missing = response.project!.requiredDocuments
+              .where((doc) => !doc.isAdded)
+              .toList();
+          if (missing.isNotEmpty) {
+            missingDocs[project.appID] = missing;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _projects = projects;
+          _missingDocumentsByProject = missingDocs;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Bir hata oluştu: $e';
+          _loading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,38 +102,221 @@ class MissingDocumentsView extends StatelessWidget {
         ],
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          _Panel(
-            title: 'Genel Durum',
-            icon: Icons.info_outline,
-            children: [
-              _EmptyState(
-                icon: Icons.fact_check_outlined,
-                title: 'Eksik evrak bulunmuyor',
-                subtitle: 'Tüm zorunlu evraklarınız mevcut görünüyor.',
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _Panel(
-            title: 'Firma Bazlı Eksikler',
-            icon: Icons.apartment_outlined,
-            children: [
-              _SectionInfo(text: 'Şu an listelenecek bir eksik evrak bulunamadı.'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _Panel(
-            title: 'Ortak Bazlı Eksikler',
-            icon: Icons.people_alt_outlined,
-            children: [
-              _SectionInfo(text: 'Şu an listelenecek bir eksik evrak bulunamadı.'),
-            ],
-          ),
-        ],
-      ),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 56,
+                        color: colorScheme.error.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Hata',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: _loadMissingDocuments,
+                        child: const Text('Tekrar Dene'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadMissingDocuments,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: _missingDocumentsByProject.isEmpty
+                        ? [
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 40),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.fact_check_outlined,
+                                      size: 64,
+                                      color: colorScheme.primary.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Eksik Evrak Bulunmuyor',
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: colorScheme.onSurface.withOpacity(0.7),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Tüm zorunlu evraklarınız mevcut görünüyor.',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: colorScheme.onSurface.withOpacity(0.5),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ]
+                        : [
+                            _Panel(
+                              title: 'Genel Durum',
+                              icon: Icons.info_outline,
+                              children: [
+                                Text(
+                                  '${_missingDocumentsByProject.values.fold<int>(0, (sum, list) => sum + list.length)} eksik evrak bulunmaktadır',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _Panel(
+                              title: 'Proje Bazlı Eksik Evraklar',
+                              icon: Icons.assignment_outlined,
+                              children: [
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: _missingDocumentsByProject.keys.length,
+                                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final projectId = _missingDocumentsByProject.keys.elementAt(index);
+                                    final project = _projects.firstWhere(
+                                      (p) => p.appID == projectId,
+                                      orElse: () => _projects.first,
+                                    );
+                                    final missingDocs = _missingDocumentsByProject[projectId] ?? [];
+
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.surface,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: colorScheme.outlineVariant,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.folder_open_outlined,
+                                                size: 18,
+                                                color: colorScheme.primary,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      project.appTitle,
+                                                      style: theme.textTheme.labelLarge,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      project.compName,
+                                                      style: theme.textTheme.bodySmall?.copyWith(
+                                                        color: colorScheme.onSurface.withOpacity(0.6),
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: colorScheme.error.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  '${missingDocs.length}',
+                                                  style: theme.textTheme.labelSmall?.copyWith(
+                                                    color: colorScheme.error,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: missingDocs
+                                                .map(
+                                                  (doc) => Padding(
+                                                    padding: const EdgeInsets.symmetric(vertical: 6),
+                                                    child: Row(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.check_circle_outline,
+                                                          size: 16,
+                                                          color: colorScheme.error,
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                doc.documentName,
+                                                                style:
+                                                                    theme.textTheme.bodySmall,
+                                                              ),
+                                                              if (doc.statusText.isNotEmpty)
+                                                                Text(
+                                                                  doc.statusText,
+                                                                  style: theme.textTheme
+                                                                      .labelSmall
+                                                                      ?.copyWith(
+                                                                    color: colorScheme.onSurface
+                                                                        .withOpacity(0.6),
+                                                                  ),
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                )
+                                                .toList(),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                  ),
+                ),
     );
   }
 }
@@ -120,57 +366,6 @@ class _Panel extends StatelessWidget {
             child: Column(children: children),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.title, required this.subtitle});
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    return Column(
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, size: 28, color: colorScheme.primary),
-        ),
-        const SizedBox(height: 12),
-        Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.8)),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-}
-
-class _SectionInfo extends StatelessWidget {
-  const _SectionInfo({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(text, style: theme.textTheme.bodySmall),
       ),
     );
   }

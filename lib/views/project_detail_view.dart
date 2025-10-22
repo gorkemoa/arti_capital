@@ -7,6 +7,7 @@ import 'document_viewer.dart';
 import 'edit_project_view.dart';
 import 'add_project_document_view.dart';
 import 'edit_project_document_view.dart';
+import 'add_tracking_view.dart';
 
 class ProjectDetailView extends StatefulWidget {
   final int projectId;
@@ -108,6 +109,24 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
         _loadProjectDetail();
       }
     });
+  }
+
+  void _openAddTrackingDialog() async {
+    if (_project == null) return;
+
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => AddTrackingView(
+          projectID: _project!.appID,
+          compID: _project!.compID,
+          projectTitle: _project!.appTitle,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _loadProjectDetail();
+    }
   }
 
   Future<void> _deleteDocument(ProjectDocument doc) async {
@@ -458,11 +477,17 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (_project!.trackings.isNotEmpty) ...[
+                          _buildTrackingsCard(theme),
+                        ],
+                                                const SizedBox(height: 16),
+
                         _buildHeaderCard(theme),
                         const SizedBox(height: 16),
                         _buildCompanyCard(theme),
                         const SizedBox(height: 16),
                         _buildAddressCard(theme),
+                       
                         if (_project!.serviceID != null && _project!.serviceName != null) ...[
                           const SizedBox(height: 16),
                           _buildServiceCard(theme),
@@ -475,6 +500,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                           const SizedBox(height: 16),
                           _buildRequiredDocumentsCard(theme),
                         ],
+                       
                         const SizedBox(height: 16),
                         _buildDocumentsCard(theme),
                       ],
@@ -563,15 +589,15 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                   theme,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
+              Expanded(child:  _buildInfoRow(
             Icons.trending_up,
             'İlerleme',
             _project!.appProgress,
             theme,
+          ),)
+            ],
           ),
+         
         ],
       ),
     );
@@ -1165,5 +1191,266 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
         ),
       ],
     );
+  }
+
+  Widget _buildTrackingsCard(ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onSurface.withOpacity(0.08),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.assignment,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Proje Durumu',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (StorageService.hasPermission('projects', 'update'))
+                ElevatedButton.icon(
+                  onPressed: _openAddTrackingDialog,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Durumu Ekle'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.onPrimary,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: AppColors.primary,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _project!.trackings.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 14),
+            itemBuilder: (context, index) {
+              final tracking = _project!.trackings[index];
+              
+              // Renkleri parse et
+              Color typeColorBg = _parseHexColor(tracking.typeColorBg);
+              Color statusBgColor = _parseHexColor(tracking.statusBgColor);
+              Color statusColor = _parseHexColor(tracking.statusColor);
+              
+              return Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: statusBgColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: statusBgColor.withOpacity(0.15),
+                    width: 3,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Durum - EN ÜSTE
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: statusColor.withOpacity(0.3),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            tracking.statusName,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: typeColorBg.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: typeColorBg.withOpacity(0.3),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            tracking.trackTypeName,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: typeColorBg,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // Başlık
+                    Text(
+                      tracking.trackTitle,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    // Açıklama
+                    Text(
+                      tracking.trackDesc,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.65),
+                        height: 1.4,
+                      ),
+                      maxLines: 6,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10 ),
+                    // Divider
+                    Divider(
+                      height: 1,
+                      color: AppColors.onSurface.withOpacity(0.1),
+                    ),
+                    const SizedBox(height: 12),
+                    // Info Grid (Tarihler ve Atanan)
+                    Row(
+                      children: [
+                        // Bitiş Tarihi
+                        Expanded(
+                          child: _buildTrackingInfo(
+                            Icons.calendar_today,
+                            'Bitiş',
+                            tracking.trackDueDate,
+                            theme,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        // Hatırlatma Tarihi
+                        Expanded(
+                          child: _buildTrackingInfo(
+                            Icons.notifications_outlined,
+                            'Hatırlat',
+                            tracking.trackRemindDate,
+                            theme,
+                          ),
+                        ),
+                     Expanded(child: 
+                        _buildTrackingInfo(
+                      Icons.person_outline,
+                      'Atanan',
+                      tracking.assignedUser,
+                      theme,
+                    ),)
+                      ],
+                    ),
+                    // Atanan Kişi
+                 
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrackingInfo(
+    IconData icon,
+    String label,
+    String value,
+    ThemeData theme,
+  ) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Icon(
+            icon,
+            size: 14,
+            color: AppColors.primary.withOpacity(0.8),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.onSurface.withOpacity(0.5),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.onSurface.withOpacity(0.75),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _parseHexColor(String hexColor) {
+    try {
+      if (hexColor.startsWith('#')) {
+        return Color(int.parse(hexColor.substring(1), radix: 16) + 0xFF000000);
+      }
+      return AppColors.primary;
+    } catch (_) {
+      return AppColors.primary;
+    }
   }
 }

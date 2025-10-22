@@ -25,6 +25,7 @@ import 'services/storage_service.dart';
 import 'services/auth_service.dart';
 import 'services/notifications_service.dart';
 import 'services/api_client.dart';
+import 'services/remote_config_service.dart';
 import 'firebase_options.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'dart:async';
@@ -46,6 +47,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Remote Config'i başlat
+  await RemoteConfigService.initialize();
   
   // FCM servislerini başlat
   await NotificationsService.initialize();

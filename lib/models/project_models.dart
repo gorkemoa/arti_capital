@@ -1,3 +1,42 @@
+// Takip Statüsü modeli
+class FollowupStatus {
+  final int statusID;
+  final String statusName;
+  final String statusColor;
+
+  FollowupStatus({
+    required this.statusID,
+    required this.statusName,
+    required this.statusColor,
+  });
+
+  factory FollowupStatus.fromJson(Map<String, dynamic> json) {
+    return FollowupStatus(
+      statusID: (json['statusID'] as num).toInt(),
+      statusName: json['statusName'] as String? ?? '',
+      statusColor: json['statusColor'] as String? ?? '#000000',
+    );
+  }
+}
+
+// Takip Türü modeli
+class FollowupType {
+  final int typeID;
+  final String typeName;
+
+  FollowupType({
+    required this.typeID,
+    required this.typeName,
+  });
+
+  factory FollowupType.fromJson(Map<String, dynamic> json) {
+    return FollowupType(
+      typeID: (json['typeID'] as num).toInt(),
+      typeName: json['typeName'] as String? ?? '',
+    );
+  }
+}
+
 // Döküman modeli
 class ProjectDocument {
   final int documentID;
@@ -67,6 +106,66 @@ class RequiredDocument {
       statusText: json['statusText'] as String? ?? '',
       isRequired: json['isRequired'] as bool? ?? false,
       isAdded: json['isAdded'] as bool? ?? false,
+    );
+  }
+}
+
+// Tracking modeli
+class ProjectTracking {
+  final int trackID;
+  final String trackTitle;
+  final String trackDesc;
+  final int trackTypeID;
+  final String trackTypeName;
+  final String typeColor;
+  final String typeColorBg;
+  final String statusName;
+  final String statusColor;
+  final String statusBgColor;
+  final String trackDueDate;
+  final String trackRemindDate;
+  final int assignedUserID;
+  final String assignedUser;
+  final String createdDate;
+  final String updatedDate;
+
+  ProjectTracking({
+    required this.trackID,
+    required this.trackTitle,
+    required this.trackDesc,
+    required this.trackTypeID,
+    required this.trackTypeName,
+    required this.typeColor,
+    required this.typeColorBg,
+    required this.statusName,
+    required this.statusColor,
+    required this.statusBgColor,
+    required this.trackDueDate,
+    required this.trackRemindDate,
+    required this.assignedUserID,
+    required this.assignedUser,
+    required this.createdDate,
+    required this.updatedDate,
+  });
+
+  factory ProjectTracking.fromJson(Map<String, dynamic> json) {
+    return ProjectTracking(
+      trackID: (json['trackID'] as num).toInt(),
+      trackTitle: json['trackTitle'] as String? ?? '',
+      trackDesc: json['trackDesc'] as String? ?? '',
+      trackTypeID: (json['trackTypeID'] as num?)?.toInt() ?? 0,
+      trackTypeName: json['trackTypeName'] as String? ?? '',
+      typeColor: json['typeColor'] as String? ?? '#FFFFFF',
+      typeColorBg: json['typeColorBg'] as String? ?? '#EF4444',
+      statusName: json['statusName'] as String? ?? '',
+      statusColor: json['statusColor'] as String? ?? '#000000',
+      statusBgColor: json['statusBgColor'] as String? ?? '#E5E7EB',
+      trackDueDate: json['trackDueDate'] as String? ?? '',
+      trackRemindDate: json['trackRemindDate'] as String? ?? '',
+      assignedUserID: (json['assignedUserID'] as num?)?.toInt() ?? 0,
+      assignedUser: json['assignedUser'] as String? ?? '',
+      createdDate: json['createdDate'] as String? ?? '',
+      updatedDate: json['updatedDate'] as String? ?? '',
     );
   }
 }
@@ -341,6 +440,7 @@ class ProjectDetail {
   final String createDate;
   final List<ProjectDocument> documents;
   final List<RequiredDocument> requiredDocuments;
+  final List<ProjectTracking> trackings;
 
   ProjectDetail({
     required this.appID,
@@ -365,6 +465,7 @@ class ProjectDetail {
     required this.createDate,
     required this.documents,
     required this.requiredDocuments,
+    required this.trackings,
   });
 
   factory ProjectDetail.fromJson(Map<String, dynamic> json) {
@@ -376,6 +477,11 @@ class ProjectDetail {
     final requiredDocsJson = json['requiredDocuments'] as List<dynamic>? ?? [];
     final requiredDocuments = requiredDocsJson
         .map((e) => RequiredDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final trackingsJson = json['trackings'] as List<dynamic>? ?? [];
+    final trackings = trackingsJson
+        .map((e) => ProjectTracking.fromJson(e as Map<String, dynamic>))
         .toList();
 
     return ProjectDetail(
@@ -401,6 +507,7 @@ class ProjectDetail {
       createDate: json['createDate'] as String? ?? '',
       documents: documents,
       requiredDocuments: requiredDocuments,
+      trackings: trackings,
     );
   }
 }
@@ -547,6 +654,81 @@ class AddProjectDocumentResponse {
                (json['success_message'] as String?) ?? 
                (json['error_message'] as String?),
       documentID: data != null ? (data['documentID'] as num?)?.toInt() : null,
+      statusCode: statusCode,
+    );
+  }
+}
+
+// Takip ekleme request
+class AddTrackingRequest {
+  final String userToken;
+  final int appID;
+  final int compID;
+  final int typeID;
+  final int statusID;
+  final String trackTitle;
+  final String trackDesc;
+  final String trackDueDate;
+  final String trackRemindDate;
+  final int assignedUserID;
+  final int isCompNotification;
+
+  AddTrackingRequest({
+    required this.userToken,
+    required this.appID,
+    required this.compID,
+    required this.typeID,
+    required this.statusID,
+    required this.trackTitle,
+    required this.trackDesc,
+    required this.trackDueDate,
+    required this.trackRemindDate,
+    required this.assignedUserID,
+    this.isCompNotification = 1,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'appID': appID,
+      'compID': compID,
+      'typeID': typeID,
+      'statusID': statusID,
+      'trackTitle': trackTitle,
+      'trackDesc': trackDesc,
+      'trackDueDate': trackDueDate,
+      'trackRemindDate': trackRemindDate,
+      'assignedUserID': assignedUserID,
+      'isCompNotification': isCompNotification,
+    };
+  }
+}
+
+// Takip ekleme response
+class AddTrackingResponse {
+  final bool error;
+  final bool success;
+  final String? message;
+  final int? followupID;
+  final int? statusCode;
+
+  AddTrackingResponse({
+    required this.error,
+    required this.success,
+    this.message,
+    this.followupID,
+    this.statusCode,
+  });
+
+  factory AddTrackingResponse.fromJson(Map<String, dynamic> json, int? statusCode) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return AddTrackingResponse(
+      error: json['error'] as bool? ?? false,
+      success: json['success'] as bool? ?? false,
+      message: (json['message'] as String?) ?? 
+               (json['success_message'] as String?) ?? 
+               (json['error_message'] as String?),
+      followupID: data != null ? (data['followupID'] as num?)?.toInt() : null,
       statusCode: statusCode,
     );
   }

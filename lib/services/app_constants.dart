@@ -1,7 +1,10 @@
+import 'remote_config_service.dart';
+
 class AppConstants {
   AppConstants._();
 
-  static const String baseUrl = 'https://api.office701.com/arti-capital';
+  // Base URL'i Remote Config'ten al
+  static String get baseUrl => RemoteConfigService.getBaseUrl();
 
   // Endpoints
   static const String login = '/service/auth/login';
@@ -19,6 +22,8 @@ class AppConstants {
   static const String getContactSubjects = '/service/general/contact/subjects';
   static const String getAppointmentStatuses = '/service/general/general/appointmentStatuses/all';
   static const String getAppointmentPriorities = '/service/general/general/appointmentPriorities/all';
+  static const String getFollowupStatuses = '/service/general/general/followupStatuses/all';
+  static const String getFollowupTypes = '/service/general/general/followupTypes/all';
   static const String allReadNotifications = '/service/user/account/notification/allRead';
   static const String deleteNotification = '/service/user/account/notification/delete';
   static const String deleteAllNotifications = '/service/user/account/notification/allDelete';
@@ -66,6 +71,7 @@ class AppConstants {
   static const String addProjectDocument = '/service/user/account/projects/documentAdd';
   static const String updateProjectDocument = '/service/user/account/projects/documentUpdate';
   static const String deleteProjectDocument = '/service/user/account/projects/documentDelete';
+  static const String addTracking = '/service/user/account/projects/trackingAdd';
   static String getProjectDetail(int projectId) => '/service/user/account/projects/$projectId';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)

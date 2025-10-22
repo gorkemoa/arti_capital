@@ -7,6 +7,90 @@ import 'storage_service.dart';
 
 class ProjectsService {
 
+  // Takip Statüslerini getir
+  Future<List<FollowupStatus>> getFollowupStatuses() async {
+    try {
+      final endpoint = AppConstants.getFollowupStatuses;
+      AppLogger.i('GET $endpoint', tag: 'GET_FOLLOWUP_STATUSES');
+
+      final resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_FOLLOWUP_STATUSES');
+          return [];
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'GET_FOLLOWUP_STATUSES');
+        return [];
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_FOLLOWUP_STATUSES');
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) return [];
+
+      final statusesJson = (data['statuses'] as List<dynamic>?) ?? [];
+      return statusesJson
+          .map((e) => FollowupStatus.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      AppLogger.e('Get followup statuses error ${e.statusCode} ${e.message}', tag: 'GET_FOLLOWUP_STATUSES');
+      return [];
+    } catch (e) {
+      AppLogger.e('Unexpected error in getFollowupStatuses: $e', tag: 'GET_FOLLOWUP_STATUSES');
+      return [];
+    }
+  }
+
+  // Takip Türlerini getir
+  Future<List<FollowupType>> getFollowupTypes() async {
+    try {
+      final endpoint = AppConstants.getFollowupTypes;
+      AppLogger.i('GET $endpoint', tag: 'GET_FOLLOWUP_TYPES');
+
+      final resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_FOLLOWUP_TYPES');
+          return [];
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'GET_FOLLOWUP_TYPES');
+        return [];
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_FOLLOWUP_TYPES');
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) return [];
+
+      final typesJson = (data['types'] as List<dynamic>?) ?? [];
+      return typesJson
+          .map((e) => FollowupType.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      AppLogger.e('Get followup types error ${e.statusCode} ${e.message}', tag: 'GET_FOLLOWUP_TYPES');
+      return [];
+    } catch (e) {
+      AppLogger.e('Unexpected error in getFollowupTypes: $e', tag: 'GET_FOLLOWUP_TYPES');
+      return [];
+    }
+  }
+
   // Projeleri getir
   Future<List<ProjectItem>> getProjects({String? searchText}) async {
     try {
@@ -587,8 +671,98 @@ class ProjectsService {
         statusCode: e.statusCode,
       );
     } catch (e) {
-      AppLogger.e('Unexpected error in updateProjectDocument: $e', tag: 'UPDATE_PROJECT_DOCUMENT');
+      AppLogger.i('Unexpected error in updateProjectDocument: $e', tag: 'UPDATE_PROJECT_DOCUMENT');
       return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  // Takip ekleme
+  Future<AddTrackingResponse> addTracking({
+    required int appID,
+    required int compID,
+    required int typeID,
+    required int statusID,
+    required String trackTitle,
+    required String trackDesc,
+    required String trackDueDate,
+    required String trackRemindDate,
+    required int assignedUserID,
+    int isCompNotification = 1,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddTrackingResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.addTracking;
+      AppLogger.i('POST $endpoint', tag: 'ADD_TRACKING');
+
+      final request = AddTrackingRequest(
+        userToken: token,
+        appID: appID,
+        compID: compID,
+        typeID: typeID,
+        statusID: statusID,
+        trackTitle: trackTitle,
+        trackDesc: trackDesc,
+        trackDueDate: trackDueDate,
+        trackRemindDate: trackRemindDate,
+        assignedUserID: assignedUserID,
+        isCompNotification: isCompNotification,
+      );
+
+      AppLogger.i('Request: appID=$appID, compID=$compID, typeID=$typeID, statusID=$statusID', tag: 'ADD_TRACKING');
+
+      final resp = await ApiClient.postJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_TRACKING');
+          return AddTrackingResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'ADD_TRACKING');
+        return AddTrackingResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_TRACKING');
+      AppLogger.i(body.toString(), tag: 'ADD_TRACKING_RES');
+
+      return AddTrackingResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Add tracking error ${e.statusCode} ${e.message}', tag: 'ADD_TRACKING');
+      return AddTrackingResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in addTracking: $e', tag: 'ADD_TRACKING');
+      return AddTrackingResponse(
         error: true,
         success: false,
         message: 'Beklenmeyen bir hata oluştu',

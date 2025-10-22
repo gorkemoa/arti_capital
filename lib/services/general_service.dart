@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import 'api_client.dart';
 import 'app_constants.dart';
+import 'remote_config_service.dart';
 import '../models/support_models.dart';
 import '../models/location_models.dart';
 import '../models/company_models.dart';
@@ -80,15 +81,28 @@ class GeneralService {
   }
 
   Future<List<NaceCodeItem>> getNaceCodes() async {
-    // Direkt statik JSON URL'inden çekiyoruz
-    final Response resp = await ApiClient.getJson(
-      'https://projects.office701.com/arti-capital/upload/static/nace_codes.json',
-    );
-    final body = resp.data as Map<String, dynamic>;
-    final list = (body['naceCodes'] as List<dynamic>? ?? [])
-        .map((e) => NaceCodeItem.fromJson(e as Map<String, dynamic>))
-        .toList();
-    return list;
+    try {
+      // Remote Config'ten en yeni verileri çek
+      await RemoteConfigService.forceRefresh();
+      
+      // NACE kodu linkini çek
+      final String naceUrl = RemoteConfigService.getNaceCodesUrl();
+      
+      // URL boşsa hata fırlatma
+      if (naceUrl.isEmpty) {
+        throw ApiException(message: 'NACE URL boş döndürüldü');
+      }
+      
+      final Response resp = await ApiClient.getJson(naceUrl);
+      final body = resp.data as Map<String, dynamic>;
+      final list = (body['naceCodes'] as List<dynamic>? ?? [])
+          .map((e) => NaceCodeItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return list;
+    } catch (e) {
+      // Error log ve varsayılan değer dön
+      throw ApiException(message: 'NACE kodları yüklenemedi: $e');
+    }
   }
 }
 
