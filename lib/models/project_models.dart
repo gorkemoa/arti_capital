@@ -501,6 +501,27 @@ class UpdateProjectDocumentRequest {
   }
 }
 
+// Proje belge silme request
+class DeleteProjectDocumentRequest {
+  final String userToken;
+  final int appID;
+  final int documentID;
+
+  DeleteProjectDocumentRequest({
+    required this.userToken,
+    required this.appID,
+    required this.documentID,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'appID': appID,
+      'documentID': documentID,
+    };
+  }
+}
+
 // Proje belge ekleme response
 class AddProjectDocumentResponse {
   final bool error;

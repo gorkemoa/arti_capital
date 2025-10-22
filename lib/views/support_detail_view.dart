@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/support_models.dart';
 import '../services/general_service.dart';
+import 'add_project_view.dart';
 class SupportDetailView extends StatefulWidget {
   const SupportDetailView({super.key, required this.id});
 
@@ -100,7 +101,15 @@ class _SupportDetailViewState extends State<SupportDetailView> {
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => AddProjectView(
+                                    preselectedService: _detail,
+                                  ),
+                                ),
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colorScheme.primary,
                               foregroundColor: colorScheme.onPrimary,

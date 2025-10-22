@@ -126,6 +126,80 @@ class ProjectsService {
     }
   }
 
+  // Belgeyi sil
+  Future<AddProjectDocumentResponse> deleteProjectDocument({
+    required int appID,
+    required int documentID,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.deleteProjectDocument;
+      AppLogger.i('POST $endpoint', tag: 'DELETE_PROJECT_DOCUMENT');
+
+      final request = DeleteProjectDocumentRequest(
+        userToken: token,
+        appID: appID,
+        documentID: documentID,
+      );
+
+      AppLogger.i('Request: appID=$appID, documentID=$documentID', tag: 'DELETE_PROJECT_DOCUMENT');
+
+      final resp = await ApiClient.deleteJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'DELETE_PROJECT_DOCUMENT');
+          return AddProjectDocumentResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'DELETE_PROJECT_DOCUMENT');
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DELETE_PROJECT_DOCUMENT');
+      AppLogger.i(body.toString(), tag: 'DELETE_PROJECT_DOCUMENT_RES');
+
+      return AddProjectDocumentResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Delete project document error ${e.statusCode} ${e.message}', tag: 'DELETE_PROJECT_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in deleteProjectDocument: $e', tag: 'DELETE_PROJECT_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
   // Yeni proje ekle
   Future<AddProjectResponse> addProject({
     required int compID,
@@ -474,7 +548,7 @@ class ProjectsService {
 
       AppLogger.i('Request: appID=$appID, compID=$compID, documentID=$documentID, documentType=$documentType', tag: 'UPDATE_PROJECT_DOCUMENT');
 
-      final resp = await ApiClient.postJson(endpoint, data: request.toJson());
+      final resp = await ApiClient.putJson(endpoint, data: request.toJson());
 
       dynamic responseData = resp.data;
       Map<String, dynamic> body;

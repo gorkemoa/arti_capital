@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import '../models/company_models.dart';
 import '../models/support_models.dart';
 import '../services/projects_service.dart';
@@ -12,7 +9,9 @@ import '../theme/app_colors.dart';
 import 'select_company_view.dart';
 
 class AddProjectView extends StatefulWidget {
-  const AddProjectView({super.key});
+  const AddProjectView({super.key, this.preselectedService});
+
+  final ServiceItem? preselectedService;
 
   @override
   State<AddProjectView> createState() => _AddProjectViewState();
@@ -27,7 +26,6 @@ class _AddProjectViewState extends State<AddProjectView> {
 
   List<ServiceItem> _services = [];
   List<CompanyAddressItem> _addresses = [];
-  List<DocumentTypeItem> _documentTypes = [];
   
   CompanyItem? _selectedCompany;
   CompanyAddressItem? _selectedAddress;
@@ -35,29 +33,13 @@ class _AddProjectViewState extends State<AddProjectView> {
   
   bool _loadingServices = true;
   bool _submitting = false;
-  PlatformFile? _selectedFile;
-  DocumentTypeItem? _selectedDocumentType;
 
   @override
   void initState() {
     super.initState();
     _loadServices();
-    _loadDocumentTypes();
-  }
-
-  Future<void> _loadDocumentTypes() async {
-    try {
-      final types = await _generalService.getDocumentTypes(1);
-      if (mounted) {
-        setState(() {
-          _documentTypes = types;
-          if (types.isNotEmpty) {
-            _selectedDocumentType = types.first;
-          }
-        });
-      }
-    } catch (e) {
-      // Hata görmezden gel, belge ekleme opsiyonel
+    if (widget.preselectedService != null) {
+      _selectedService = widget.preselectedService;
     }
   }
 
@@ -71,7 +53,7 @@ class _AddProjectViewState extends State<AddProjectView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Servisler yüklenemedi: $e')),
+          SnackBar(content: Text('Destekler yüklenemedi: $e')),
         );
       }
     } finally {
@@ -110,77 +92,6 @@ class _AddProjectViewState extends State<AddProjectView> {
     _projectTitleController.dispose();
     _projectDescController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDocument() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png'],
-      );
-
-      if (result != null && result.files.isNotEmpty) {
-        setState(() {
-          _selectedFile = result.files.first;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dosya seçilirken hata oluştu: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _uploadProjectDocument(int projectID) async {
-    if (_selectedFile == null || _selectedDocumentType == null) return;
-
-    try {
-      final fileBytes = await File(_selectedFile!.path!).readAsBytes();
-      final base64String = base64Encode(fileBytes);
-      
-      String mimeType = 'application/octet-stream';
-      final ext = _selectedFile!.extension?.toLowerCase() ?? '';
-      if (ext == 'pdf') {
-        mimeType = 'application/pdf';
-      } else if (['jpg', 'jpeg'].contains(ext)) {
-        mimeType = 'image/jpeg';
-      } else if (ext == 'png') {
-        mimeType = 'image/png';
-      } else if (['doc', 'docx'].contains(ext)) {
-        mimeType = 'application/msword';
-      } else if (['xls', 'xlsx'].contains(ext)) {
-        mimeType = 'application/vnd.ms-excel';
-      }
-
-      final fileData = 'data:$mimeType;base64,$base64String';
-
-      final response = await _projectsService.addProjectDocument(
-        appID: projectID,
-        compID: _selectedCompany!.compID,
-        documentType: _selectedDocumentType!.documentID,
-        file: fileData,
-      );
-
-      if (!response.success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message ?? 'Belge eklenemedi'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Belge yüklenirken hata oluştu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   Widget _buildCupertinoField({
@@ -256,7 +167,7 @@ class _AddProjectViewState extends State<AddProjectView> {
                       child: const Text('İptal'),
                       onPressed: () => Navigator.of(ctx).pop(),
                     ),
-                    Text('Servis Seç', style: Theme.of(context).textTheme.titleMedium),
+                    Text('Destek Seç', style: Theme.of(context).textTheme.titleMedium),
                     CupertinoButton(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: const Text('Bitti'),
@@ -437,16 +348,16 @@ class _AddProjectViewState extends State<AddProjectView> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Servis Seçimi (iOS Picker)
+                    // Destek Seçimi (iOS Picker)
                     Text(
-                      'Servis',
+                      'Destek',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
                     _buildCupertinoField(
-                      placeholder: 'Servis seçin',
+                      placeholder: 'Destek seçin',
                       value: _selectedService?.serviceName,
                       onTap: _loadingServices ? null : _showServicePicker,
                     ),
@@ -463,7 +374,7 @@ class _AddProjectViewState extends State<AddProjectView> {
                     TextField(
                       controller: _projectDescController,
                       decoration: InputDecoration(
-                        hintText: 'Proje açıklaması (opsiyonel)',
+                        hintText: 'Proje açıklaması',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -473,109 +384,6 @@ class _AddProjectViewState extends State<AddProjectView> {
                       maxLines: 4,
                     ),
                     const SizedBox(height: 16),
-
-                    // Belge Ekleme (Opsiyonel)
-                    if (_documentTypes.isNotEmpty) ...[
-                      Text(
-                        'Başlangıç Belgesi (Opsiyonel)',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (_documentTypes.isNotEmpty)
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: DropdownButton<DocumentTypeItem>(
-                            isExpanded: true,
-                            underline: const SizedBox(),
-                            value: _selectedDocumentType,
-                            items: _documentTypes.map((type) {
-                              return DropdownMenuItem<DocumentTypeItem>(
-                                value: type,
-                                child: Text(type.documentName),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedDocumentType = value;
-                              });
-                            },
-                          ),
-                        ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (_selectedFile == null)
-                              ElevatedButton.icon(
-                                onPressed: _pickDocument,
-                                icon: const Icon(Icons.attach_file),
-                                label: const Text('Dosya Seç'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: AppColors.onPrimary,
-                                ),
-                              )
-                            else
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _selectedFile!.name,
-                                          style: theme.textTheme.bodyMedium?.copyWith(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          '${(_selectedFile!.size / 1024).toStringAsFixed(2)} KB',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: AppColors.onSurface.withOpacity(0.6),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _selectedFile = null;
-                                      });
-                                    },
-                                    icon: const Icon(Icons.close),
-                                    iconSize: 20,
-                                    color: Colors.red,
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
 
                     // Kaydet Butonu
                     ElevatedButton(
@@ -604,14 +412,8 @@ class _AddProjectViewState extends State<AddProjectView> {
                                       backgroundColor: response.success ? Colors.green : Colors.red,
                                     ),
                                   );
-                                  if (response.success) {
-                                    // Belge seçiliyse yükle
-                                    if (_selectedFile != null && response.projectID != null) {
-                                      await _uploadProjectDocument(response.projectID!);
-                                    }
-                                    if (mounted) {
-                                      Navigator.pop(context, true);
-                                    }
+                                  if (response.success && mounted) {
+                                    Navigator.pop(context, true);
                                   }
                                 }
                               } finally {

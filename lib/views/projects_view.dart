@@ -287,7 +287,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                   ),
                 ],
               ),
-              // Meta Bilgileri (Firma, Kişi, Servis)
+              // Meta Bilgileri (Firma, Kişi, Destek)
               Row(
                 spacing: 8,
                 children: [
@@ -317,7 +317,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                   ),
                 ],
               ),
-              // Servis (eğer varsa)
+              // Destek (eğer varsa)
               if (project.serviceName != null && project.serviceName!.isNotEmpty)
                 _buildMetaItem(
                   context,

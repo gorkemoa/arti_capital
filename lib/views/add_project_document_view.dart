@@ -323,16 +323,43 @@ class _AddProjectDocumentViewState extends State<AddProjectDocumentView> {
                   ),
                   const SizedBox(height: 8),
                   if (_selectedFile == null)
-                    ElevatedButton.icon(
-                      onPressed: _uploading ? null : _pickFile,
-                      icon: const Icon(Icons.attach_file),
-                      label: const Text('Dosya Seç'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
+                    GestureDetector(
+                      onTap: _uploading ? null : _pickFile,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 2,
+                            style: BorderStyle.solid,
+                          ),
                           borderRadius: BorderRadius.circular(12),
+                          color: _uploading ? Colors.grey.shade100 : Colors.transparent,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.attach_file,
+                              size: 32,
+                              color: _uploading ? Colors.grey : AppColors.primary,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Dosya Seç',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: _uploading ? Colors.grey : AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'PDF, DOC, DOCX, XLS, XLSX, JPG, PNG',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )

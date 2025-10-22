@@ -68,7 +68,7 @@ class _EditProjectViewState extends State<EditProjectView> {
       if (mounted) {
         setState(() {
           _services = services;
-          // Mevcut servisi seç
+          // Mevcut Destek seç
           if (widget.project.serviceID != null) {
             _selectedService = _services.firstWhere(
               (s) => s.serviceID == widget.project.serviceID,
@@ -80,7 +80,7 @@ class _EditProjectViewState extends State<EditProjectView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Servisler yüklenemedi: $e')),
+          SnackBar(content: Text('Destekler yüklenemedi: $e')),
         );
       }
     } finally {
@@ -386,16 +386,16 @@ class _EditProjectViewState extends State<EditProjectView> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Servis Seçimi
+                  // Destek Seçimi
                   Text(
-                    'Servis',
+                    'Destek',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 8),
                   _buildCupertinoField(
-                    placeholder: 'Servis seçin',
+                    placeholder: 'Destek seçin',
                     value: _selectedService?.serviceName,
                     onTap: _loadingServices ? null : _showServicePicker,
                   ),
@@ -499,7 +499,7 @@ class _EditProjectViewState extends State<EditProjectView> {
 
     if (_selectedService == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen bir servis seçin')),
+        const SnackBar(content: Text('Lütfen bir Destek seçin')),
       );
       return;
     }

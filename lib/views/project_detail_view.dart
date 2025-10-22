@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import 'document_viewer.dart';
 import 'edit_project_view.dart';
 import 'add_project_document_view.dart';
+import 'edit_project_document_view.dart';
 
 class ProjectDetailView extends StatefulWidget {
   final int projectId;
@@ -93,64 +94,52 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     }
   }
 
-  void _openEditDocumentDialog(ProjectDocument doc) {
-    final descController = TextEditingController(text: doc.documentDesc ?? '');
-    
-    showDialog(
+  void _openEditDocumentPage(ProjectDocument doc) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditProjectDocumentView(
+          document: doc,
+          projectID: _project!.appID,
+          compID: _project!.compID,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        _loadProjectDetail();
+      }
+    });
+  }
+
+  Future<void> _deleteDocument(ProjectDocument doc) async {
+    if (_project == null) return;
+
+    // Onay dialog'u
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Belgeyi Güncelle'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Belge Türü: ${doc.documentType}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descController,
-                decoration: InputDecoration(
-                  labelText: 'Açıklama',
-                  hintText: 'Belge açıklaması',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                maxLines: 3,
-              ),
-            ],
-          ),
+        title: const Text('Belgeyi Sil'),
+        content: Text(
+          'Belge: ${doc.documentType}\n\nBu belgeyi silmek istediğinizden emin misiniz?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('İptal'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await _updateDocument(doc, descController.text.trim());
-              descController.dispose();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
             ),
-            child: const Text('Güncelle'),
+            child: const Text('Sil'),
           ),
         ],
       ),
     );
-  }
 
-  Future<void> _updateDocument(ProjectDocument doc, String newDescription) async {
-    if (_project == null) return;
+    if (confirmed != true) return;
 
+    // Loading göster
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -160,14 +149,9 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     );
 
     try {
-      final response = await _service.updateProjectDocument(
+      final response = await _service.deleteProjectDocument(
         appID: _project!.appID,
-        compID: _project!.compID,
         documentID: doc.documentID,
-        documentType: doc.documentTypeID,
-        file: '', // Dosya güncellenmiyor, sadece açıklama
-        documentDesc: newDescription,
-        isCompDocument: 0,
       );
 
       if (mounted) {
@@ -176,7 +160,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
         if (response.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response.message ?? 'Belge başarıyla güncellendi'),
+              content: Text(response.message ?? 'Belge başarıyla silindi'),
               backgroundColor: Colors.green,
             ),
           );
@@ -184,7 +168,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response.message ?? 'Belge güncellenemedi'),
+              content: Text(response.message ?? 'Belge silinemedi'),
               backgroundColor: Colors.red,
             ),
           );
@@ -202,6 +186,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
       }
     }
   }
+
 
   Future<void> _showDeleteConfirmation() async {
     // İlk onay
@@ -379,6 +364,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
               child: PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert),
                 color: AppColors.surface,
+                iconColor: AppColors.onPrimary,
                 elevation: 8,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -740,7 +726,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Servis',
+                'Destek',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -840,11 +826,22 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                 ),
               ),
               if (StorageService.hasPermission('projects', 'update'))
-                IconButton(
+                ElevatedButton.icon(
                   onPressed: _openAddDocumentPage,
-                  icon: const Icon(Icons.add_circle_outline),
-                  color: AppColors.primary,
-                  iconSize: 24,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Döküman Ekle'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.onPrimary,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: AppColors.primary,
+                        width: 1,
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -947,11 +944,20 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                               if (StorageService.hasPermission('projects', 'update') && !doc.isCompDocument)
                                 IconButton(
                                   onPressed: () {
-                                    _openEditDocumentDialog(doc);
+                                    _openEditDocumentPage(doc);
                                   },
                                   icon: const Icon(Icons.edit),
                                   iconSize: 20,
                                   color: AppColors.primary,
+                                ),
+                              if (StorageService.hasPermission('projects', 'update') && !doc.isCompDocument)
+                                IconButton(
+                                  onPressed: () {
+                                    _deleteDocument(doc);
+                                  },
+                                  icon: const Icon(Icons.delete_outline),
+                                  iconSize: 20,
+                                  color: Colors.red,
                                 ),
                             ],
                           ),
@@ -1099,7 +1105,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            doc.isAdded ? 'Eklendi' : doc.statusText,
+                           doc.statusText,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: doc.isAdded
                                   ? Colors.green
