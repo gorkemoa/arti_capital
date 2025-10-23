@@ -33,7 +33,6 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   int _selectedTypeID = 1;
   int _selectedStatusID = 1;
   int _selectedUserID = 1;
-  bool _isCompNotification = true;
   bool _isLoading = false;
 
   // Mock data for dropdowns
@@ -41,11 +40,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
 
   List<Map<String, dynamic>> statuses = [];
 
-  final List<Map<String, dynamic>> users = [
-    {'id': 1, 'name': 'Benim Adım'},
-    {'id': 2, 'name': 'Kullanıcı 2'},
-    {'id': 3, 'name': 'Kullanıcı 3'},
-  ];
+  List<Map<String, dynamic>> users = [];
 
   @override
   void initState() {
@@ -61,6 +56,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
     try {
       final fetchedTypes = await _service.getFollowupTypes();
       final fetchedStatuses = await _service.getFollowupStatuses();
+      final fetchedPersons = await _service.getPersons();
       
       if (mounted) {
         setState(() {
@@ -79,12 +75,17 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                   })
               .toList();
           
+          users = fetchedPersons;
+          
           // Set default values if data loaded
           if (trackingTypes.isNotEmpty) {
             _selectedTypeID = trackingTypes[0]['id'] as int;
           }
           if (statuses.isNotEmpty) {
             _selectedStatusID = statuses[0]['id'] as int;
+          }
+          if (users.isNotEmpty) {
+            _selectedUserID = users[0]['id'] as int;
           }
         });
       }
@@ -103,34 +104,104 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   }
 
   Future<void> _selectDate(TextEditingController controller) async {
-    final DateTime? picked = await showDatePicker(
+    await _showCupertinoDatePicker(controller);
+  }
+
+  Future<void> _showCupertinoDatePicker(TextEditingController controller) async {
+    final now = DateTime.now();
+    DateTime selectedDate = now;
+
+    // Parse existing date if available
+    if (controller.text.isNotEmpty) {
+      try {
+        selectedDate = DateFormat('dd.MM.yyyy').parse(controller.text);
+      } catch (_) {
+        selectedDate = now;
+      }
+    }
+
+    await showCupertinoModalPopup<void>(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-            ),
+      builder: (BuildContext context) {
+        return Container(
+          height: 300,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('Seç'),
+                      onPressed: () {
+                        setState(() {
+                          controller.text = DateFormat('dd.MM.yyyy').format(selectedDate);
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: selectedDate,
+                  minimumDate: DateTime(2020),
+                  maximumDate: DateTime(2030),
+                  onDateTimeChanged: (DateTime newDate) {
+                    selectedDate = newDate;
+                  },
+                ),
+              ),
+            ],
           ),
-          child: child!,
         );
       },
     );
-
-    if (picked != null) {
-      final formattedDate = DateFormat('dd.MM.yyyy').format(picked);
-      setState(() {
-        controller.text = formattedDate;
-      });
-    }
   }
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validate date fields
+    if (_dueDateController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bitiş tarihi gereklidir'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_remindDateController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hatırlatma tarihi gereklidir'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -147,7 +218,6 @@ class _AddTrackingViewState extends State<AddTrackingView> {
         trackDueDate: _dueDateController.text,
         trackRemindDate: _remindDateController.text,
         assignedUserID: _selectedUserID,
-        isCompNotification: _isCompNotification ? 1 : 0,
       );
 
       if (mounted) {
@@ -188,6 +258,267 @@ class _AddTrackingViewState extends State<AddTrackingView> {
     }
   }
 
+  Widget _buildCupertinoField({
+    required String placeholder,
+    String? value,
+    VoidCallback? onTap,
+    bool isDisabled = false,
+    Widget? prefix,
+  }) {
+    return GestureDetector(
+      onTap: isDisabled ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDisabled 
+              ? AppColors.onSurface.withOpacity(0.03)
+              : AppColors.onSurface.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.onSurface.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            if (prefix != null) ...[
+              prefix,
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                value == null || value.isEmpty ? placeholder : value,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: (value == null || value.isEmpty)
+                      ? AppColors.onSurface.withOpacity(isDisabled ? 0.4 : 0.4)
+                      : AppColors.onSurface.withOpacity(isDisabled ? 0.5 : 1),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            Icon(
+              CupertinoIcons.chevron_down,
+              size: 18,
+              color: AppColors.onSurface.withOpacity(isDisabled ? 0.3 : 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTypePicker() async {
+    if (trackingTypes.isEmpty) return;
+
+    int selectedIndex = trackingTypes.indexWhere((t) => t['id'] == _selectedTypeID);
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('Seç'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedTypeID = trackingTypes[selectedIndex]['id'] as int;
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+                  itemExtent: 32,
+                  onSelectedItemChanged: (int index) {
+                    selectedIndex = index;
+                  },
+                  children: trackingTypes.map((type) => Center(child: Text(type['name'] as String))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showStatusPicker() async {
+    if (statuses.isEmpty) return;
+
+    int selectedIndex = statuses.indexWhere((s) => s['id'] == _selectedStatusID);
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('Seç'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedStatusID = statuses[selectedIndex]['id'] as int;
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+                  itemExtent: 32,
+                  onSelectedItemChanged: (int index) {
+                    selectedIndex = index;
+                  },
+                  children: statuses.map((status) {
+                    return Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: _parseHexColor(status['color'] as String),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(status['name'] as String),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showUserPicker() async {
+    if (users.isEmpty) return;
+
+    int selectedIndex = users.indexWhere((u) => u['id'] == _selectedUserID);
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('Seç'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedUserID = users[selectedIndex]['id'] as int;
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+                  itemExtent: 32,
+                  onSelectedItemChanged: (int index) {
+                    selectedIndex = index;
+                  },
+                  children: users.map((user) => Center(child: Text(user['name'] as String))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -210,60 +541,6 @@ class _AddTrackingViewState extends State<AddTrackingView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Proje Bilgisi
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.primary.withOpacity(0.15),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.assignment,
-                            color: AppColors.primary,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Proje Durumu Ekle',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.projectTitle,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.onSurface.withOpacity(0.6),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
                   // Form
                   Form(
                     key: _formKey,
@@ -317,43 +594,30 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Tip *',
+                                      'Durum *',
                                       style: theme.textTheme.labelSmall?.copyWith(
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.onSurface.withOpacity(0.7),
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    trackingTypes.isEmpty
-                                        ? Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 12,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.onSurface.withOpacity(0.05),
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: AppColors.onSurface.withOpacity(0.1),
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'Tipler yükleniyor...',
-                                              style: theme.textTheme.bodyMedium?.copyWith(
-                                                color: AppColors.onSurface.withOpacity(0.5),
-                                              ),
-                                            ),
-                                          )
-                                        : _buildCupertinoField(
-                                            placeholder: 'Tip seçin',
-                                            value: trackingTypes
-                                                .firstWhere(
-                                                  (t) => t['id'] == _selectedTypeID,
-                                                  orElse: () => {},
-                                                )['name'] as String?,
-                                            onTap: _showTypePicker,
-                                          ),
+                                   _buildCupertinoField(
+  placeholder: 'Statü *',
+  value: statuses.isEmpty
+      ? 'Statüler yükleniyor...'
+      : (
+          statuses
+              // (opsiyonel) listedeki map'leri doğru tipe dök
+              .cast<Map<String, Object>>()
+              .firstWhere(
+                (t) => t['id'] == _selectedStatusID,
+                orElse: () => <String, Object>{'name': 'Statü seçiniz'},
+              )['name'] as String
+        ),
+  onTap: _showStatusPicker,
+  isDisabled: statuses.isEmpty,
+),
+
                                   ],
                                 ),
                               ),
@@ -363,43 +627,30 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Durum *',
+                                      'Tip *',
                                       style: theme.textTheme.labelSmall?.copyWith(
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.onSurface.withOpacity(0.7),
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    statuses.isEmpty
-                                        ? Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 14,
-                                              vertical: 12,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.onSurface.withOpacity(0.05),
-                                              borderRadius: BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: AppColors.onSurface.withOpacity(0.1),
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'Statüsler yükleniyor...',
-                                              style: theme.textTheme.bodyMedium?.copyWith(
-                                                color: AppColors.onSurface.withOpacity(0.5),
-                                              ),
-                                            ),
-                                          )
-                                        : _buildCupertinoField(
-                                            placeholder: 'Durum seçin',
-                                            value: statuses
-                                                .firstWhere(
-                                                  (s) => s['id'] == _selectedStatusID,
-                                                  orElse: () => {},
-                                                )['name'] as String?,
-                                            onTap: _showStatusPicker,
-                                          ),
+                                   _buildCupertinoField(
+  placeholder: 'Tip *',
+  value: trackingTypes.isEmpty
+      ? 'Tipler yükleniyor...'
+      : (
+          trackingTypes
+              // (opsiyonel) listedeki map'leri doğru tipe dök
+              .cast<Map<String, Object>>()
+              .firstWhere(
+                (t) => t['id'] == _selectedTypeID,
+                orElse: () => <String, Object>{'name': 'Tip seçiniz'},
+              )['name'] as String
+        ),
+  onTap: _showTypePicker,
+  isDisabled: trackingTypes.isEmpty,
+),
+
                                   ],
                                 ),
                               ),
@@ -427,20 +678,18 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        TextFormField(
-                                          controller: _dueDateController,
-                                          readOnly: true,
-                                          decoration: _buildInputDecoration(
-                                            hintText: 'DD.MM.YYYY',
-                                            suffixIcon: Icons.calendar_today,
-                                          ),
+                                        _buildCupertinoField(
+                                          placeholder: 'DD.MM.YYYY',
+                                          value: _dueDateController.text.isEmpty ? null : _dueDateController.text,
                                           onTap: () => _selectDate(_dueDateController),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return 'Bitiş tarihi gereklidir';
-                                            }
-                                            return null;
-                                          },
+                                          prefix: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            child: Icon(
+                                              CupertinoIcons.calendar,
+                                              size: 18,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -458,20 +707,18 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        TextFormField(
-                                          controller: _remindDateController,
-                                          readOnly: true,
-                                          decoration: _buildInputDecoration(
-                                            hintText: 'DD.MM.YYYY',
-                                            suffixIcon: Icons.calendar_today,
-                                          ),
+                                        _buildCupertinoField(
+                                          placeholder: 'DD.MM.YYYY',
+                                          value: _remindDateController.text.isEmpty ? null : _remindDateController.text,
                                           onTap: () => _selectDate(_remindDateController),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return 'Hatırlatma tarihi gereklidir';
-                                            }
-                                            return null;
-                                          },
+                                          prefix: Container(
+                                            padding: const EdgeInsets.all(4),
+                                            child: Icon(
+                                              CupertinoIcons.calendar,
+                                              size: 18,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -484,81 +731,26 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                         ),
 
                         // Atanan Kişi
-                        _buildFormSection(
-                          title: 'Atanan Kişi *',
-                          child: DropdownButtonFormField<int>(
-                            value: _selectedUserID,
-                            decoration: _buildInputDecoration(),
-                            items: users
-                                .map<DropdownMenuItem<int>>((user) => DropdownMenuItem<int>(
-                                      value: user['id'] as int,
-                                      child: Text(user['name'] as String),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedUserID = value ?? 1;
-                              });
-                            },
-                          ),
-                          theme: theme,
-                        ),
+                      _buildFormSection(
+  title: 'Atanan Kişi *',
+  child: _buildCupertinoField(
+    placeholder: 'Atanan Kişi *',
+    value: users.isEmpty
+        ? 'Kişiler yükleniyor...'
+        : (
+            users
+                .cast<Map<String, Object>>() // listeyi hizala
+                .firstWhere(
+                  (u) => u['id'] == _selectedUserID,
+                  orElse: () => const <String, Object>{'name': 'Kişi seçiniz'},
+                )['name'] as String
+          ),
+    onTap: _showUserPicker,
+    isDisabled: users.isEmpty,
+  ),
+  theme: theme,
+),
 
-                        // Firma Bilgilendirme
-                        _buildFormSection(
-                          title: 'Bildirimler',
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.onSurface.withOpacity(0.03),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: AppColors.onSurface.withOpacity(0.08),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Checkbox(
-                                  value: _isCompNotification,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _isCompNotification = value ?? true;
-                                    });
-                                  },
-                                  fillColor: MaterialStateProperty.resolveWith((states) {
-                                    if (states.contains(MaterialState.selected)) {
-                                      return AppColors.primary;
-                                    }
-                                    return Colors.grey;
-                                  }),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Firmayı Bilgilendir',
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Firma bu durumu e-posta ile alacak',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: AppColors.onSurface.withOpacity(0.5),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          theme: theme,
-                        ),
 
                         const SizedBox(height: 32),
 
@@ -687,197 +879,5 @@ class _AddTrackingViewState extends State<AddTrackingView> {
     } catch (_) {
       return AppColors.primary;
     }
-  }
-
-  Widget _buildCupertinoField({
-    required String placeholder,
-    String? value,
-    VoidCallback? onTap,
-    bool isDisabled = false,
-  }) {
-    return GestureDetector(
-      onTap: isDisabled ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isDisabled 
-              ? AppColors.onSurface.withOpacity(0.02)
-              : AppColors.onSurface.withOpacity(0.02),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.onSurface.withOpacity(0.1),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                value == null || value.isEmpty ? placeholder : value,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: (value == null || value.isEmpty)
-                      ? AppColors.onSurface.withOpacity(isDisabled ? 0.4 : 0.6)
-                      : AppColors.onSurface.withOpacity(isDisabled ? 0.5 : 1),
-                ),
-              ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_down,
-              size: 18,
-              color: AppColors.onSurface.withOpacity(isDisabled ? 0.3 : 0.6),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showTypePicker() async {
-    if (trackingTypes.isEmpty) return;
-
-    int selectedIndex = trackingTypes.indexWhere((t) => t['id'] == _selectedTypeID);
-    if (selectedIndex < 0) selectedIndex = 0;
-
-    await showCupertinoModalPopup<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: 250,
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          child: Column(
-            children: [
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemBackground.resolveFrom(context),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: CupertinoColors.separator.resolveFrom(context),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('İptal'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('Seç'),
-                      onPressed: () {
-                        setState(() {
-                          _selectedTypeID = trackingTypes[selectedIndex]['id'] as int;
-                        });
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
-                  itemExtent: 32,
-                  onSelectedItemChanged: (int index) {
-                    selectedIndex = index;
-                  },
-                  children: trackingTypes
-                      .map((type) => Center(child: Text(type['name'] as String)))
-                      .toList(),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showStatusPicker() async {
-    if (statuses.isEmpty) return;
-
-    int selectedIndex = statuses.indexWhere((s) => s['id'] == _selectedStatusID);
-    if (selectedIndex < 0) selectedIndex = 0;
-
-    await showCupertinoModalPopup<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: 250,
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          child: Column(
-            children: [
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemBackground.resolveFrom(context),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: CupertinoColors.separator.resolveFrom(context),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('İptal'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('Seç'),
-                      onPressed: () {
-                        setState(() {
-                          _selectedStatusID = statuses[selectedIndex]['id'] as int;
-                        });
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
-                  itemExtent: 32,
-                  onSelectedItemChanged: (int index) {
-                    selectedIndex = index;
-                  },
-                  children: statuses
-                      .map((status) => Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: _parseHexColor(status['color'] as String),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(status['name'] as String),
-                          ],
-                        ),
-                      ))
-                      .toList(),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 }

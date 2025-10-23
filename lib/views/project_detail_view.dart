@@ -8,6 +8,7 @@ import 'edit_project_view.dart';
 import 'add_project_document_view.dart';
 import 'edit_project_document_view.dart';
 import 'add_tracking_view.dart';
+import 'tracking_detail_view.dart';
 
 class ProjectDetailView extends StatefulWidget {
   final int projectId;
@@ -479,6 +480,8 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                       children: [
                         if (_project!.trackings.isNotEmpty) ...[
                           _buildTrackingsCard(theme),
+                        ] else ...[
+                          _buildEmptyTrackingsCard(theme),
                         ],
                                                 const SizedBox(height: 16),
 
@@ -1267,9 +1270,20 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     width: 3,
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TrackingDetailView(
+                          tracking: tracking,
+                          projectTitle: _project!.appTitle,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     // Durum - EN ÜSTE
                     Row(
                       children: [
@@ -1383,6 +1397,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     // Atanan Kişi
                  
                   ],
+                  ),
                 ),
               );
             },
@@ -1440,6 +1455,96 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmptyTrackingsCard(ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onSurface.withOpacity(0.08),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.assignment,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Proje Durumu',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (StorageService.hasPermission('projects', 'update'))
+                ElevatedButton.icon(
+                  onPressed: _openAddTrackingDialog,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Durumu Ekle'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.onPrimary,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: AppColors.primary,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 48,
+                    color: AppColors.onSurface.withOpacity(0.2),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Henüz proje durumu eklenmemiş',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.onSurface.withOpacity(0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Proje hakkında güncelleme eklemek için',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.onSurface.withOpacity(0.4),
+                    ),
+                  ),
+                  Text(
+                    '"Durumu Ekle" butonunu kullanın',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.onSurface.withOpacity(0.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -671,7 +671,6 @@ class AddTrackingRequest {
   final String trackDueDate;
   final String trackRemindDate;
   final int assignedUserID;
-  final int isCompNotification;
 
   AddTrackingRequest({
     required this.userToken,
@@ -684,7 +683,6 @@ class AddTrackingRequest {
     required this.trackDueDate,
     required this.trackRemindDate,
     required this.assignedUserID,
-    this.isCompNotification = 1,
   });
 
   Map<String, dynamic> toJson() {
@@ -699,7 +697,6 @@ class AddTrackingRequest {
       'trackDueDate': trackDueDate,
       'trackRemindDate': trackRemindDate,
       'assignedUserID': assignedUserID,
-      'isCompNotification': isCompNotification,
     };
   }
 }

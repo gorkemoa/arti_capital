@@ -91,6 +91,55 @@ class ProjectsService {
     }
   }
 
+  // Kişileri getir (Persons/Users)
+  Future<List<Map<String, dynamic>>> getPersons() async {
+    try {
+      final endpoint = AppConstants.getPersons;
+      AppLogger.i('GET $endpoint', tag: 'GET_PERSONS');
+
+      final resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_PERSONS');
+          return [];
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'GET_PERSONS');
+        return [];
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_PERSONS');
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) return [];
+
+      final personsJson = (data['persons'] as List<dynamic>?) ?? [];
+      return personsJson
+          .map((e) {
+            final person = e as Map<String, dynamic>;
+            return {
+              'id': person['userID'] as int? ?? 0,
+              'name': person['userName'] as String? ?? 'Unknown',
+              'type': person['userType'] as String? ?? '',
+            };
+          })
+          .toList();
+    } on ApiException catch (e) {
+      AppLogger.e('Get persons error ${e.statusCode} ${e.message}', tag: 'GET_PERSONS');
+      return [];
+    } catch (e) {
+      AppLogger.e('Unexpected error in getPersons: $e', tag: 'GET_PERSONS');
+      return [];
+    }
+  }
+
   // Projeleri getir
   Future<List<ProjectItem>> getProjects({String? searchText}) async {
     try {
@@ -717,7 +766,6 @@ class ProjectsService {
         trackDueDate: trackDueDate,
         trackRemindDate: trackRemindDate,
         assignedUserID: assignedUserID,
-        isCompNotification: isCompNotification,
       );
 
       AppLogger.i('Request: appID=$appID, compID=$compID, typeID=$typeID, statusID=$statusID', tag: 'ADD_TRACKING');
