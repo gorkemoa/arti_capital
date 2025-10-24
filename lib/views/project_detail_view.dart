@@ -628,30 +628,23 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                         _buildCompanyCard(theme),
+                        _buildHeaderCard(theme),
+                       
+                       
                         
-                        const SizedBox(height: 16),
+                        if (_project!.serviceID != null && _project!.serviceName != null) ...[
+                          const SizedBox(height: 16),
+                          _buildServiceCard(theme),
+                        ],
+                        const SizedBox(height: 16),                    
 
                         if (_project!.trackings.isNotEmpty) ...[
                           _buildTrackingsCard(theme),
                         ] else ...[
                           _buildEmptyTrackingsCard(theme),
                         ],
-                                                const SizedBox(height: 16),
 
-                        _buildHeaderCard(theme),
-                        const SizedBox(height: 16),
-                        _buildCompanyCard(theme),
-                        const SizedBox(height: 16),
-                        _buildAddressCard(theme),
-                       
-                        if (_project!.serviceID != null && _project!.serviceName != null) ...[
-                          const SizedBox(height: 16),
-                          _buildServiceCard(theme),
-                        ],
-                        if (_project!.appDesc != null && _project!.appDesc!.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          _buildDescriptionCard(theme),
-                        ],
                         
                         // Proje Bilgileri
                         const SizedBox(height: 16),
@@ -676,17 +669,19 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.onSurface.withOpacity(0.08),
+          color: AppColors.onSurface.withOpacity(0.06),
           width: 1,
         ),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Başlık ve Durum
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -695,200 +690,160 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     Text(
                       _project!.appTitle,
                       style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       _project!.appCode,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.6),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.5),
+                        fontSize: 13,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: statusColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: statusColor.withOpacity(0.3),
+                    color: statusColor.withOpacity(0.2),
                     width: 1,
                   ),
                 ),
                 child: Text(
                   _project!.statusName,
-                  style: theme.textTheme.labelMedium?.copyWith(
+                  style: theme.textTheme.labelSmall?.copyWith(
                     color: statusColor,
                     fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    letterSpacing: 0.3,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Divider(color: AppColors.onSurface.withOpacity(0.1)),
-          const SizedBox(height: 16),
+          
+          const SizedBox(height: 24),
+          
+          // Bilgiler
           Row(
             children: [
               Expanded(
-                child: _buildInfoRow(
+                child: _buildCompactInfoItem(
                   Icons.person_outline,
                   'Sorumlu',
                   _project!.personName,
                   theme,
                 ),
               ),
+              Container(
+                width: 1,
+                height: 40,
+                color: AppColors.onSurface.withOpacity(0.08),
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+              ),
               Expanded(
-                child: _buildInfoRow(
+                child: _buildCompactInfoItem(
                   Icons.access_time,
                   'Tarih',
                   _project!.createDate,
                   theme,
                 ),
               ),
-              Expanded(child:  _buildInfoRow(
-            Icons.trending_up,
-            'İlerleme',
-            _project!.appProgress,
-            theme,
-          ),)
+              Container(
+                width: 1,
+                height: 40,
+                color: AppColors.onSurface.withOpacity(0.08),
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              Expanded(
+                child: _buildCompactInfoItem(
+                  Icons.trending_up,
+                  'İlerleme',
+                  _project!.appProgress,
+                  theme,
+                ),
+              ),
             ],
           ),
-         
         ],
       ),
+    );
+  }
+
+  Widget _buildCompactInfoItem(
+    IconData icon,
+    String label,
+    String value,
+    ThemeData theme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: AppColors.onSurface.withOpacity(0.4),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.onSurface.withOpacity(0.5),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.1,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            letterSpacing: -0.4,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 
   Widget _buildCompanyCard(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onSurface.withOpacity(0.08),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.business,
-                color: AppColors.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Firma Bilgileri',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
+    return Column(      
+      children: [
+        Center(
+          child: Text(
             _project!.compName,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w500,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
             ),
+            textAlign: TextAlign.center,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddressCard(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onSurface.withOpacity(0.08),
-          width: 1,
         ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                color: AppColors.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Adres Bilgileri',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildInfoRow(
-            Icons.label,
-            'Adres Tipi',
-            _project!.compAdrType,
-            theme,
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.location_city,
-            'Şehir',
-            _project!.compAdrCity,
-            theme,
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.place,
-            'İlçe',
-            _project!.compAdrDistrict,
-            theme,
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.onSurface.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.home,
-                  size: 16,
-                  color: AppColors.onSurface.withOpacity(0.5),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _project!.compAddress,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.onSurface.withOpacity(0.7),
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        const SizedBox(height: 16),
+
+      ],
     );
   }
 
+ 
   Widget _buildServiceCard(ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
@@ -911,77 +866,37 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                'Destek',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  _project!.serviceName!,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            _project!.serviceName!,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDescriptionCard(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onSurface.withOpacity(0.08),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.description,
-                color: AppColors.primary,
-                size: 20,
+          if (_project!.appDesc != null && _project!.appDesc!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.onSurface.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Açıklama',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+              child: Text(
+                _project!.appDesc!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.onSurface.withOpacity(0.7),
+                  height: 1.5,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.onSurface.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(
-              _project!.appDesc!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.onSurface.withOpacity(0.7),
-                height: 1.5,
-              ),
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
-
-
 
   Widget _buildInfoRow(
     IconData icon,
@@ -1046,7 +961,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Proje Durumu',
+                  'Proje Takibi',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

@@ -608,7 +608,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Durumu Ekle'),
+        title: const Text('Proje Takip Ekle'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
