@@ -980,4 +980,81 @@ class ProjectsService {
       );
     }
   }
+
+  // Proje bilgisi ekle
+  Future<BaseSimpleResponse> addProjectInformation({
+    required int appID,
+    required int infoID,
+    required String infoValue,
+    String infoDesc = '',
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return BaseSimpleResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.addProjectInformation;
+      AppLogger.i('POST $endpoint', tag: 'ADD_INFORMATION');
+
+      final request = {
+        'userToken': token,
+        'appID': appID,
+        'infoID': infoID,
+        'infoValue': infoValue,
+        'infoDesc': infoDesc,
+      };
+
+      AppLogger.i('Request: appID=$appID, infoID=$infoID, infoValue=$infoValue', tag: 'ADD_INFORMATION');
+
+      final resp = await ApiClient.postJson(endpoint, data: request);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'ADD_INFORMATION');
+          return BaseSimpleResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan gelen yanıt işlenemedi',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'ADD_INFORMATION');
+        return BaseSimpleResponse(
+          error: true,
+          success: false,
+          message: 'Beklenmeyen yanıt türü',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'ADD_INFORMATION');
+
+      return BaseSimpleResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Add information error ${e.statusCode} ${e.message}', tag: 'ADD_INFORMATION');
+      return BaseSimpleResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in addProjectInformation: $e', tag: 'ADD_INFORMATION');
+      return BaseSimpleResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
 }

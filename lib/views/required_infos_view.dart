@@ -1,14 +1,43 @@
 import 'package:flutter/material.dart';
 import '../models/project_models.dart';
 import '../theme/app_colors.dart';
+import 'add_information_view.dart';
 
-class RequiredInfosView extends StatelessWidget {
+class RequiredInfosView extends StatefulWidget {
   final ProjectDetail project;
+  final VoidCallback? onUpdate;
 
   const RequiredInfosView({
     super.key,
     required this.project,
+    this.onUpdate,
   });
+
+  @override
+  State<RequiredInfosView> createState() => _RequiredInfosViewState();
+}
+
+class _RequiredInfosViewState extends State<RequiredInfosView> {
+  
+  void _openAddInformationView(RequiredInfo info) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddInformationView(
+          projectID: widget.project.appID,
+          requiredInfo: info,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      if (widget.onUpdate != null) {
+        widget.onUpdate!();
+      }
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +99,7 @@ class RequiredInfosView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          project.requiredInfos.isEmpty
+          widget.project.requiredInfos.isEmpty
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -95,10 +124,10 @@ class RequiredInfosView extends StatelessWidget {
               : ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: project.requiredInfos.length,
+                  itemCount: widget.project.requiredInfos.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final info = project.requiredInfos[index];
+                    final info = widget.project.requiredInfos[index];
                     
                     // Icon seçimi
                     IconData iconData;
@@ -116,95 +145,107 @@ class RequiredInfosView extends StatelessWidget {
                         iconData = Icons.info_outline;
                     }
                     
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: info.isAdded
-                            ? Colors.green.withOpacity(0.04)
-                            : (info.isRequired
-                                ? Colors.orange.withOpacity(0.04)
-                                : AppColors.onSurface.withOpacity(0.03)),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
+                    return InkWell(
+                      onTap: (!info.isAdded && info.isRequired) 
+                          ? () => _openAddInformationView(info)
+                          : null,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
                           color: info.isAdded
-                              ? Colors.green.withOpacity(0.2)
+                              ? Colors.green.withOpacity(0.04)
                               : (info.isRequired
-                                  ? Colors.orange.withOpacity(0.2)
-                                  : AppColors.onSurface.withOpacity(0.08)),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: info.isAdded
-                                  ? Colors.green.withOpacity(0.1)
-                                  : (info.isRequired
-                                      ? Colors.orange.withOpacity(0.1)
-                                      : AppColors.primary.withOpacity(0.1)),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              info.isAdded
-                                  ? Icons.check_circle
-                                  : (info.isRequired ? Icons.edit_note : iconData),
-                              size: 20,
-                              color: info.isAdded
-                                  ? Colors.green
-                                  : (info.isRequired ? Colors.orange : AppColors.primary),
-                            ),
+                                  ? Colors.orange.withOpacity(0.04)
+                                  : AppColors.onSurface.withOpacity(0.03)),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: info.isAdded
+                                ? Colors.green.withOpacity(0.2)
+                                : (info.isRequired
+                                    ? Colors.orange.withOpacity(0.2)
+                                    : AppColors.onSurface.withOpacity(0.08)),
+                            width: 1,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  info.infoName,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: info.isAdded
+                                    ? Colors.green.withOpacity(0.1)
+                                    : (info.isRequired
+                                        ? Colors.orange.withOpacity(0.1)
+                                        : AppColors.primary.withOpacity(0.1)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                info.isAdded
+                                    ? Icons.check_circle
+                                    : (info.isRequired ? Icons.edit_note : iconData),
+                                size: 20,
+                                color: info.isAdded
+                                    ? Colors.green
+                                    : (info.isRequired ? Colors.orange : AppColors.primary),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    info.infoName,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.onSurface.withOpacity(0.05),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        _getInfoTypeLabel(info.infoType),
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          color: AppColors.onSurface.withOpacity(0.6),
-                                          fontSize: 9,
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.onSurface.withOpacity(0.05),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          _getInfoTypeLabel(info.infoType),
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: AppColors.onSurface.withOpacity(0.6),
+                                            fontSize: 9,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      info.statusText,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: info.isAdded
-                                            ? Colors.green
-                                            : (info.isRequired
-                                                ? Colors.orange
-                                                : AppColors.onSurface.withOpacity(0.6)),
-                                        fontWeight: info.isRequired || info.isAdded ? FontWeight.w500 : FontWeight.normal,
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        info.statusText,
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: info.isAdded
+                                              ? Colors.green
+                                              : (info.isRequired
+                                                  ? Colors.orange
+                                                  : AppColors.onSurface.withOpacity(0.6)),
+                                          fontWeight: info.isRequired || info.isAdded ? FontWeight.w500 : FontWeight.normal,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                            if (!info.isAdded && info.isRequired)
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: AppColors.onSurface.withOpacity(0.4),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -229,8 +270,9 @@ class RequiredInfosView extends StatelessWidget {
 
   Widget _buildInformationsCard(ThemeData theme) {
     // Firma bilgileri ve proje bilgileri ayrı grupla
-    final compInfos = project.informations.where((info) => info.isCompInfo).toList();
-    final jobInfos = project.informations.where((info) => info.isJobInfo).toList();
+    final compInfos = widget.project.informations.where((info) => info.isCompInfo).toList();
+    final jobInfos = widget.project.informations.where((info) => info.isJobInfo).toList();
+
     
     return Container(
       decoration: BoxDecoration(

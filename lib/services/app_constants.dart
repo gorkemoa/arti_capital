@@ -75,6 +75,7 @@ class AppConstants {
   static const String addTracking = '/service/user/account/projects/trackingAdd';
   static const String updateTracking = '/service/user/account/projects/trackingUpdate';
   static const String deleteTracking = '/service/user/account/projects/trackingDelete';
+  static const String addProjectInformation = '/service/user/account/projects/informationAdd';
   static String getProjectDetail(int projectId) => '/service/user/account/projects/$projectId';
 
   // Dinamik endpoint oluşturucular (userId tabanlı)

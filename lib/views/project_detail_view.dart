@@ -241,64 +241,145 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
   }
 
   Widget _buildActionButtons(ThemeData theme) {
+    // Gerekli belge sayısını hesapla (isRequired=true && isAdded=false)
+    final requiredDocsCount = _project!.requiredDocuments
+        .where((doc) => doc.isRequired && !doc.isAdded)
+        .length;
+    
+    // Gerekli bilgi sayısını hesapla (isRequired=true && isAdded=false)
+    final requiredInfosCount = _project!.requiredInfos
+        .where((info) => info.isRequired && !info.isAdded)
+        .length;
+
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => RequiredDocumentsView(
-                    project: _project!,
-                    onUpdate: _loadProjectDetail,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RequiredDocumentsView(
+                        project: _project!,
+                        onUpdate: _loadProjectDetail,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Gerekli Belgeler'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 1.5,
+                    ),
                   ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.folder_open),
-            label: const Text('Gerekli Belgeler'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: AppColors.primary.withOpacity(0.3),
-                  width: 1.5,
+                  elevation: 0,
                 ),
               ),
-              elevation: 0,
-            ),
+              if (requiredDocsCount > 0)
+                Positioned(
+                  top: -6,
+                  right: 7,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.background,
+                        width: 2,
+                      ),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$requiredDocsCount',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => RequiredInfosView(
-                    project: _project!,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RequiredInfosView(
+                        project: _project!,
+                        onUpdate: _loadProjectDetail,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.info),
+                label: const Text('Gerekli Bilgiler'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: AppColors.primary.withOpacity(0.3),
+                      width: 1.5,
+                    ),
                   ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.info),
-            label: const Text('Gerekli Bilgiler'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.onPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: AppColors.primary.withOpacity(0.3),
-                  width: 1.5,
+                  elevation: 0,
                 ),
               ),
-              elevation: 0,
-            ),
+              if (requiredInfosCount > 0)
+                Positioned(
+                  top: -6,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.background,
+                        width: 2,
+                      ),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$requiredInfosCount',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
