@@ -6,8 +6,10 @@ import '../theme/app_colors.dart';
 import 'edit_project_view.dart';
 import 'add_tracking_view.dart';
 import 'tracking_detail_view.dart';
-import 'required_documents_view.dart';
-import 'required_infos_view.dart';
+import 'add_information_view.dart';
+import 'add_project_document_view.dart';
+import 'edit_project_document_view.dart';
+import 'document_viewer.dart';
 
 class ProjectDetailView extends StatefulWidget {
   final int projectId;
@@ -81,6 +83,276 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
 
     if (result == true) {
       _loadProjectDetail();
+    }
+  }
+
+  void _openAddInformationView(RequiredInfo info) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddInformationView(
+          projectID: _project!.appID,
+          requiredInfo: info,
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      _loadProjectDetail();
+    }
+  }
+
+  void _showInfoActions(RequiredInfo info, ProjectInformation addedInfo) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Bilgi başlığı
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Column(
+                  children: [
+                    Text(
+                      info.infoName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      addedInfo.infoValue,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.6),
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              
+              Divider(
+                height: 1,
+                color: AppColors.onSurface.withOpacity(0.1),
+              ),
+              
+              // Güncelle
+              ListTile(
+                leading: Icon(
+                  Icons.edit,
+                  color: AppColors.primary,
+                ),
+                title: const Text('Güncelle'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openAddInformationView(info);
+                },
+              ),
+              
+              Divider(
+                height: 1,
+                color: AppColors.onSurface.withOpacity(0.1),
+              ),
+              
+              // Sil
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                ),
+                title: const Text(
+                  'Sil',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteInfo(info, addedInfo);
+                },
+              ),
+              
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteInfo(RequiredInfo info, ProjectInformation addedInfo) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bilgiyi Sil'),
+        content: Text('${info.infoName} bilgisini silmek istediğinizden emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteInformation(addedInfo.infoID);
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteInformation(int infoID) async {
+    // Burada silme API'sini çağırabilirsiniz
+    // Şimdilik sadece yenileme yapıyoruz
+    _loadProjectDetail();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Bilgi silindi'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _openDocument(String url, String documentType) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DocumentViewerPage(
+          url: url,
+          title: documentType,
+        ),
+      ),
+    );
+  }
+
+  void _openAddDocumentPage() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AddProjectDocumentView(
+          projectID: _project!.appID,
+          compID: _project!.compID,
+          requiredDocuments: _project!.requiredDocuments,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      _loadProjectDetail();
+    }
+  }
+
+  void _openEditDocumentPage(ProjectDocument doc) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditProjectDocumentView(
+          document: doc,
+          projectID: _project!.appID,
+          compID: _project!.compID,
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        _loadProjectDetail();
+      }
+    });
+  }
+
+  Future<void> _deleteDocument(ProjectDocument doc) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Belgeyi Sil'),
+        content: Text(
+          'Belge: ${doc.documentType}\n\nBu belgeyi silmek istediğinizden emin misiniz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('İptal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+    );
+
+    try {
+      final response = await _service.deleteProjectDocument(
+        appID: _project!.appID,
+        documentID: doc.documentID,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+
+        if (response.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Belge başarıyla silindi'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadProjectDetail();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Belge silinemedi'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata oluştu: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -240,151 +512,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     }
   }
 
-  Widget _buildActionButtons(ThemeData theme) {
-    // Gerekli belge sayısını hesapla (isRequired=true && isAdded=false)
-    final requiredDocsCount = _project!.requiredDocuments
-        .where((doc) => doc.isRequired && !doc.isAdded)
-        .length;
-    
-    // Gerekli bilgi sayısını hesapla (isRequired=true && isAdded=false)
-    final requiredInfosCount = _project!.requiredInfos
-        .where((info) => info.isRequired && !info.isAdded)
-        .length;
-
-    return Row(
-      children: [
-        Expanded(
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RequiredDocumentsView(
-                        project: _project!,
-                        onUpdate: _loadProjectDetail,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.folder_open),
-                label: const Text('Gerekli Belgeler'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: AppColors.primary.withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-              if (requiredDocsCount > 0)
-                Positioned(
-                  top: -6,
-                  right: 7,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: AppColors.background,
-                        width: 2,
-                      ),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 20,
-                      minHeight: 20,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$requiredDocsCount',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RequiredInfosView(
-                        project: _project!,
-                        onUpdate: _loadProjectDetail,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.info),
-                label: const Text('Gerekli Bilgiler'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: AppColors.primary.withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-              if (requiredInfosCount > 0)
-                Positioned(
-                  top: -6,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: AppColors.background,
-                        width: 2,
-                      ),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 20,
-                      minHeight: 20,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$requiredInfosCount',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -500,7 +628,6 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildActionButtons(theme),
                         
                         const SizedBox(height: 16),
 
@@ -526,6 +653,15 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                           _buildDescriptionCard(theme),
                         ],
                         
+                        // Proje Bilgileri
+                        const SizedBox(height: 16),
+                        _buildRequiredInfosCard(theme),
+                        
+                        // Proje Belgeleri
+                        const SizedBox(height: 16),
+                        _buildRequiredDocumentsCard(theme),
+                        const SizedBox(height: 16),
+                        _buildDocumentsCard(theme),
                        
                       ],
                     ),
@@ -920,7 +1056,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                 ElevatedButton.icon(
                   onPressed: _openAddTrackingDialog,
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Durumu Ekle'),
+                  label: const Text('Takip Ekle'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.onPrimary,
                     foregroundColor: AppColors.primary,
@@ -1219,7 +1355,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                 ElevatedButton.icon(
                   onPressed: _openAddTrackingDialog,
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Durumu Ekle'),
+                  label: const Text('Takip Ekle'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.onPrimary,
                     foregroundColor: AppColors.primary,
@@ -1261,7 +1397,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     ),
                   ),
                   Text(
-                    '"Durumu Ekle" butonunu kullanın',
+                    '"Takip Ekle" butonunu kullanın',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.onSurface.withOpacity(0.4),
                     ),
@@ -1284,5 +1420,550 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     } catch (_) {
       return AppColors.primary;
     }
+  }
+
+  Widget _buildRequiredInfosCard(ThemeData theme) {
+    // Eklenen bilgileri bir map'e çevir (infoID'ye göre)
+    final addedInfoMap = <int, ProjectInformation>{};
+    for (var info in _project!.informations) {
+      addedInfoMap[info.infoID] = info;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onSurface.withOpacity(0.08),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Proje Bilgileri',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          if (_project!.requiredInfos.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'Bilgi bulunmuyor',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.4),
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _project!.requiredInfos.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final info = _project!.requiredInfos[index];
+                final addedInfo = addedInfoMap[info.infoID];
+                
+                return InkWell(
+                  onTap: info.isAdded
+                      ? () => _showInfoActions(info, addedInfo!)
+                      : () => _openAddInformationView(info),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: info.isAdded
+                          ? Colors.green.withOpacity(0.04)
+                          : AppColors.onSurface.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: info.isAdded
+                            ? Colors.green.withOpacity(0.2)
+                            : (info.isRequired
+                                ? Colors.red.withOpacity(0.2)
+                                : AppColors.onSurface.withOpacity(0.08)),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                info.infoName,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (!info.isAdded) ...[
+                              if (info.isRequired)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Zorunlu',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.red.shade700,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: AppColors.onSurface.withOpacity(0.4),
+                              ),
+                            ] else
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 20,
+                              ),
+                          ],
+                        ),
+                        
+                        // Eklenen bilgi varsa göster
+                        if (addedInfo != null) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.onSurface.withOpacity(0.03),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  addedInfo.infoValue,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (addedInfo.infoDesc.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    addedInfo.infoDesc,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: AppColors.onSurface.withOpacity(0.5),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequiredDocumentsCard(ThemeData theme) {
+    // Gerekli belgelerden eklenen belgeleri bul (documentType ile eşleştir)
+    final addedDocumentsMap = <String, ProjectDocument>{};
+    for (var doc in _project!.documents) {
+      addedDocumentsMap[doc.documentType] = doc;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onSurface.withOpacity(0.08),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.task_alt,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Gerekli Belgeler',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _project!.requiredDocuments.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      'Gerekli belge bulunmuyor',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.4),
+                      ),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _project!.requiredDocuments.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final reqDoc = _project!.requiredDocuments[index];
+                    final addedDoc = addedDocumentsMap[reqDoc.documentName];
+                    
+                    return InkWell(
+                      onTap: addedDoc != null
+                          ? () => _showDocumentActions(reqDoc, addedDoc)
+                          : _openAddDocumentPage,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: addedDoc != null
+                              ? Colors.green.withOpacity(0.04)
+                              : AppColors.onSurface.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: addedDoc != null
+                                ? Colors.green.withOpacity(0.2)
+                                : (reqDoc.isRequired
+                                    ? Colors.red.withOpacity(0.2)
+                                    : AppColors.onSurface.withOpacity(0.08)),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    reqDoc.documentName,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (addedDoc == null) ...[
+                                  if (reqDoc.isRequired)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Zorunlu',
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: Colors.red.shade700,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: AppColors.onSurface.withOpacity(0.4),
+                                  ),
+                                ] else
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: Colors.green,
+                                    size: 20,
+                                  ),
+                              ],
+                            ),
+                            
+                            // Eklenen belge bilgilerini göster
+                            if (addedDoc != null) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.onSurface.withOpacity(0.03),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person_outline,
+                                          size: 14,
+                                          color: AppColors.onSurface.withOpacity(0.5),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          addedDoc.partner,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: AppColors.onSurface.withOpacity(0.7),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 14,
+                                          color: AppColors.onSurface.withOpacity(0.5),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Geçerlilik: ${addedDoc.validityDate}',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: AppColors.onSurface.withOpacity(0.7),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ],
+      ),
+    );
+  }
+
+  void _showDocumentActions(RequiredDocument reqDoc, ProjectDocument addedDoc) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Belge başlığı
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Column(
+                  children: [
+                    Text(
+                      reqDoc.documentName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      addedDoc.partner,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.6),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              
+              Divider(
+                height: 1,
+                color: AppColors.onSurface.withOpacity(0.1),
+              ),
+              
+              // Görüntüle
+              ListTile(
+                leading: Icon(
+                  Icons.open_in_new,
+                  color: AppColors.primary,
+                ),
+                title: const Text('Görüntüle'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openDocument(addedDoc.documentURL, addedDoc.documentType);
+                },
+              ),
+              
+              Divider(
+                height: 1,
+                color: AppColors.onSurface.withOpacity(0.1),
+              ),
+              
+              // Güncelle
+              if (StorageService.hasPermission('projects', 'update') && !addedDoc.isCompDocument)
+                ListTile(
+                  leading: Icon(
+                    Icons.edit,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Güncelle'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openEditDocumentPage(addedDoc);
+                  },
+                ),
+              
+              if (StorageService.hasPermission('projects', 'update') && !addedDoc.isCompDocument)
+                Divider(
+                  height: 1,
+                  color: AppColors.onSurface.withOpacity(0.1),
+                ),
+              
+              // Sil
+              if (StorageService.hasPermission('projects', 'update') && !addedDoc.isCompDocument)
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
+                  title: const Text(
+                    'Sil',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteDocument(addedDoc);
+                  },
+                ),
+              
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocumentsCard(ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onSurface.withOpacity(0.08),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.folder_open,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Ek Dökümanlar',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (StorageService.hasPermission('projects', 'update'))
+                ElevatedButton.icon(
+                  onPressed: _openAddDocumentPage,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Ekle'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Ek dökümanlar eklemek için "Ekle" butonunu kullanın',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.onSurface.withOpacity(0.5),
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

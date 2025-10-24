@@ -346,6 +346,21 @@ class _EditProjectViewState extends State<EditProjectView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Destek Seçimi
+                  Text(
+                    'Destek',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCupertinoField(
+                    placeholder: 'Destek seçin',
+                    value: _selectedService?.serviceName,
+                    onTap: _loadingServices ? null : _showServicePicker,
+                  ),
+                  const SizedBox(height: 16),
+
                   // Firma Seçimi
                   Text(
                     'Firma',
@@ -383,21 +398,6 @@ class _EditProjectViewState extends State<EditProjectView> {
                         : null,
                     isDisabled: _selectedCompany == null || _addresses.isEmpty,
                     onTap: _selectedCompany == null || _addresses.isEmpty ? null : _showAddressPicker,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Destek Seçimi
-                  Text(
-                    'Destek',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildCupertinoField(
-                    placeholder: 'Destek seçin',
-                    value: _selectedService?.serviceName,
-                    onTap: _loadingServices ? null : _showServicePicker,
                   ),
                   const SizedBox(height: 16),
 

@@ -288,24 +288,18 @@ class _AddProjectViewState extends State<AddProjectView> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Proje Başlığı
+                    // Destek Seçimi (iOS Picker)
                     Text(
-                      'Proje Başlığı',
+                      'Destek',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _projectTitleController,
-                      decoration: InputDecoration(
-                        hintText: 'Proje başlığını girin',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: theme.colorScheme.surface,
-                      ),
+                    _buildCupertinoField(
+                      placeholder: 'Destek seçin',
+                      value: _selectedService?.serviceName,
+                      onTap: _loadingServices ? null : _showServicePicker,
                     ),
                     const SizedBox(height: 16),
 
@@ -348,18 +342,24 @@ class _AddProjectViewState extends State<AddProjectView> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Destek Seçimi (iOS Picker)
+                    // Proje Başlığı
                     Text(
-                      'Destek',
+                      'Proje Başlığı',
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildCupertinoField(
-                      placeholder: 'Destek seçin',
-                      value: _selectedService?.serviceName,
-                      onTap: _loadingServices ? null : _showServicePicker,
+                    TextField(
+                      controller: _projectTitleController,
+                      decoration: InputDecoration(
+                        hintText: 'Proje başlığını girin',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surface,
+                      ),
                     ),
                     const SizedBox(height: 16),
 
