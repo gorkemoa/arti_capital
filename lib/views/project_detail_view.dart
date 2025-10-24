@@ -3,12 +3,11 @@ import '../models/project_models.dart';
 import '../services/projects_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
-import 'document_viewer.dart';
 import 'edit_project_view.dart';
-import 'add_project_document_view.dart';
-import 'edit_project_document_view.dart';
 import 'add_tracking_view.dart';
 import 'tracking_detail_view.dart';
+import 'required_documents_view.dart';
+import 'required_infos_view.dart';
 
 class ProjectDetailView extends StatefulWidget {
   final int projectId;
@@ -67,51 +66,6 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     }
   }
 
-  void _openDocument(String url, String documentType) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DocumentViewerPage(
-          url: url,
-          title: documentType,
-        ),
-      ),
-    );
-  }
-
-  void _openAddDocumentPage() async {
-    if (_project == null) return;
-
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => AddProjectDocumentView(
-          projectID: _project!.appID,
-          compID: _project!.compID,
-          requiredDocuments: _project!.requiredDocuments,
-        ),
-      ),
-    );
-
-    if (result == true) {
-      _loadProjectDetail();
-    }
-  }
-
-  void _openEditDocumentPage(ProjectDocument doc) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EditProjectDocumentView(
-          document: doc,
-          projectID: _project!.appID,
-          compID: _project!.compID,
-        ),
-      ),
-    ).then((result) {
-      if (result == true) {
-        _loadProjectDetail();
-      }
-    });
-  }
-
   void _openAddTrackingDialog() async {
     if (_project == null) return;
 
@@ -129,84 +83,6 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
       _loadProjectDetail();
     }
   }
-
-  Future<void> _deleteDocument(ProjectDocument doc) async {
-    if (_project == null) return;
-
-    // Onay dialog'u
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Belgeyi Sil'),
-        content: Text(
-          'Belge: ${doc.documentType}\n\nBu belgeyi silmek istediğinizden emin misiniz?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    // Loading göster
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
-    );
-
-    try {
-      final response = await _service.deleteProjectDocument(
-        appID: _project!.appID,
-        documentID: doc.documentID,
-      );
-
-      if (mounted) {
-        Navigator.of(context).pop(); // Loading dialog'u kapat
-
-        if (response.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response.message ?? 'Belge başarıyla silindi'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          _loadProjectDetail();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response.message ?? 'Belge silinemedi'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Loading dialog'u kapat
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata oluştu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
 
   Future<void> _showDeleteConfirmation() async {
     // İlk onay
@@ -364,6 +240,71 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     }
   }
 
+  Widget _buildActionButtons(ThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => RequiredDocumentsView(
+                    project: _project!,
+                    onUpdate: _loadProjectDetail,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.folder_open),
+            label: const Text('Gerekli Belgeler'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.onPrimary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => RequiredInfosView(
+                    project: _project!,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.info),
+            label: const Text('Gerekli Bilgiler'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.onPrimary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 1.5,
+                ),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -478,6 +419,10 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildActionButtons(theme),
+                        
+                        const SizedBox(height: 16),
+
                         if (_project!.trackings.isNotEmpty) ...[
                           _buildTrackingsCard(theme),
                         ] else ...[
@@ -499,13 +444,8 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                           const SizedBox(height: 16),
                           _buildDescriptionCard(theme),
                         ],
-                        if (_project!.requiredDocuments.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          _buildRequiredDocumentsCard(theme),
-                        ],
+                        
                        
-                        const SizedBox(height: 16),
-                        _buildDocumentsCard(theme),
                       ],
                     ),
                   ),
@@ -824,338 +764,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     );
   }
 
-  Widget _buildDocumentsCard(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onSurface.withOpacity(0.08),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.folder_open,
-                color: AppColors.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Dökümanlar',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (StorageService.hasPermission('projects', 'update'))
-                ElevatedButton.icon(
-                  onPressed: _openAddDocumentPage,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Döküman Ekle'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.onPrimary,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(
-                        color: AppColors.primary,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _project!.documents.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.folder_off,
-                          size: 40,
-                          color: AppColors.onSurface.withOpacity(0.2),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Henüz döküman eklenmemiş',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.onSurface.withOpacity(0.4),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _project!.documents.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final doc = _project!.documents[index];
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.onSurface.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppColors.onSurface.withOpacity(0.08),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.insert_drive_file,
-                                  size: 20,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      doc.documentType,
-                                      style: theme.textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.person_outline,
-                                          size: 12,
-                                          color: AppColors.onSurface.withOpacity(0.5),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          doc.partner,
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: AppColors.onSurface.withOpacity(0.6),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  _openDocument(doc.documentURL, doc.documentType);
-                                },
-                                icon: const Icon(Icons.open_in_new),
-                                iconSize: 20,
-                                color: AppColors.primary,
-                              ),
-                              if (StorageService.hasPermission('projects', 'update') && !doc.isCompDocument)
-                                IconButton(
-                                  onPressed: () {
-                                    _openEditDocumentPage(doc);
-                                  },
-                                  icon: const Icon(Icons.edit),
-                                  iconSize: 20,
-                                  color: AppColors.primary,
-                                ),
-                              if (StorageService.hasPermission('projects', 'update') && !doc.isCompDocument)
-                                IconButton(
-                                  onPressed: () {
-                                    _deleteDocument(doc);
-                                  },
-                                  icon: const Icon(Icons.delete_outline),
-                                  iconSize: 20,
-                                  color: Colors.red,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Divider(
-                            height: 1,
-                            color: AppColors.onSurface.withOpacity(0.1),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.calendar_today,
-                                    size: 12,
-                                    color: AppColors.onSurface.withOpacity(0.5),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Geçerlilik: ${doc.validityDate}',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.onSurface.withOpacity(0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.access_time,
-                                    size: 12,
-                                    color: AppColors.onSurface.withOpacity(0.5),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    doc.createDate,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.onSurface.withOpacity(0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildRequiredDocumentsCard(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onSurface.withOpacity(0.08),
-          width: 1,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.task_alt,
-                color: AppColors.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Gerekli Belgeler',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _project!.requiredDocuments.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final doc = _project!.requiredDocuments[index];
-              return Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: doc.isAdded
-                      ? Colors.green.withOpacity(0.04)
-                      : (doc.isRequired
-                          ? Colors.red.withOpacity(0.04)
-                          : AppColors.onSurface.withOpacity(0.03)),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: doc.isAdded
-                        ? Colors.green.withOpacity(0.2)
-                        : (doc.isRequired
-                            ? Colors.red.withOpacity(0.2)
-                            : AppColors.onSurface.withOpacity(0.08)),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: doc.isAdded
-                            ? Colors.green.withOpacity(0.1)
-                            : (doc.isRequired
-                                ? Colors.red.withOpacity(0.1)
-                                : AppColors.primary.withOpacity(0.1)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        doc.isAdded
-                            ? Icons.check_circle
-                            : (doc.isRequired ? Icons.priority_high : Icons.check_circle_outline),
-                        size: 20,
-                        color: doc.isAdded
-                            ? Colors.green
-                            : (doc.isRequired ? Colors.red : AppColors.primary),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            doc.documentName,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                           doc.statusText,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: doc.isAdded
-                                  ? Colors.green
-                                  : (doc.isRequired
-                                      ? Colors.red
-                                      : AppColors.onSurface.withOpacity(0.6)),
-                              fontWeight: doc.isRequired || doc.isAdded ? FontWeight.w500 : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildInfoRow(
     IconData icon,
@@ -1260,27 +869,29 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
               Color statusBgColor = _parseHexColor(tracking.statusBgColor);
               Color statusColor = _parseHexColor(tracking.statusColor);
               
-              return Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: statusBgColor.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: statusBgColor.withOpacity(0.15),
-                    width: 3,
-                  ),
-                ),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => TrackingDetailView(
-                          tracking: tracking,
-                          projectTitle: _project!.appTitle,
-                        ),
+              return GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TrackingDetailView(
+                        tracking: tracking,
+                        projectTitle: _project!.appTitle,
+                        projectID: _project!.appID,
+                        compID: _project!.compID,
                       ),
-                    );
-                  },
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: statusBgColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: statusBgColor.withOpacity(0.15),
+                      width: 3,
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1367,7 +978,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                     Row(
                       children: [
                         // Bitiş Tarihi
-                        Expanded(
+                        Flexible(
                           child: _buildTrackingInfo(
                             Icons.calendar_today,
                             'Bitiş',
@@ -1377,7 +988,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                         ),
                         const SizedBox(width: 5),
                         // Hatırlatma Tarihi
-                        Expanded(
+                        Flexible(
                           child: _buildTrackingInfo(
                             Icons.notifications_outlined,
                             'Hatırlat',
@@ -1385,18 +996,38 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                             theme,
                           ),
                         ),
-                     Expanded(child: 
-                        _buildTrackingInfo(
-                      Icons.person_outline,
-                      'Atanan',
-                      tracking.assignedUser,
-                      theme,
-                    ),)
+                        const SizedBox(width: 5),
+                        // Atanan Kişi
+                  
                       ],
                     ),
-                    // Atanan Kişi
-                 
-                  ],
+                   if (tracking.notificationType != null && tracking.notificationType!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                   Row(
+                  children: [
+                   Expanded(
+                  child: _buildTrackingInfo(
+                        Icons.notifications,
+                        'Bildirim',
+                        _formatNotificationType(tracking.notificationType!),
+                        theme,
+                        ),
+                            ),
+                   const SizedBox(width: 10),
+                   Expanded(
+                   child: _buildTrackingInfo(
+                   Icons.person_outline,
+                   'Atanan',
+                   tracking.assignedUser,
+                   theme,
+       ),
+      ),
+    ],
+  ),
+],
+
+                    ],
+                    
                   ),
                 ),
               );
@@ -1405,6 +1036,21 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
         ],
       ),
     );
+  }
+
+  String _formatNotificationType(String type) {
+    switch (type.toLowerCase()) {
+      case 'push':
+        return 'Push';
+      case 'email':
+        return 'E-posta';
+      case 'sms':
+        return 'SMS';
+      case 'all':
+        return 'Tümü';
+      default:
+        return type;
+    }
   }
 
   Widget _buildTrackingInfo(

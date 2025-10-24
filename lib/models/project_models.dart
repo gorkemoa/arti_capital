@@ -83,6 +83,75 @@ class ProjectDocument {
   }
 }
 
+// Gerekli bilgi modeli
+class RequiredInfo {
+  final int infoID;
+  final String infoName;
+  final String infoType;
+  final String statusText;
+  final bool isRequired;
+  final bool isAdded;
+  final List<String> options;
+  final String defaultValue;
+
+  RequiredInfo({
+    required this.infoID,
+    required this.infoName,
+    required this.infoType,
+    required this.statusText,
+    required this.isRequired,
+    required this.isAdded,
+    required this.options,
+    required this.defaultValue,
+  });
+
+  factory RequiredInfo.fromJson(Map<String, dynamic> json) {
+    final optionsJson = json['options'] as List<dynamic>? ?? [];
+    final options = optionsJson.map((e) => e.toString()).toList();
+
+    return RequiredInfo(
+      infoID: (json['infoID'] as num).toInt(),
+      infoName: json['infoName'] as String? ?? '',
+      infoType: json['infoType'] as String? ?? 'text',
+      statusText: json['statusText'] as String? ?? '',
+      isRequired: json['isRequired'] as bool? ?? false,
+      isAdded: json['isAdded'] as bool? ?? false,
+      options: options,
+      defaultValue: json['defaultValue'] as String? ?? '',
+    );
+  }
+}
+
+// Bilgi modeli
+class ProjectInformation {
+  final int infoID;
+  final String infoLabel;
+  final String infoValue;
+  final String infoDesc;
+  final bool isCompInfo;
+  final bool isJobInfo;
+
+  ProjectInformation({
+    required this.infoID,
+    required this.infoLabel,
+    required this.infoValue,
+    required this.infoDesc,
+    required this.isCompInfo,
+    required this.isJobInfo,
+  });
+
+  factory ProjectInformation.fromJson(Map<String, dynamic> json) {
+    return ProjectInformation(
+      infoID: (json['infoID'] as num).toInt(),
+      infoLabel: json['infoLabel'] as String? ?? '',
+      infoValue: json['infoValue'] as String? ?? '',
+      infoDesc: json['infoDesc'] as String? ?? '',
+      isCompInfo: json['isCompInfo'] as bool? ?? false,
+      isJobInfo: json['isJobInfo'] as bool? ?? false,
+    );
+  }
+}
+
 // Gerekli belge modeli
 class RequiredDocument {
   final int documentID;
@@ -119,6 +188,7 @@ class ProjectTracking {
   final String trackTypeName;
   final String typeColor;
   final String typeColorBg;
+  final int trackStatusID;
   final String statusName;
   final String statusColor;
   final String statusBgColor;
@@ -128,6 +198,7 @@ class ProjectTracking {
   final String assignedUser;
   final String createdDate;
   final String updatedDate;
+  final String? notificationType;
 
   ProjectTracking({
     required this.trackID,
@@ -137,6 +208,7 @@ class ProjectTracking {
     required this.trackTypeName,
     required this.typeColor,
     required this.typeColorBg,
+    required this.trackStatusID,
     required this.statusName,
     required this.statusColor,
     required this.statusBgColor,
@@ -146,6 +218,7 @@ class ProjectTracking {
     required this.assignedUser,
     required this.createdDate,
     required this.updatedDate,
+    this.notificationType,
   });
 
   factory ProjectTracking.fromJson(Map<String, dynamic> json) {
@@ -157,6 +230,7 @@ class ProjectTracking {
       trackTypeName: json['trackTypeName'] as String? ?? '',
       typeColor: json['typeColor'] as String? ?? '#FFFFFF',
       typeColorBg: json['typeColorBg'] as String? ?? '#EF4444',
+      trackStatusID: (json['trackStatusID'] as num?)?.toInt() ?? 0,
       statusName: json['statusName'] as String? ?? '',
       statusColor: json['statusColor'] as String? ?? '#000000',
       statusBgColor: json['statusBgColor'] as String? ?? '#E5E7EB',
@@ -166,6 +240,7 @@ class ProjectTracking {
       assignedUser: json['assignedUser'] as String? ?? '',
       createdDate: json['createdDate'] as String? ?? '',
       updatedDate: json['updatedDate'] as String? ?? '',
+      notificationType: json['notificationType'] as String?,
     );
   }
 }
@@ -440,6 +515,8 @@ class ProjectDetail {
   final String createDate;
   final List<ProjectDocument> documents;
   final List<RequiredDocument> requiredDocuments;
+  final List<RequiredInfo> requiredInfos;
+  final List<ProjectInformation> informations;
   final List<ProjectTracking> trackings;
 
   ProjectDetail({
@@ -465,6 +542,8 @@ class ProjectDetail {
     required this.createDate,
     required this.documents,
     required this.requiredDocuments,
+    required this.requiredInfos,
+    required this.informations,
     required this.trackings,
   });
 
@@ -477,6 +556,16 @@ class ProjectDetail {
     final requiredDocsJson = json['requiredDocuments'] as List<dynamic>? ?? [];
     final requiredDocuments = requiredDocsJson
         .map((e) => RequiredDocument.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final requiredInfosJson = json['requiredInfos'] as List<dynamic>? ?? [];
+    final requiredInfos = requiredInfosJson
+        .map((e) => RequiredInfo.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final informationsJson = json['informations'] as List<dynamic>? ?? [];
+    final informations = informationsJson
+        .map((e) => ProjectInformation.fromJson(e as Map<String, dynamic>))
         .toList();
 
     final trackingsJson = json['trackings'] as List<dynamic>? ?? [];
@@ -507,6 +596,8 @@ class ProjectDetail {
       createDate: json['createDate'] as String? ?? '',
       documents: documents,
       requiredDocuments: requiredDocuments,
+      requiredInfos: requiredInfos,
+      informations: informations,
       trackings: trackings,
     );
   }
@@ -671,6 +762,7 @@ class AddTrackingRequest {
   final String trackDueDate;
   final String trackRemindDate;
   final int assignedUserID;
+  final String? notificationType;
 
   AddTrackingRequest({
     required this.userToken,
@@ -683,6 +775,7 @@ class AddTrackingRequest {
     required this.trackDueDate,
     required this.trackRemindDate,
     required this.assignedUserID,
+    this.notificationType,
   });
 
   Map<String, dynamic> toJson() {
@@ -697,6 +790,55 @@ class AddTrackingRequest {
       'trackDueDate': trackDueDate,
       'trackRemindDate': trackRemindDate,
       'assignedUserID': assignedUserID,
+      if (notificationType != null) 'notificationType': notificationType,
+    };
+  }
+}
+
+// Takip güncelleme request
+class UpdateTrackingRequest {
+  final String userToken;
+  final int trackID;
+  final int appID;
+  final int compID;
+  final int typeID;
+  final int statusID;
+  final String trackTitle;
+  final String trackDesc;
+  final String trackDueDate;
+  final String trackRemindDate;
+  final int assignedUserID;
+  final String? notificationType;
+
+  UpdateTrackingRequest({
+    required this.userToken,
+    required this.trackID,
+    required this.appID,
+    required this.compID,
+    required this.typeID,
+    required this.statusID,
+    required this.trackTitle,
+    required this.trackDesc,
+    required this.trackDueDate,
+    required this.trackRemindDate,
+    required this.assignedUserID,
+    this.notificationType,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'trackID': trackID,
+      'appID': appID,
+      'compID': compID,
+      'typeID': typeID,
+      'statusID': statusID,
+      'trackTitle': trackTitle,
+      'trackDesc': trackDesc,
+      'trackDueDate': trackDueDate,
+      'trackRemindDate': trackRemindDate,
+      'assignedUserID': assignedUserID,
+      if (notificationType != null) 'notificationType': notificationType,
     };
   }
 }

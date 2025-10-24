@@ -1,27 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import '../models/project_models.dart';
 import '../services/projects_service.dart';
 import '../services/logger.dart';
 import '../theme/app_colors.dart';
 import 'package:intl/intl.dart';
 
-class AddTrackingView extends StatefulWidget {
+class EditTrackingView extends StatefulWidget {
+  final ProjectTracking tracking;
   final int projectID;
   final int compID;
   final String projectTitle;
 
-  const AddTrackingView({
+  const EditTrackingView({
     super.key,
+    required this.tracking,
     required this.projectID,
     required this.compID,
     required this.projectTitle,
   });
 
   @override
-  State<AddTrackingView> createState() => _AddTrackingViewState();
+  State<EditTrackingView> createState() => _EditTrackingViewState();
 }
 
-class _AddTrackingViewState extends State<AddTrackingView> {
+class _EditTrackingViewState extends State<EditTrackingView> {
   final ProjectsService _service = ProjectsService();
   final _formKey = GlobalKey<FormState>();
   
@@ -30,29 +33,37 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   late TextEditingController _dueDateController;
   late TextEditingController _remindDateController;
   
-  int _selectedTypeID = 1;
-  int _selectedStatusID = 1;
-  int _selectedUserID = 1;
+  late int _selectedTypeID;
+  late int _selectedStatusID;
+  late int _selectedUserID;
   String? _selectedNotificationType;
   bool _isLoading = false;
 
-  // Notification type options
   final List<String> _notificationTypes = ['push', 'email', 'sms', 'all'];
 
-  // Mock data for dropdowns
-  List<Map<String, dynamic>> trackingTypes = [];
-
-  List<Map<String, dynamic>> statuses = [];
-
+  List<FollowupType> trackingTypes = [];
+  List<FollowupStatus> statuses = [];
   List<Map<String, dynamic>> users = [];
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController();
-    _descController = TextEditingController();
-    _dueDateController = TextEditingController();
-    _remindDateController = TextEditingController();
+    _titleController = TextEditingController(text: widget.tracking.trackTitle);
+    _descController = TextEditingController(text: widget.tracking.trackDesc);
+    _dueDateController = TextEditingController(text: widget.tracking.trackDueDate);
+    _remindDateController = TextEditingController(text: widget.tracking.trackRemindDate);
+    
+    // Mevcut değerleri başlat
+    _selectedTypeID = widget.tracking.trackTypeID;
+    _selectedStatusID = widget.tracking.trackStatusID;
+    _selectedUserID = widget.tracking.assignedUserID;
+    _selectedNotificationType = widget.tracking.notificationType;
+    
+    // Debug: Gelen değerleri logla
+    print('🔍 EDIT_TRACKING - TypeID: $_selectedTypeID, TypeName: ${widget.tracking.trackTypeName}');
+    print('🔍 EDIT_TRACKING - StatusID: $_selectedStatusID, StatusName: ${widget.tracking.statusName}');
+    print('🔍 EDIT_TRACKING - UserID: $_selectedUserID, UserName: ${widget.tracking.assignedUser}');
+    
     _loadDropdownData();
   }
 
@@ -62,39 +73,135 @@ class _AddTrackingViewState extends State<AddTrackingView> {
       final fetchedStatuses = await _service.getFollowupStatuses();
       final fetchedPersons = await _service.getPersons();
       
+      print('✅ Dropdown Data Loaded:');
+      print('   Types: ${fetchedTypes.length} items');
+      print('   Statuses: ${fetchedStatuses.length} items');
+      print('   Users: ${fetchedPersons.length} items');
+      
+      // Statü ID'sini ad ile eşleştir (API'den gelen ad ile)
+      int matchedStatusID = _selectedStatusID;
+      if (matchedStatusID == 0 || matchedStatusID < 0) {
+        // trackStatusID yanlışsa, statü adına göre ara
+        try {
+          final matchedStatus = fetchedStatuses.firstWhere(
+            (s) => s.statusName.toLowerCase() == widget.tracking.statusName.toLowerCase(),
+            orElse: () => fetchedStatuses.isNotEmpty ? fetchedStatuses[0] : FollowupStatus(statusID: 0, statusName: '', statusColor: ''),
+          );
+          matchedStatusID = matchedStatus.statusID;
+          print('🔍 Statü eşleştirildi: "${widget.tracking.statusName}" -> ID: $matchedStatusID');
+        } catch (e) {
+          print('⚠️ Statü eşleştirilemedi: $e');
+        }
+      }
+
+      // Tür ID'sini ad ile eşleştir (API'den gelen ad ile)
+      int matchedTypeID = _selectedTypeID;
+      if (matchedTypeID == 0 || matchedTypeID < 0) {
+        // trackTypeID yanlışsa, tür adına göre ara
+        try {
+          final matchedType = fetchedTypes.firstWhere(
+            (t) => t.typeName.toLowerCase() == widget.tracking.trackTypeName.toLowerCase(),
+            orElse: () => fetchedTypes.isNotEmpty ? fetchedTypes[0] : FollowupType(typeID: 0, typeName: ''),
+          );
+          matchedTypeID = matchedType.typeID;
+          print('🔍 Tür eşleştirildi: "${widget.tracking.trackTypeName}" -> ID: $matchedTypeID');
+        } catch (e) {
+          print('⚠️ Tür eşleştirilemedi: $e');
+        }
+      }
+
+      // Kullanıcı ID'sini ad ile eşleştir (API'den gelen ad ile)
+      int matchedUserID = _selectedUserID;
+      if (matchedUserID == 0 || matchedUserID < 0) {
+        // assignedUserID yanlışsa, kullanıcı adına göre ara
+        try {
+          final matchedUser = fetchedPersons.firstWhere(
+            (u) => (u['name'] as String).toLowerCase().trim() == widget.tracking.assignedUser.toLowerCase().trim(),
+            orElse: () => fetchedPersons.isNotEmpty ? fetchedPersons[0] : {'id': 0, 'name': ''},
+          );
+          matchedUserID = matchedUser['id'] as int;
+          print('🔍 Kullanıcı eşleştirildi: "${widget.tracking.assignedUser}" -> ID: $matchedUserID');
+        } catch (e) {
+          print('⚠️ Kullanıcı eşleştirilemedi: $e');
+        }
+      }
+      
       if (mounted) {
         setState(() {
-          trackingTypes = fetchedTypes
-              .map((type) => {
-                    'id': type.typeID,
-                    'name': type.typeName,
-                  })
-              .toList();
-          
-          statuses = fetchedStatuses
-              .map((status) => {
-                    'id': status.statusID,
-                    'name': status.statusName,
-                    'color': status.statusColor,
-                  })
-              .toList();
-          
+          trackingTypes = fetchedTypes;
+          statuses = fetchedStatuses;
           users = fetchedPersons;
-          
-          // Set default values if data loaded
-          if (trackingTypes.isNotEmpty) {
-            _selectedTypeID = trackingTypes[0]['id'] as int;
-          }
-          if (statuses.isNotEmpty) {
-            _selectedStatusID = statuses[0]['id'] as int;
-          }
-          if (users.isNotEmpty) {
-            _selectedUserID = users[0]['id'] as int;
-          }
+          _selectedStatusID = matchedStatusID;
+          _selectedTypeID = matchedTypeID;
+          _selectedUserID = matchedUserID;
         });
+        
+        print('🔄 After setState:');
+        print('   Selected Type: ${_getSelectedTypeName()}');
+        print('   Selected Status: ${_getSelectedStatusName()}');
+        print('   Selected User: ${_getSelectedUserName()}');
       }
     } catch (e) {
-      AppLogger.e('Error loading dropdown data: $e', tag: 'ADD_TRACKING_DROPDOWN');
+      print('❌ Error loading dropdown data: $e');
+      AppLogger.e('Error loading dropdown data: $e', tag: 'EDIT_TRACKING_DROPDOWN');
+    }
+  }
+  
+  String _getSelectedTypeName() {
+    if (trackingTypes.isEmpty) {
+      // Dropdown henüz yüklenmediyse tracking'ten gelen ismi göster
+      return widget.tracking.trackTypeName;
+    }
+    try {
+      final type = trackingTypes.firstWhere((t) => t.typeID == _selectedTypeID);
+      return type.typeName;
+    } catch (e) {
+      // ID bulunamazsa tracking'ten gelen ismi göster
+      return widget.tracking.trackTypeName;
+    }
+  }
+
+  String _getSelectedStatusName() {
+    if (statuses.isEmpty) {
+      // Dropdown henüz yüklenmediyse tracking'ten gelen ismi göster
+      return widget.tracking.statusName;
+    }
+    try {
+      final status = statuses.firstWhere((s) => s.statusID == _selectedStatusID);
+      return status.statusName;
+    } catch (e) {
+      // ID bulunamazsa tracking'ten gelen ismi göster
+      return widget.tracking.statusName;
+    }
+  }
+
+  String _getSelectedUserName() {
+    if (users.isEmpty) {
+      // Dropdown henüz yüklenmediyse tracking'ten gelen ismi göster
+      return widget.tracking.assignedUser;
+    }
+    try {
+      final user = users.firstWhere((u) => u['id'] == _selectedUserID);
+      return user['name'] as String;
+    } catch (e) {
+      // ID bulunamazsa tracking'ten gelen ismi göster
+      return widget.tracking.assignedUser;
+    }
+  }
+
+  String _formatNotificationType(String? type) {
+    if (type == null) return 'Bildirim türü seçiniz';
+    switch (type.toLowerCase()) {
+      case 'push':
+        return 'Push Bildirim';
+      case 'email':
+        return 'E-posta';
+      case 'sms':
+        return 'SMS';
+      case 'all':
+        return 'Tümü';
+      default:
+        return type;
     }
   }
 
@@ -212,7 +319,8 @@ class _AddTrackingViewState extends State<AddTrackingView> {
     });
 
     try {
-      final response = await _service.addTracking(
+      final response = await _service.updateTracking(
+        trackID: widget.tracking.trackID,
         appID: widget.projectID,
         compID: widget.compID,
         typeID: _selectedTypeID,
@@ -233,7 +341,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
         if (response.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response.message ?? 'Takip başarıyla oluşturuldu'),
+              content: Text(response.message ?? 'Takip başarıyla güncellendi'),
               backgroundColor: Colors.green,
             ),
           );
@@ -241,7 +349,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response.message ?? 'Takip oluşturulamadı'),
+              content: Text(response.message ?? 'Takip güncellenemedi'),
               backgroundColor: Colors.red,
             ),
           );
@@ -265,11 +373,17 @@ class _AddTrackingViewState extends State<AddTrackingView> {
 
   Widget _buildCupertinoField({
     required String placeholder,
-    String? value,
+    required String value,
     VoidCallback? onTap,
     bool isDisabled = false,
     Widget? prefix,
   }) {
+    final isEmpty = value.isEmpty || 
+                    value == placeholder ||
+                    value == 'Bildirim türü seçiniz' ||
+                    value.contains('seçiniz') ||
+                    value.contains('Yükleniyor');
+    
     return GestureDetector(
       onTap: isDisabled ? null : onTap,
       child: Container(
@@ -293,10 +407,10 @@ class _AddTrackingViewState extends State<AddTrackingView> {
             ],
             Expanded(
               child: Text(
-                value == null || value.isEmpty ? placeholder : value,
+                value,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: (value == null || value.isEmpty)
+                  color: isEmpty
                       ? AppColors.onSurface.withOpacity(isDisabled ? 0.4 : 0.4)
                       : AppColors.onSurface.withOpacity(isDisabled ? 0.5 : 1),
                   fontSize: 14,
@@ -317,7 +431,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   Future<void> _showTypePicker() async {
     if (trackingTypes.isEmpty) return;
 
-    int selectedIndex = trackingTypes.indexWhere((t) => t['id'] == _selectedTypeID);
+    int selectedIndex = trackingTypes.indexWhere((t) => t.typeID == _selectedTypeID);
     if (selectedIndex < 0) selectedIndex = 0;
 
     await showCupertinoModalPopup<void>(
@@ -353,7 +467,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                       child: const Text('Seç'),
                       onPressed: () {
                         setState(() {
-                          _selectedTypeID = trackingTypes[selectedIndex]['id'] as int;
+                          _selectedTypeID = trackingTypes[selectedIndex].typeID;
                         });
                         Navigator.of(context).pop();
                       },
@@ -368,7 +482,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                   onSelectedItemChanged: (int index) {
                     selectedIndex = index;
                   },
-                  children: trackingTypes.map((type) => Center(child: Text(type['name'] as String))).toList(),
+                  children: trackingTypes.map((type) => Center(child: Text(type.typeName))).toList(),
                 ),
               ),
             ],
@@ -381,7 +495,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   Future<void> _showStatusPicker() async {
     if (statuses.isEmpty) return;
 
-    int selectedIndex = statuses.indexWhere((s) => s['id'] == _selectedStatusID);
+    int selectedIndex = statuses.indexWhere((s) => s.statusID == _selectedStatusID);
     if (selectedIndex < 0) selectedIndex = 0;
 
     await showCupertinoModalPopup<void>(
@@ -417,7 +531,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                       child: const Text('Seç'),
                       onPressed: () {
                         setState(() {
-                          _selectedStatusID = statuses[selectedIndex]['id'] as int;
+                          _selectedStatusID = statuses[selectedIndex].statusID;
                         });
                         Navigator.of(context).pop();
                       },
@@ -441,12 +555,12 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                             width: 12,
                             height: 12,
                             decoration: BoxDecoration(
-                              color: _parseHexColor(status['color'] as String),
+                              color: _parseHexColor(status.statusColor),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(status['name'] as String),
+                          Text(status.statusName),
                         ],
                       ),
                     );
@@ -583,7 +697,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                       .map((type) => Center(
                             child: Text(
                               type == 'push'
-                                  ? 'Bildirim'
+                                  ? 'Push Bildirim'
                                   : type == 'email'
                                       ? 'E-posta'
                                       : type == 'sms'
@@ -608,7 +722,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Durumu Ekle'),
+        title: const Text('Durumu Güncelle'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
@@ -684,23 +798,12 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                   _buildCupertinoField(
-  placeholder: 'Statü *',
-  value: statuses.isEmpty
-      ? 'Statüler yükleniyor...'
-      : (
-          statuses
-              // (opsiyonel) listedeki map'leri doğru tipe dök
-              .cast<Map<String, Object>>()
-              .firstWhere(
-                (t) => t['id'] == _selectedStatusID,
-                orElse: () => <String, Object>{'name': 'Statü seçiniz'},
-              )['name'] as String
-        ),
-  onTap: _showStatusPicker,
-  isDisabled: statuses.isEmpty,
-),
-
+                                    _buildCupertinoField(
+                                      placeholder: 'Statü *',
+                                      value: _getSelectedStatusName(),
+                                      onTap: _showStatusPicker,
+                                      isDisabled: statuses.isEmpty,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -717,23 +820,12 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                   _buildCupertinoField(
-  placeholder: 'Tip *',
-  value: trackingTypes.isEmpty
-      ? 'Tipler yükleniyor...'
-      : (
-          trackingTypes
-              // (opsiyonel) listedeki map'leri doğru tipe dök
-              .cast<Map<String, Object>>()
-              .firstWhere(
-                (t) => t['id'] == _selectedTypeID,
-                orElse: () => <String, Object>{'name': 'Tip seçiniz'},
-              )['name'] as String
-        ),
-  onTap: _showTypePicker,
-  isDisabled: trackingTypes.isEmpty,
-),
-
+                                    _buildCupertinoField(
+                                      placeholder: 'Tip *',
+                                      value: _getSelectedTypeName(),
+                                      onTap: _showTypePicker,
+                                      isDisabled: trackingTypes.isEmpty,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -763,7 +855,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                         const SizedBox(height: 8),
                                         _buildCupertinoField(
                                           placeholder: 'DD.MM.YYYY',
-                                          value: _dueDateController.text.isEmpty ? null : _dueDateController.text,
+                                          value: _dueDateController.text.isEmpty ? 'DD.MM.YYYY' : _dueDateController.text,
                                           onTap: () => _selectDate(_dueDateController),
                                           prefix: Container(
                                             padding: const EdgeInsets.all(4),
@@ -792,7 +884,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                         const SizedBox(height: 8),
                                         _buildCupertinoField(
                                           placeholder: 'DD.MM.YYYY',
-                                          value: _remindDateController.text.isEmpty ? null : _remindDateController.text,
+                                          value: _remindDateController.text.isEmpty ? 'DD.MM.YYYY' : _remindDateController.text,
                                           onTap: () => _selectDate(_remindDateController),
                                           prefix: Container(
                                             padding: const EdgeInsets.all(4),
@@ -814,40 +906,23 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                         ),
 
                         // Atanan Kişi
-                      _buildFormSection(
-                        title: 'Atanan Kişi *',
-                        child: _buildCupertinoField(
-                        placeholder: 'Atanan Kişi *',
-                        value: users.isEmpty
-                            ? 'Kişiler yükleniyor...'
-                            : (
-                              users
-                              .cast<Map<String, Object>>() // listeyi hizala
-                              .firstWhere(
-                              (u) => u['id'] == _selectedUserID,
-                              orElse: () => const <String, Object>{'name': 'Kişi seçiniz'},
-                              )['name'] as String
-                              ),
-                       onTap: _showUserPicker,
-                       isDisabled: users.isEmpty,
+                        _buildFormSection(
+                          title: 'Atanan Kişi *',
+                          child: _buildCupertinoField(
+                            placeholder: 'Atanan Kişi *',
+                            value: _getSelectedUserName(),
+                            onTap: _showUserPicker,
+                            isDisabled: users.isEmpty,
+                          ),
+                          theme: theme,
                         ),
-                      theme: theme,
-                      ),
 
                         // Bildirim Türü (Opsiyonel)
                         _buildFormSection(
                           title: 'Bildirim Türü (Opsiyonel)',
                           child: _buildCupertinoField(
                             placeholder: 'Bildirim türü seçiniz',
-                            value: _selectedNotificationType == null
-                                ? null
-                                : (_selectedNotificationType == 'push'
-                                    ? 'Bildirim'
-                                    : _selectedNotificationType == 'email'
-                                        ? 'E-posta'
-                                        : _selectedNotificationType == 'sms'
-                                            ? 'SMS'
-                                            : 'Tümü'),
+                            value: _formatNotificationType(_selectedNotificationType),
                             onTap: _showNotificationTypePicker,
                           ),
                           theme: theme,
@@ -880,7 +955,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                               child: ElevatedButton.icon(
                                 onPressed: _submitForm,
                                 icon: const Icon(Icons.check),
-                                label: const Text('Ekle'),
+                                label: const Text('Güncelle'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,

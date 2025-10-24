@@ -740,7 +740,7 @@ class ProjectsService {
     required String trackDueDate,
     required String trackRemindDate,
     required int assignedUserID,
-    int isCompNotification = 1,
+    String? notificationType,
   }) async {
     try {
       final token = StorageService.getToken();
@@ -766,6 +766,7 @@ class ProjectsService {
         trackDueDate: trackDueDate,
         trackRemindDate: trackRemindDate,
         assignedUserID: assignedUserID,
+        notificationType: notificationType,
       );
 
       AppLogger.i('Request: appID=$appID, compID=$compID, typeID=$typeID, statusID=$statusID', tag: 'ADD_TRACKING');
@@ -811,6 +812,168 @@ class ProjectsService {
     } catch (e) {
       AppLogger.e('Unexpected error in addTracking: $e', tag: 'ADD_TRACKING');
       return AddTrackingResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  Future<AddTrackingResponse> updateTracking({
+    required int trackID,
+    required int appID,
+    required int compID,
+    required int typeID,
+    required int statusID,
+    required String trackTitle,
+    required String trackDesc,
+    required String trackDueDate,
+    required String trackRemindDate,
+    required int assignedUserID,
+    String? notificationType,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddTrackingResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.updateTracking;
+      AppLogger.i('PUT $endpoint', tag: 'UPDATE_TRACKING');
+
+      final request = UpdateTrackingRequest(
+        userToken: token,
+        trackID: trackID,
+        appID: appID,
+        compID: compID,
+        typeID: typeID,
+        statusID: statusID,
+        trackTitle: trackTitle,
+        trackDesc: trackDesc,
+        trackDueDate: trackDueDate,
+        trackRemindDate: trackRemindDate,
+        assignedUserID: assignedUserID,
+        notificationType: notificationType,
+      );
+
+      AppLogger.i('Request: trackID=$trackID, appID=$appID, compID=$compID, typeID=$typeID, statusID=$statusID', tag: 'UPDATE_TRACKING');
+
+      final resp = await ApiClient.putJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_TRACKING');
+          return AddTrackingResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan gelen yanıt işlenemedi',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'UPDATE_TRACKING');
+        return AddTrackingResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_TRACKING');
+      AppLogger.i(body.toString(), tag: 'UPDATE_TRACKING_RES');
+
+      return AddTrackingResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Update tracking error ${e.statusCode} ${e.message}', tag: 'UPDATE_TRACKING');
+      return AddTrackingResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in updateTracking: $e', tag: 'UPDATE_TRACKING');
+      return AddTrackingResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  // Takip Sil
+  Future<BaseSimpleResponse> deleteTracking({
+    required int appID,
+    required int trackID,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null || token.isEmpty) {
+        return BaseSimpleResponse(
+          error: true,
+          success: false,
+          message: 'Kullanıcı oturumu açılmamış',
+        );
+      }
+
+      final endpoint = AppConstants.deleteTracking;
+      final request = {
+        'userToken': token,
+        'appID': appID,
+        'trackID': trackID,
+      };
+
+      AppLogger.i('Delete $endpoint', tag: 'DELETE_TRACKING');
+
+      final resp = await ApiClient.deleteJson(endpoint, data: request);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'DELETE_TRACKING');
+          return BaseSimpleResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan gelen yanıt işlenemedi',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'DELETE_TRACKING');
+        return BaseSimpleResponse(
+          error: true,
+          success: false,
+          message: 'Beklenmeyen yanıt türü',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DELETE_TRACKING');
+
+      return BaseSimpleResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Delete tracking error ${e.statusCode} ${e.message}', tag: 'DELETE_TRACKING');
+      return BaseSimpleResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in deleteTracking: $e', tag: 'DELETE_TRACKING');
+      return BaseSimpleResponse(
         error: true,
         success: false,
         message: 'Beklenmeyen bir hata oluştu',

@@ -1,16 +1,36 @@
 import 'package:flutter/material.dart';
 import '../models/project_models.dart';
+import '../services/projects_service.dart';
 import '../theme/app_colors.dart';
+import 'edit_tracking_view.dart';
 
-class TrackingDetailView extends StatelessWidget {
+class TrackingDetailView extends StatefulWidget {
   final ProjectTracking tracking;
   final String projectTitle;
+  final int projectID;
+  final int compID;
 
   const TrackingDetailView({
     super.key,
     required this.tracking,
     required this.projectTitle,
+    required this.projectID,
+    required this.compID,
   });
+
+  @override
+  State<TrackingDetailView> createState() => _TrackingDetailViewState();
+}
+
+class _TrackingDetailViewState extends State<TrackingDetailView> {
+  late ProjectTracking _tracking;
+  final ProjectsService _service = ProjectsService();
+
+  @override
+  void initState() {
+    super.initState();
+    _tracking = widget.tracking;
+  }
 
   Color _parseHexColor(String hexColor) {
     try {
@@ -23,12 +43,169 @@ class TrackingDetailView extends StatelessWidget {
     }
   }
 
+  String _formatNotificationType(String type) {
+    switch (type.toLowerCase()) {
+      case 'push':
+        return 'Push Bildirim';
+      case 'email':
+        return 'E-posta';
+      case 'sms':
+        return 'SMS';
+      case 'all':
+        return 'Tümü (Push, E-posta, SMS)';
+      default:
+        return type;
+    }
+  }
+
+  IconData _getNotificationIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'push':
+        return Icons.notifications;
+      case 'email':
+        return Icons.mail;
+      case 'sms':
+        return Icons.sms;
+      case 'all':
+        return Icons.hub;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Future<void> _openEditPage() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditTrackingView(
+          tracking: _tracking,
+          projectID: widget.projectID,
+          compID: widget.compID,
+          projectTitle: widget.projectTitle,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      // After successful update, show success message and go back
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Takip başarıyla güncellendi'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    }
+  }
+
+  Future<void> _deleteTracking() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+
+      final response = await _service.deleteTracking(
+        appID: widget.projectID,
+        trackID: _tracking.trackID,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Loading dialog'u kapat
+
+        if (response.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Takip başarıyla silindi'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop(true); // Önceki sayfaya dön
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Takip silinemedi'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Loading dialog'u kapat
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata oluştu: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showDeleteConfirmation() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            const SizedBox(width: 8),
+            const Text('Takip Sil'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_tracking.trackTitle}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Bu takibi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+              style: TextStyle(
+                color: AppColors.onSurface.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _deleteTracking();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    Color typeColorBg = _parseHexColor(tracking.typeColorBg);
-    Color statusColor = _parseHexColor(tracking.statusColor);
+    Color typeColorBg = _parseHexColor(_tracking.typeColorBg);
+    Color statusColor = _parseHexColor(_tracking.statusColor);
 
     return Scaffold(
       appBar: AppBar(
@@ -37,6 +214,43 @@ class TrackingDetailView extends StatelessWidget {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'edit') {
+                  _openEditPage();
+                } else if (value == 'delete') {
+                  _showDeleteConfirmation();
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                const PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 20 , color: AppColors.onSurface),
+                      SizedBox(width: 12),
+                      Text('Düzenle'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 20, color: Colors.red),
+                      SizedBox(width: 12),
+                      Text('Sil', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -45,55 +259,44 @@ class TrackingDetailView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Proje Başlığı
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(0.15),
-                  width: 1,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.assignment,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.assignment,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Proje',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppColors.onSurface.withOpacity(0.6),
-                          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Proje',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.onSurface.withOpacity(0.6),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          projectTitle,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.projectTitle,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
@@ -104,7 +307,7 @@ class TrackingDetailView extends StatelessWidget {
                   child: _buildStatusBadge(
                     theme,
                     'Durum',
-                    tracking.statusName,
+                    _tracking.statusName,
                     statusColor,
                   ),
                 ),
@@ -113,7 +316,7 @@ class TrackingDetailView extends StatelessWidget {
                   child: _buildTypeBadge(
                     theme,
                     'Tip',
-                    tracking.trackTypeName,
+                    _tracking.trackTypeName,
                     typeColorBg,
                   ),
                 ),
@@ -126,16 +329,9 @@ class TrackingDetailView extends StatelessWidget {
               title: 'Başlık',
               child: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.onSurface.withOpacity(0.03),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.onSurface.withOpacity(0.08),
-                    width: 1,
-                  ),
-                ),
+
                 child: Text(
-                  tracking.trackTitle,
+                  _tracking.trackTitle,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
@@ -150,16 +346,9 @@ class TrackingDetailView extends StatelessWidget {
               title: 'Açıklama',
               child: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.onSurface.withOpacity(0.03),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.onSurface.withOpacity(0.08),
-                    width: 1,
-                  ),
-                ),
+
                 child: Text(
-                  tracking.trackDesc,
+                  _tracking.trackDesc,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.onSurface.withOpacity(0.8),
                     height: 1.5,
@@ -173,25 +362,24 @@ class TrackingDetailView extends StatelessWidget {
             // Tarihler
             _buildSection(
               title: 'Tarihler',
-              child: Column(
+              child: Row(
                 children: [
-                  _buildDetailRow(
-                    icon: Icons.calendar_today,
-                    label: 'Bitiş Tarihi',
-                    value: tracking.trackDueDate,
-                    theme: theme,
+                  Expanded(
+                    child: _buildDetailRow(
+                      icon: Icons.calendar_today,
+                      label: 'Bitiş Tarihi',
+                      value: _tracking.trackDueDate,
+                      theme: theme,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  Divider(
-                    height: 1,
-                    color: AppColors.onSurface.withOpacity(0.1),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildDetailRow(
-                    icon: Icons.notifications_outlined,
-                    label: 'Hatırlatma Tarihi',
-                    value: tracking.trackRemindDate,
-                    theme: theme,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildDetailRow(
+                      icon: Icons.notifications_outlined,
+                      label: 'Hatırlatma Tarihi',
+                      value: _tracking.trackRemindDate,
+                      theme: theme,
+                    ),
                   ),
                 ],
               ),
@@ -204,14 +392,7 @@ class TrackingDetailView extends StatelessWidget {
               title: 'Atanan Kişi',
               child: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.15),
-                    width: 1,
-                  ),
-                ),
+                
                 child: Row(
                   children: [
                     Container(
@@ -229,7 +410,7 @@ class TrackingDetailView extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        tracking.assignedUser,
+                        _tracking.assignedUser,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w500,
                           color: AppColors.onSurface,
@@ -241,6 +422,43 @@ class TrackingDetailView extends StatelessWidget {
               ),
               theme: theme,
             ),
+            if (_tracking.notificationType != null && _tracking.notificationType!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              // Bildirim Türü
+              _buildSection(
+                title: 'Bildirim Türü',
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          _getNotificationIcon(_tracking.notificationType!),
+                          size: 18,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _formatNotificationType(_tracking.notificationType!),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                theme: theme,
+              ),
+            ],
             const SizedBox(height: 24),
           ],
         ),
@@ -295,7 +513,7 @@ class TrackingDetailView extends StatelessWidget {
               fontSize: 11,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             children: [
               Container(
@@ -351,7 +569,7 @@ class TrackingDetailView extends StatelessWidget {
               fontSize: 11,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             value,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -372,44 +590,48 @@ class TrackingDetailView extends StatelessWidget {
     required String value,
     required ThemeData theme,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: AppColors.primary,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.onSurface.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.onSurface.withOpacity(0.08),
+          width: 1,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
+              Icon(
+                icon,
+                size: 14,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 6),
               Text(
                 label,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: AppColors.onSurface.withOpacity(0.6),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.onSurface,
+                  fontSize: 11,
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }
