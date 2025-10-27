@@ -228,6 +228,7 @@ class _EditProjectDocumentViewState extends State<EditProjectDocumentView> {
             ),
             const SizedBox(height: 8),
             TextField(
+            textCapitalization: TextCapitalization.sentences,
               controller: _descController,
               decoration: InputDecoration(
                 hintText: 'Belge açıklaması',

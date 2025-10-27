@@ -348,6 +348,7 @@ class _AddCompanyPasswordViewState extends State<AddCompanyPasswordView> {
     Widget? suffixIcon,
   }) {
     return TextField(
+      textCapitalization: obscureText ? TextCapitalization.none : TextCapitalization.sentences,
       controller: controller,
       obscureText: obscureText,
       decoration: InputDecoration(

@@ -353,6 +353,7 @@ class _AddCompanyAddressViewState extends State<AddCompanyAddressView> {
     int? maxLength,
   }) {
     return TextField(
+            textCapitalization: TextCapitalization.sentences,
       controller: controller,
       maxLines: maxLines,
       maxLength: maxLength,

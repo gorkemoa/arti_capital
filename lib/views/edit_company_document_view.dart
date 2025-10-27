@@ -327,6 +327,7 @@ class _EditCompanyDocumentViewState extends State<EditCompanyDocumentView> {
             ),
             const SizedBox(height: 8),
             TextField(
+            textCapitalization: TextCapitalization.sentences,
               controller: _descController,
               maxLines: 3,
               maxLength: 500,
@@ -457,6 +458,7 @@ class _EditCompanyDocumentViewState extends State<EditCompanyDocumentView> {
               },
               child: AbsorbPointer(
                 child: TextField(
+            textCapitalization: TextCapitalization.sentences,
                   controller: _validityDateController,
                   decoration: InputDecoration(
                     hintText: 'GG.AA.YYYY',

@@ -140,6 +140,7 @@ class _ProjectsViewState extends State<ProjectsView> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
+            textCapitalization: TextCapitalization.sentences,
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Proje ara',

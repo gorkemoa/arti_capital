@@ -553,6 +553,7 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
             ),
             const SizedBox(height: 8),
             TextField(
+            textCapitalization: TextCapitalization.sentences,
               controller: _descController,
               maxLines: 3,
               maxLength: 500,
@@ -594,6 +595,7 @@ class _AddCompanyImageViewState extends State<AddCompanyImageView> {
               ),
               const SizedBox(height: 8),
               TextField(
+            textCapitalization: TextCapitalization.sentences,
                 controller: _videoLinkController,
                 decoration: InputDecoration(
                   hintText: 'https://drive.google.com/file/d/...',

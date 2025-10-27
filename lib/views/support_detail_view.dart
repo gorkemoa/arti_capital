@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/support_models.dart';
 import '../services/general_service.dart';
 import 'add_project_view.dart';
+import 'project_detail_view.dart';
 class SupportDetailView extends StatefulWidget {
   const SupportDetailView({super.key, required this.id});
 
@@ -101,14 +102,26 @@ class _SupportDetailViewState extends State<SupportDetailView> {
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
+                            onPressed: () async {
+                              final result = await Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => AddProjectView(
                                     preselectedService: _detail,
                                   ),
                                 ),
                               );
+                              
+                              // Başvuru tamamlandıysa result olarak proje ID'si dönecek
+                              if (result != null && result is int) {
+                                if (mounted) {
+                                  // Proje detayına git ve önceki sayfaları kapat
+                                  Navigator.of(context).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (_) => ProjectDetailView(projectId: result),
+                                    ),
+                                  );
+                                }
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colorScheme.primary,

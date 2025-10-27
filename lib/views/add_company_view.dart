@@ -1116,6 +1116,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
 
   Widget _buildAddressField() {
     return TextField(
+            textCapitalization: TextCapitalization.sentences,
       controller: _compAddressController,
           decoration: InputDecoration(
         labelText: 'Şirket Adresi',
@@ -1379,6 +1380,14 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         break;
     }
     
+    // compName için uppercase formatter, compWebsite için prefix formatter
+    List<TextInputFormatter>? finalFormatters = inputFormatters;
+    if (name == 'compName') {
+      finalFormatters = [...?inputFormatters, UpperCaseTextFormatter()];
+    } else if (name == 'compWebsite') {
+      finalFormatters = [...?inputFormatters, WebsitePrefixFormatter()];
+    }
+    
     return TextField(
       controller: controller,
           decoration: InputDecoration(
@@ -1406,7 +1415,7 @@ class _AddCompanyViewState extends State<AddCompanyView> {
         color: AppColors.onSurface,
       ),
       keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
+      inputFormatters: finalFormatters,
     );
   }
 
@@ -1540,6 +1549,31 @@ class UpperCaseTextFormatter extends TextInputFormatter {
     return newValue.copyWith(
       text: newValue.text.toUpperCase(),
       selection: newValue.selection,
+      composing: TextRange.empty,
+    );
+  }
+}
+
+class WebsitePrefixFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String text = newValue.text;
+    
+    // Eğer boşsa olduğu gibi bırak
+    if (text.isEmpty) {
+      return newValue;
+    }
+    
+    // Prefix yoksa ekle
+    if (!text.startsWith('https://www.')) {
+      // Eski prefixleri kaldır
+      text = text.replaceFirst(RegExp(r'^(https?://)?(www\.)?'), '');
+      text = 'https://www.$text';
+    }
+    
+    return newValue.copyWith(
+      text: text,
+      selection: TextSelection.fromPosition(TextPosition(offset: text.length)),
       composing: TextRange.empty,
     );
   }

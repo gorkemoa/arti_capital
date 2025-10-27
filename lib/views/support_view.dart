@@ -76,6 +76,7 @@ class _SupportViewState extends State<SupportView> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: TextField(
+            textCapitalization: TextCapitalization.sentences,
                 controller: _searchController,
                 onChanged: (_) => setState(() {}),
                 style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),

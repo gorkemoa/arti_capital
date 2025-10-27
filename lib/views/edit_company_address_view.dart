@@ -311,6 +311,7 @@ class _EditCompanyAddressViewState extends State<EditCompanyAddressView> {
             const SizedBox(height: 12),
 
             TextFormField(
+            textCapitalization: TextCapitalization.sentences,
               controller: _addressCtrl,
               maxLines: 3,
               decoration: const InputDecoration(labelText: 'Adres'),

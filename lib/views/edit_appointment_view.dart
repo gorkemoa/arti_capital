@@ -445,6 +445,7 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _titleController,
                       decoration: InputDecoration(
                         labelText: 'Başlık',
@@ -459,6 +460,7 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _descController,
                       decoration: InputDecoration(
                         labelText: 'Açıklama (opsiyonel)',
@@ -474,6 +476,7 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _locationController,
                       decoration: InputDecoration(
                         labelText: 'Konum (opsiyonel)',

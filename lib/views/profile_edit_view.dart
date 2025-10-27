@@ -302,6 +302,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                     controller: fullnameCtrl,
                       decoration: InputDecoration(
                         labelText: 'Ad Soyad',
@@ -486,6 +487,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                     controller: addressCtrl,
                       maxLines: 2,
                       decoration: InputDecoration(
@@ -633,6 +635,7 @@ class _InputField extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
         controller: controller,
         keyboardType: keyboardType,
         decoration: InputDecoration(

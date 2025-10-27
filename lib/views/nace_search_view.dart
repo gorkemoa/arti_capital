@@ -112,6 +112,7 @@ class _NaceSearchViewState extends State<NaceSearchView> {
                 children: [
                   Expanded(
                     child: TextField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _searchController,
                       autofocus: true,
                       textInputAction: TextInputAction.search,

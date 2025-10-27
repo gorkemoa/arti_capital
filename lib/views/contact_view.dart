@@ -308,6 +308,7 @@ class _InputField extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return TextFormField(
+            textCapitalization: TextCapitalization.sentences,
       controller: controller,
       maxLines: 1,
       minLines: 1,

@@ -550,6 +550,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _titleController,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
@@ -573,6 +574,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _descController,
                       decoration: InputDecoration(
                         labelText: 'Açıklama (opsiyonel)',
@@ -596,6 +598,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _locationController,
                       decoration: InputDecoration(
                         labelText: 'Konum (opsiyonel)',

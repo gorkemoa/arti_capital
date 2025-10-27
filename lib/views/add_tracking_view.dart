@@ -184,29 +184,6 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // Validate date fields
-    if (_dueDateController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bitiş tarihi gereklidir'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (_remindDateController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hatırlatma tarihi gereklidir'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
@@ -632,44 +609,34 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                       children: [
                         // Başlık
                         _buildFormSection(
-                          title: 'Başlık *',
+                          title: 'Başlık',
                           child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                             controller: _titleController,
                             decoration: _buildInputDecoration(
                               hintText: 'Örn: Müşteri görüşmesi',
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Başlık gereklidir';
-                              }
-                              return null;
-                            },
                           ),
                           theme: theme,
                         ),
 
                         // Açıklama
                         _buildFormSection(
-                          title: 'Açıklama *',
+                          title: 'Açıklama',
                           child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                             controller: _descController,
                             decoration: _buildInputDecoration(
                               hintText: 'Detayları yazınız...',
                             ),
                             maxLines: 4,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Açıklama gereklidir';
-                              }
-                              return null;
-                            },
                           ),
                           theme: theme,
                         ),
 
                         // Tip ve Durum
                         _buildFormSection(
-                          title: 'Kategoriler',
+                          title: 'Statü',
                           child: Row(
                             children: [
                               Expanded(
@@ -677,68 +644,66 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Durum *',
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.onSurface.withOpacity(0.7),
-                                      ),
+                                      'Tip',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.onSurface.withOpacity(0.7),
                                     ),
-                                    const SizedBox(height: 8),
-                                   _buildCupertinoField(
-  placeholder: 'Statü *',
-  value: statuses.isEmpty
-      ? 'Statüler yükleniyor...'
-      : (
-          statuses
-              // (opsiyonel) listedeki map'leri doğru tipe dök
-              .cast<Map<String, Object>>()
-              .firstWhere(
-                (t) => t['id'] == _selectedStatusID,
-                orElse: () => <String, Object>{'name': 'Statü seçiniz'},
-              )['name'] as String
-        ),
-  onTap: _showStatusPicker,
-  isDisabled: statuses.isEmpty,
+                                  ),
+                                  const SizedBox(height: 8),
+                                 _buildCupertinoField(
+placeholder: 'Tip',
+value: trackingTypes.isEmpty
+    ? 'Tipler yükleniyor...'
+    : (
+        trackingTypes
+            // (opsiyonel) listedeki map'leri doğru tipe dök
+            .cast<Map<String, Object>>()
+            .firstWhere(
+              (t) => t['id'] == _selectedTypeID,
+              orElse: () => <String, Object>{'name': 'Tip seçiniz'},
+            )['name'] as String
+      ),
+onTap: _showTypePicker,
+isDisabled: trackingTypes.isEmpty,
 ),
-
-                                  ],
-                                ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Tip *',
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.onSurface.withOpacity(0.7),
-                                      ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Durum',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.onSurface.withOpacity(0.7),
                                     ),
-                                    const SizedBox(height: 8),
-                                   _buildCupertinoField(
-  placeholder: 'Tip *',
-  value: trackingTypes.isEmpty
-      ? 'Tipler yükleniyor...'
-      : (
-          trackingTypes
-              // (opsiyonel) listedeki map'leri doğru tipe dök
-              .cast<Map<String, Object>>()
-              .firstWhere(
-                (t) => t['id'] == _selectedTypeID,
-                orElse: () => <String, Object>{'name': 'Tip seçiniz'},
-              )['name'] as String
-        ),
-  onTap: _showTypePicker,
-  isDisabled: trackingTypes.isEmpty,
+                                  ),
+                                  const SizedBox(height: 8),
+                                 _buildCupertinoField(
+placeholder: 'Statü',
+value: statuses.isEmpty
+    ? 'Statüler yükleniyor...'
+    : (
+        statuses
+            // (opsiyonel) listedeki map'leri doğru tipe dök
+            .cast<Map<String, Object>>()
+            .firstWhere(
+              (t) => t['id'] == _selectedStatusID,
+              orElse: () => <String, Object>{'name': 'Statü seçiniz'},
+            )['name'] as String
+      ),
+onTap: _showStatusPicker,
+isDisabled: statuses.isEmpty,
 ),
-
-                                  ],
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
                           theme: theme,
                         ),
 
@@ -754,7 +719,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Bitiş Tarihi *',
+                                          'Bitiş Tarihi',
                                           style: theme.textTheme.labelSmall?.copyWith(
                                             fontWeight: FontWeight.w600,
                                             color: AppColors.onSurface.withOpacity(0.7),
@@ -783,7 +748,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Hatırlatma Tarihi *',
+                                          'Hatırlatma Tarihi',
                                           style: theme.textTheme.labelSmall?.copyWith(
                                             fontWeight: FontWeight.w600,
                                             color: AppColors.onSurface.withOpacity(0.7),
@@ -815,9 +780,9 @@ class _AddTrackingViewState extends State<AddTrackingView> {
 
                         // Atanan Kişi
                       _buildFormSection(
-                        title: 'Atanan Kişi *',
+                        title: 'Atanan Kişi',
                         child: _buildCupertinoField(
-                        placeholder: 'Atanan Kişi *',
+                        placeholder: 'Atanan Kişi',
                         value: users.isEmpty
                             ? 'Kişiler yükleniyor...'
                             : (

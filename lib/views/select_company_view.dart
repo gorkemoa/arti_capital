@@ -97,6 +97,7 @@ class _SelectCompanyViewState extends State<SelectCompanyView> {
                 children: [
                   Expanded(
                     child: TextField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _searchController,
                       autofocus: false,
                       textInputAction: TextInputAction.search,

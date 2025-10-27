@@ -567,11 +567,20 @@ class _EditCompanyViewState extends State<EditCompanyView> {
     List<TextInputFormatter>? inputFormatters,
     int maxLines = 1,
   }) {
+    // compName için uppercase formatter, compWebsite için prefix formatter
+    List<TextInputFormatter>? finalFormatters = inputFormatters;
+    if (label == 'Firma Adı *') {
+      finalFormatters = [...?inputFormatters, UpperCaseTextFormatter()];
+    } else if (label == 'Web Sitesi') {
+      finalFormatters = [...?inputFormatters, WebsitePrefixFormatter()];
+    }
+    
     return TextFormField(
+      textCapitalization: TextCapitalization.sentences,
       controller: controller,
       decoration: _styledDecoration(label),
       keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
+      inputFormatters: finalFormatters,
       maxLines: maxLines,
       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: AppColors.onSurface,
@@ -771,6 +780,42 @@ class _EditCompanyViewState extends State<EditCompanyView> {
 
 
   
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return newValue.copyWith(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+      composing: TextRange.empty,
+    );
+  }
+}
+
+class WebsitePrefixFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String text = newValue.text;
+    
+    // Eğer boşsa olduğu gibi bırak
+    if (text.isEmpty) {
+      return newValue;
+    }
+    
+    // Prefix yoksa ekle
+    if (!text.startsWith('https://www.')) {
+      // Eski prefixleri kaldır
+      text = text.replaceFirst(RegExp(r'^(https?://)?(www\.)?'), '');
+      text = 'https://www.$text';
+    }
+    
+    return newValue.copyWith(
+      text: text,
+      selection: TextSelection.fromPosition(TextPosition(offset: text.length)),
+      composing: TextRange.empty,
+    );
+  }
 }
 
 

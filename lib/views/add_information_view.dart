@@ -198,6 +198,7 @@ class _AddInformationViewState extends State<AddInformationView> {
 
               // Açıklama alanı
               TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                 controller: _descController,
                 decoration: InputDecoration(
                   labelText: 'Açıklama (İsteğe Bağlı)',
@@ -270,6 +271,7 @@ class _AddInformationViewState extends State<AddInformationView> {
     switch (widget.requiredInfo.infoType) {
       case 'text':
         return TextFormField(
+            textCapitalization: TextCapitalization.sentences,
           controller: _valueController,
           decoration: InputDecoration(
             labelText: '${widget.requiredInfo.infoName} *',
@@ -303,6 +305,7 @@ class _AddInformationViewState extends State<AddInformationView> {
 
       case 'textarea':
         return TextFormField(
+            textCapitalization: TextCapitalization.sentences,
           controller: _valueController,
           decoration: InputDecoration(
             labelText: '${widget.requiredInfo.infoName} *',
@@ -380,6 +383,7 @@ class _AddInformationViewState extends State<AddInformationView> {
 
       default:
         return TextFormField(
+            textCapitalization: TextCapitalization.sentences,
           controller: _valueController,
           decoration: InputDecoration(
             labelText: widget.requiredInfo.infoName,

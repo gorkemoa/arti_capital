@@ -748,6 +748,7 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                         _buildFormSection(
                           title: 'Başlık *',
                           child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                             controller: _titleController,
                             decoration: _buildInputDecoration(
                               hintText: 'Örn: Müşteri görüşmesi',
@@ -766,6 +767,7 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                         _buildFormSection(
                           title: 'Açıklama *',
                           child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
                             controller: _descController,
                             decoration: _buildInputDecoration(
                               hintText: 'Detayları yazınız...',

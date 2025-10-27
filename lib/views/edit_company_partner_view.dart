@@ -509,6 +509,7 @@ class _EditCompanyPartnerViewState extends State<EditCompanyPartnerView> {
       List<TextInputFormatter>? inputFormatters,
   }) {
     return TextField(
+            textCapitalization: TextCapitalization.sentences,
       controller: controller,
       maxLines: maxLines,
       maxLength: maxLength,

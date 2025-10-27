@@ -249,6 +249,7 @@ class _Composer extends StatelessWidget {
                     Expanded(
                       child: TextField(
                         controller: controller,
+                        textCapitalization: TextCapitalization.sentences,
                         minLines: 1,
                         maxLines: 4,
                         decoration: const InputDecoration(

@@ -351,6 +351,7 @@ class _AddProjectViewState extends State<AddProjectView> {
                     ),
                     const SizedBox(height: 8),
                     TextField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _projectTitleController,
                       decoration: InputDecoration(
                         hintText: 'Proje başlığını girin',
@@ -372,6 +373,7 @@ class _AddProjectViewState extends State<AddProjectView> {
                     ),
                     const SizedBox(height: 8),
                     TextField(
+            textCapitalization: TextCapitalization.sentences,
                       controller: _projectDescController,
                       decoration: InputDecoration(
                         hintText: 'Proje açıklaması',
@@ -413,7 +415,8 @@ class _AddProjectViewState extends State<AddProjectView> {
                                     ),
                                   );
                                   if (response.success && mounted) {
-                                    Navigator.pop(context, true);
+                                    // Proje ID'si ile geri dön
+                                    Navigator.pop(context, response.projectID);
                                   }
                                 }
                               } finally {

@@ -204,6 +204,7 @@ class _ReportsViewState extends State<ReportsView> {
 
   Widget _buildSearchField() {
     return TextField(
+            textCapitalization: TextCapitalization.sentences,
       decoration: InputDecoration(
         hintText: 'Proje adı veya açıklama ile arama yapın...',
         prefixIcon: const Icon(Icons.search),

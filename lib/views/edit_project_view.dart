@@ -410,6 +410,7 @@ class _EditProjectViewState extends State<EditProjectView> {
                   ),
                   const SizedBox(height: 8),
                   TextField(
+            textCapitalization: TextCapitalization.sentences,
                     controller: _projectTitleController,
                     decoration: InputDecoration(
                       hintText: 'Proje başlığı',
@@ -431,6 +432,7 @@ class _EditProjectViewState extends State<EditProjectView> {
                   ),
                   const SizedBox(height: 8),
                   TextField(
+            textCapitalization: TextCapitalization.sentences,
                     controller: _projectDescController,
                     decoration: InputDecoration(
                       hintText: 'Proje açıklaması (opsiyonel)',

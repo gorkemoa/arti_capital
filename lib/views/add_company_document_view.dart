@@ -297,6 +297,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
             ),
             const SizedBox(height: 8),
             TextField(
+            textCapitalization: TextCapitalization.sentences,
               controller: _descController,
               maxLines: 3,
               maxLength: 500,
@@ -428,6 +429,7 @@ class _AddCompanyDocumentViewState extends State<AddCompanyDocumentView> {
               },
               child: AbsorbPointer(
                 child: TextField(
+            textCapitalization: TextCapitalization.sentences,
                   controller: _validityDateController,
                   decoration: InputDecoration(
                     hintText: 'GG.AA.YYYY',
