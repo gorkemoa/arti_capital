@@ -35,10 +35,14 @@ class AppointmentItem {
   final int userID;
   final int compID;
   final String compName;
+  final int titleID;
+  final int remindID;
+  final String remindTitle;
   final String appointmentTitle;
   final String appointmentDesc;
   final String appointmentLocation;
   final String appointmentDate; // Sunucu dd.MM.yyyy HH:mm string döndürüyor
+  final String appointmentRemindDate;
   final int appointmentPriority;
   final int appointmentStatus;
   final int statusID;
@@ -46,6 +50,9 @@ class AppointmentItem {
   final String statusColor;
   final String priorityName;
   final String priorityColor;
+  final List<int> assignedPersonIDs;
+  final List<String> assignedPersonNames;
+  final List<int>? personIDs;
   final String createDate;
   final bool isAppointment;
   final List<AppointmentLog> logs;
@@ -64,10 +71,14 @@ class AppointmentItem {
     required this.userID,
     required this.compID,
     required this.compName,
+    required this.titleID,
+    required this.remindID,
+    required this.remindTitle,
     required this.appointmentTitle,
     required this.appointmentDesc,
     required this.appointmentLocation,
     required this.appointmentDate,
+    required this.appointmentRemindDate,
     required this.appointmentPriority,
     required this.appointmentStatus,
     required this.statusID,
@@ -75,6 +86,9 @@ class AppointmentItem {
     required this.statusColor,
     required this.priorityName,
     required this.priorityColor,
+    required this.assignedPersonIDs,
+    required this.assignedPersonNames,
+    this.personIDs,
     required this.createDate,
     required this.isAppointment,
     required this.logs,
@@ -116,15 +130,43 @@ class AppointmentItem {
           .toList();
     }
 
+    // assignedPersonIDs listesi
+    List<int> assignedPersonIDsList = [];
+    if (json['assignedPersonIDs'] != null) {
+      assignedPersonIDsList = (json['assignedPersonIDs'] as List<dynamic>?)
+          ?.map((e) => parseInt(e))
+          .toList() ?? [];
+    }
+
+    // assignedPersonNames listesi
+    List<String> assignedPersonNamesList = [];
+    if (json['assignedPersonNames'] != null) {
+      assignedPersonNamesList = (json['assignedPersonNames'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() ?? [];
+    }
+
+    // personIDs listesi
+    List<int>? personIDsList;
+    if (json['personIDs'] != null) {
+      personIDsList = (json['personIDs'] as List<dynamic>?)
+          ?.map((e) => parseInt(e))
+          .toList();
+    }
+
     return AppointmentItem(
       appointmentID: parseInt(json['appointmentID']),
       userID: parseInt(json['userID']),
       compID: parseInt(json['compID']),
       compName: (json['compName'] ?? '').toString(),
+      titleID: parseInt(json['titleID']),
+      remindID: parseInt(json['remindID']),
+      remindTitle: (json['remindTitle'] ?? '').toString(),
       appointmentTitle: (json['appointmentTitle'] ?? '').toString(),
       appointmentDesc: (json['appointmentDesc'] ?? '').toString(),
       appointmentLocation: (json['appointmentLocation'] ?? '').toString(),
       appointmentDate: (json['appointmentDate'] ?? '').toString(),
+      appointmentRemindDate: (json['appointmentRemindDate'] ?? '').toString(),
       appointmentPriority: parseInt(json['appointmentPriority']),
       appointmentStatus: parseInt(json['appointmentStatus']),
       statusID: parseInt(json['statusID']),
@@ -132,6 +174,9 @@ class AppointmentItem {
       statusColor: (json['statusColor'] ?? '').toString(),
       priorityName: (json['priorityName'] ?? '').toString(),
       priorityColor: (json['priorityColor'] ?? '').toString(),
+      assignedPersonIDs: assignedPersonIDsList,
+      assignedPersonNames: assignedPersonNamesList,
+      personIDs: personIDsList,
       createDate: (json['createDate'] ?? '').toString(),
       isAppointment: (json['isAppointment'] ?? true) as bool,
       logs: logsList,

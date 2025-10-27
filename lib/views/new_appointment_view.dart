@@ -17,9 +17,9 @@ class NewAppointmentView extends StatefulWidget {
 
 class _NewAppointmentViewState extends State<NewAppointmentView> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _customTitleController = TextEditingController();
   final AppointmentsService _appointmentsService = AppointmentsService();
 
   // Şirket seçimi ayrı sayfada yapılacak; burada liste tutulmuyor
@@ -30,11 +30,19 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
   AppointmentPriority? _selectedPriority;
   List<AppointmentRemindType> _appointmentRemindTypes = [];
   AppointmentRemindType? _selectedRemindType;
+  List<AppointmentTitle> _appointmentTitles = [];
+  AppointmentTitle? _selectedTitle;
   DateTime? _selectedDateTime;
   bool _submitting = false;
   bool _loadingStatuses = false;
   bool _loadingPriorities = false;
   bool _loadingRemindTypes = false;
+  bool _loadingTitles = false;
+  
+  // Personel seçimi
+  List<Map<String, dynamic>> _persons = [];
+  List<int> _selectedPersonIDs = [];
+  bool _loadingPersons = false;
 
   @override
   void initState() {
@@ -42,13 +50,15 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
     _loadAppointmentStatuses();
     _loadAppointmentPriorities();
     _loadAppointmentRemindTypes();
+    _loadAppointmentTitles();
+    _loadPersons();
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
     _descController.dispose();
     _locationController.dispose();
+    _customTitleController.dispose();
     super.dispose();
   }
 
@@ -103,6 +113,40 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       // Hata durumunda sessizce devam et
     } finally {
       if (mounted) setState(() => _loadingRemindTypes = false);
+    }
+  }
+
+  Future<void> _loadAppointmentTitles() async {
+    setState(() => _loadingTitles = true);
+    try {
+      final response = await _appointmentsService.getAppointmentTitles();
+      if (response.success && mounted) {
+        setState(() {
+          _appointmentTitles = response.titles;
+          // Başlangıçta seçim yapılmasın
+          _selectedTitle = null;
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingTitles = false);
+    }
+  }
+
+  Future<void> _loadPersons() async {
+    setState(() => _loadingPersons = true);
+    try {
+      final persons = await _appointmentsService.getPersons();
+      if (mounted) {
+        setState(() {
+          _persons = persons;
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingPersons = false);
     }
   }
 
@@ -235,6 +279,9 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
   Future<void> _showStatusPicker() async {
     if (_appointmentStatuses.isEmpty) return;
     
+    int initialIndex = _appointmentStatuses.indexWhere((s) => s.statusID == (_selectedStatus?.statusID ?? 1)).clamp(0, _appointmentStatuses.length - 1);
+    int tempSelectedIndex = initialIndex;
+    
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (ctx) {
@@ -257,7 +304,12 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     CupertinoButton(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: const Text('Bitti'),
-                      onPressed: () => Navigator.of(ctx).pop(),
+                      onPressed: () {
+                        setState(() {
+                          _selectedStatus = _appointmentStatuses[tempSelectedIndex];
+                        });
+                        Navigator.of(ctx).pop();
+                      },
                     ),
                   ],
                 ),
@@ -267,12 +319,10 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                 child: CupertinoPicker(
                   itemExtent: 44,
                   scrollController: FixedExtentScrollController(
-                    initialItem: _appointmentStatuses.indexWhere((s) => s.statusID == (_selectedStatus?.statusID ?? 1)).clamp(0, _appointmentStatuses.length - 1),
+                    initialItem: initialIndex,
                   ),
                   onSelectedItemChanged: (index) {
-                    setState(() {
-                      _selectedStatus = _appointmentStatuses[index];
-                    });
+                    tempSelectedIndex = index;
                   },
                   children: _appointmentStatuses.map((status) {
                     return Container(
@@ -294,6 +344,9 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
 
   Future<void> _showPriorityPicker() async {
     if (_appointmentPriorities.isEmpty) return;
+    
+    int initialIndex = _appointmentPriorities.indexWhere((p) => p.priorityID == (_selectedPriority?.priorityID ?? 1)).clamp(0, _appointmentPriorities.length - 1);
+    int tempSelectedIndex = initialIndex;
     
     await showCupertinoModalPopup<void>(
       context: context,
@@ -317,7 +370,12 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     CupertinoButton(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: const Text('Bitti'),
-                      onPressed: () => Navigator.of(ctx).pop(),
+                      onPressed: () {
+                        setState(() {
+                          _selectedPriority = _appointmentPriorities[tempSelectedIndex];
+                        });
+                        Navigator.of(ctx).pop();
+                      },
                     ),
                   ],
                 ),
@@ -327,12 +385,10 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                 child: CupertinoPicker(
                   itemExtent: 44,
                   scrollController: FixedExtentScrollController(
-                    initialItem: _appointmentPriorities.indexWhere((p) => p.priorityID == (_selectedPriority?.priorityID ?? 1)).clamp(0, _appointmentPriorities.length - 1),
+                    initialItem: initialIndex,
                   ),
                   onSelectedItemChanged: (index) {
-                    setState(() {
-                      _selectedPriority = _appointmentPriorities[index];
-                    });
+                    tempSelectedIndex = index;
                   },
                   children: _appointmentPriorities.map((priority) {
                     final Color priorityColor = _parseColor(priority.priorityColor);
@@ -370,6 +426,9 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
   Future<void> _showRemindTypePicker() async {
     if (_appointmentRemindTypes.isEmpty) return;
     
+    int initialIndex = _appointmentRemindTypes.indexWhere((t) => t.typeID == (_selectedRemindType?.typeID ?? 1)).clamp(0, _appointmentRemindTypes.length - 1);
+    int tempSelectedIndex = initialIndex;
+    
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (ctx) {
@@ -392,7 +451,12 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     CupertinoButton(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: const Text('Bitti'),
-                      onPressed: () => Navigator.of(ctx).pop(),
+                      onPressed: () {
+                        setState(() {
+                          _selectedRemindType = _appointmentRemindTypes[tempSelectedIndex];
+                        });
+                        Navigator.of(ctx).pop();
+                      },
                     ),
                   ],
                 ),
@@ -402,12 +466,10 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                 child: CupertinoPicker(
                   itemExtent: 44,
                   scrollController: FixedExtentScrollController(
-                    initialItem: _appointmentRemindTypes.indexWhere((t) => t.typeID == (_selectedRemindType?.typeID ?? 1)).clamp(0, _appointmentRemindTypes.length - 1),
+                    initialItem: initialIndex,
                   ),
                   onSelectedItemChanged: (index) {
-                    setState(() {
-                      _selectedRemindType = _appointmentRemindTypes[index];
-                    });
+                    tempSelectedIndex = index;
                   },
                   children: _appointmentRemindTypes.map((remindType) {
                     return Container(
@@ -422,6 +484,138 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showTitlePicker() async {
+    if (_appointmentTitles.isEmpty) return;
+    
+    int initialIndex = _appointmentTitles.indexWhere((t) => t.titleID == (_selectedTitle?.titleID ?? 1)).clamp(0, _appointmentTitles.length - 1);
+    int tempSelectedIndex = initialIndex;
+    
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Başlık Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedTitle = _appointmentTitles[tempSelectedIndex];
+                          // Clear custom title when switching away from "Diğer"
+                          if (_selectedTitle?.isOther == false) {
+                            _customTitleController.clear();
+                          }
+                        });
+                        Navigator.of(ctx).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 44,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: initialIndex,
+                  ),
+                  onSelectedItemChanged: (index) {
+                    tempSelectedIndex = index;
+                  },
+                  children: _appointmentTitles.map((title) {
+                    return Container(
+                      alignment: Alignment.center,
+                      child: Text(
+                        title.titleName,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showPersonsPicker() async {
+    if (_persons.isEmpty) return;
+    
+    // Temporary selection list
+    List<int> tempSelectedIDs = List.from(_selectedPersonIDs);
+    
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Personel Seç'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _persons.length,
+                  itemBuilder: (context, index) {
+                    final person = _persons[index];
+                    final personID = person['id'] as int;
+                    final personName = person['name'] as String;
+                    final isSelected = tempSelectedIDs.contains(personID);
+                    
+                    return CheckboxListTile(
+                      value: isSelected,
+                      onChanged: (value) {
+                        setModalState(() {
+                          if (value == true) {
+                            tempSelectedIDs.add(personID);
+                          } else {
+                            tempSelectedIDs.remove(personID);
+                          }
+                        });
+                      },
+                      title: Text(personName),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('İptal'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedPersonIDs = tempSelectedIDs;
+                    });
+                    Navigator.of(ctx).pop();
+                  },
+                  child: const Text('Bitti'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -512,7 +706,12 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       }
 
       // Randevu başlığını oluştur
-      final eventTitle = _titleController.text.trim();
+      String eventTitle;
+      if (_selectedTitle?.isOther == true) {
+        eventTitle = _customTitleController.text.trim();
+      } else {
+        eventTitle = _selectedTitle?.titleName ?? 'Randevu';
+      }
       
       // Notları oluştur
       final notes = StringBuffer();
@@ -559,17 +758,34 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen tarih seçin')));
       return;
     }
+    if (_selectedTitle == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen başlık seçin')));
+      return;
+    }
+    
+    // Determine the appointment title based on selection
+    String appointmentTitle;
+    if (_selectedTitle!.isOther) {
+      // Use custom title for "Diğer"
+      appointmentTitle = _customTitleController.text.trim();
+    } else {
+      // Use predefined title
+      appointmentTitle = _selectedTitle!.titleName;
+    }
+    
     setState(() => _submitting = true);
     try {
       final resp = await _appointmentsService.addAppointment(
         compID: _selectedCompany!.compID,
-        appointmentTitle: _titleController.text.trim(),
+        appointmentTitle: appointmentTitle,
         appointmentDesc: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
         appointmentLocation: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
         appointmentDate: _formatApiDate(_selectedDateTime!),
         appointmentPriority: _selectedPriority?.priorityID ?? 1,
         appointmentStatus: _selectedStatus?.statusID ?? 1,
         remindID: _selectedRemindType?.typeID ?? 1,
+        titleID: _selectedTitle!.titleID,
+        persons: _selectedPersonIDs.isEmpty ? null : _selectedPersonIDs,
       );
       if (!mounted) return;
       if (resp.success) {
@@ -642,30 +858,46 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                           : null,
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(
-            textCapitalization: TextCapitalization.sentences,
-                      controller: _titleController,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: 'Başlık',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                          borderSide: BorderSide(color: AppColors.primary, width: 2),
-                        ),
-                        isDense: true,
-                        filled: true,
-                        fillColor: AppColors.surface,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
+                    // Başlık seçimi
+                    _buildCupertinoField(
+                      placeholder: 'Başlık',
+                      value: _selectedTitle?.titleName,
+                      onTap: _loadingTitles ? null : _showTitlePicker,
                     ),
                     const SizedBox(height: 12),
+                    // Eğer "Diğer" seçiliyse özel başlık girişi göster
+                    if (_selectedTitle?.isOther == true) ...[
+                      TextFormField(
+            textCapitalization: TextCapitalization.sentences,
+                        controller: _customTitleController,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: 'Özel Başlık',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                            borderSide: BorderSide(color: AppColors.primary, width: 2),
+                          ),
+                          isDense: true,
+                          filled: true,
+                          fillColor: AppColors.surface,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                        validator: (value) {
+                          if (_selectedTitle?.isOther == true && (value == null || value.trim().isEmpty)) {
+                            return 'Lütfen başlık giriniz';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     TextFormField(
             textCapitalization: TextCapitalization.sentences,
                       controller: _descController,
@@ -741,6 +973,14 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                       placeholder: 'Hatırlatma',
                       value: _selectedRemindType?.typeName,
                       onTap: _loadingRemindTypes ? null : _showRemindTypePicker,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCupertinoField(
+                      placeholder: 'Personel',
+                      value: _selectedPersonIDs.isEmpty 
+                          ? null 
+                          : '${_selectedPersonIDs.length} personel seçildi',
+                      onTap: _loadingPersons ? null : _showPersonsPicker,
                     ),
                     const SizedBox(height: 12),
                     _buildCupertinoField(

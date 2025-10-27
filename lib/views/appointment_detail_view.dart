@@ -17,12 +17,18 @@ class AppointmentDetailView extends StatelessWidget {
     required this.description,
     this.appointmentID,
     this.compID,
+    this.titleID,
+    this.remindID,
+    this.remindTitle,
     this.appointmentDateRaw,
+    this.appointmentRemindDate,
     this.statusID,
     this.location,
     this.priority,
     this.priorityName,
     this.priorityColor,
+    this.assignedPersonIDs,
+    this.assignedPersonNames,
     this.logs,
     this.isAppointment,
     this.trackingType,
@@ -43,12 +49,18 @@ class AppointmentDetailView extends StatelessWidget {
   final String description;
   final int? appointmentID;
   final int? compID;
+  final int? titleID;
+  final int? remindID;
+  final String? remindTitle;
   final String? appointmentDateRaw;
+  final String? appointmentRemindDate;
   final int? statusID;
   final String? location;
   final int? priority;
   final String? priorityName;
   final Color? priorityColor;
+  final List<int>? assignedPersonIDs;
+  final List<String>? assignedPersonNames;
   final List<AppointmentLog>? logs;
   final bool? isAppointment;
   final String? trackingType;
@@ -231,6 +243,34 @@ class AppointmentDetailView extends StatelessWidget {
                 ),
               ],
 
+              // Reminder information (for appointments)
+              if (isAppointment == true) ...[
+                if (remindTitle != null && remindTitle!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _SectionCard(
+                    leading: const Icon(Icons.notifications_outlined, color: Colors.black54),
+                    title: 'Hatırlatma',
+                    content: remindTitle!,
+                  ),
+                ],
+                if (appointmentRemindDate != null && appointmentRemindDate!.isNotEmpty && appointmentRemindDate != '30.11.-0001 00:00') ...[
+                  const SizedBox(height: 12),
+                  _SectionCard(
+                    leading: const Icon(Icons.access_time_outlined, color: Colors.black54),
+                    title: 'Hatırlatma Zamanı',
+                    content: appointmentRemindDate!,
+                  ),
+                ],
+                if (assignedPersonNames != null && assignedPersonNames!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _SectionCard(
+                    leading: const Icon(Icons.people_outline, color: Colors.black54),
+                    title: 'Atanan Kişiler',
+                    content: assignedPersonNames!.join(', '),
+                  ),
+                ],
+              ],
+
               // Tracking fields (only for isAppointment = false)
               if (isAppointment == false) ...[
                 if (trackingType != null && trackingType!.isNotEmpty) ...[
@@ -410,6 +450,8 @@ class AppointmentDetailView extends StatelessWidget {
           initialStatusID: statusID,
           initialLocation: location,
           initialPriority: priority,
+          initialTitleID: titleID,
+          initialRemindID: remindID,
         ),
       ),
     );

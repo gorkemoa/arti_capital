@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'dart:convert';
 
 import '../models/appointment_models.dart';
 import 'api_client.dart';
@@ -54,6 +55,8 @@ class AppointmentsService {
     required String appointmentDate,
     required int appointmentPriority,
     required int remindID,
+    required int titleID,
+    List<int>? persons,
     int? appointmentStatus,
     String? appointmentDesc,
     String? appointmentLocation,
@@ -76,12 +79,14 @@ class AppointmentsService {
         'userToken': token,
         'compID': compID,
         'remindID': remindID,
+        'titleID': titleID,
         'appointmentTitle': appointmentTitle,
         'appointmentDesc': appointmentDesc ?? '',
         'appointmentLocation': appointmentLocation ?? '',
         'appointmentDate': appointmentDate,
         'appointmentPriority': appointmentPriority,
         if (appointmentStatus != null) 'appointmentStatus': appointmentStatus,
+        if (persons != null && persons.isNotEmpty) 'persons': persons,
       };
 
       final Response resp = await ApiClient.postJson(
@@ -117,6 +122,8 @@ class AppointmentsService {
     required String appointmentDate,
     required int appointmentPriority,
     required int remindID,
+    required int titleID,
+    List<int>? persons,
     int? appointmentStatus,
     String? appointmentDesc,
     String? appointmentLocation,
@@ -140,12 +147,14 @@ class AppointmentsService {
         'compID': compID,
         'appointmentID': appointmentID,
         'remindID': remindID,
+        'titleID': titleID,
         'appointmentTitle': appointmentTitle,
         'appointmentDesc': appointmentDesc ?? '',
         'appointmentLocation': appointmentLocation ?? '',
         'appointmentDate': appointmentDate,
         'appointmentPriority': appointmentPriority,
         if (appointmentStatus != null) 'appointmentStatus': appointmentStatus,
+        if (persons != null && persons.isNotEmpty) 'persons': persons,
       };
 
       final Response resp = await ApiClient.putJson(
@@ -294,6 +303,79 @@ class AppointmentsService {
         statusCode: e.statusCode,
         errorMessage: e.message,
       );
+    }
+  }
+
+  Future<GetAppointmentTitlesResponse> getAppointmentTitles() async {
+    try {
+      final endpoint = AppConstants.getAppointmentTitles;
+      AppLogger.i('GET $endpoint', tag: 'GET_APPOINTMENT_TITLES');
+
+      final Response resp = await ApiClient.getJson(endpoint);
+
+      final body = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_APPOINTMENT_TITLES');
+      AppLogger.i(body.toString(), tag: 'GET_APPOINTMENT_TITLES_RES');
+
+      return GetAppointmentTitlesResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Get appointment titles error ${e.statusCode} ${e.message}', tag: 'GET_APPOINTMENT_TITLES');
+      return GetAppointmentTitlesResponse(
+        error: true,
+        success: false,
+        titles: const <AppointmentTitle>[],
+        message: e.message ?? 'Beklenmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.message,
+      );
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getPersons() async {
+    try {
+      final endpoint = AppConstants.getPersons;
+      AppLogger.i('GET $endpoint', tag: 'GET_PERSONS');
+
+      final resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_PERSONS');
+          return [];
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'GET_PERSONS');
+        return [];
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_PERSONS');
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) return [];
+
+      final personsJson = (data['persons'] as List<dynamic>?) ?? [];
+      return personsJson
+          .map((e) {
+            final person = e as Map<String, dynamic>;
+            return {
+              'id': person['userID'] as int? ?? 0,
+              'name': person['userName'] as String? ?? 'Unknown',
+              'type': person['userType'] as String? ?? '',
+            };
+          })
+          .toList();
+    } on ApiException catch (e) {
+      AppLogger.e('Get persons error ${e.statusCode} ${e.message}', tag: 'GET_PERSONS');
+      return [];
+    } catch (e) {
+      AppLogger.e('Unexpected error in getPersons: $e', tag: 'GET_PERSONS');
+      return [];
     }
   }
 }

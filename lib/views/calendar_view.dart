@@ -58,7 +58,11 @@ class _CalendarViewState extends State<CalendarView> {
           _CalendarEvent(
             appointmentID: item.appointmentID,
             compID: item.compID,
+            titleID: item.titleID,
+            remindID: item.remindID,
+            remindTitle: item.remindTitle,
             appointmentDateRaw: item.appointmentDate,
+            appointmentRemindDate: item.appointmentRemindDate,
             title: item.appointmentTitle,
             timeRange: timeStr,
             compName: item.compName,
@@ -70,6 +74,8 @@ class _CalendarViewState extends State<CalendarView> {
             priority: item.appointmentPriority,
             priorityName: item.priorityName,
             priorityColor: priorityColor,
+            assignedPersonIDs: item.assignedPersonIDs,
+            assignedPersonNames: item.assignedPersonNames,
             logs: item.logs,
             isAppointment: item.isAppointment,
             trackingType: item.trackingType,
@@ -416,12 +422,18 @@ class _CalendarViewState extends State<CalendarView> {
                     description: event.description,
                     appointmentID: event.appointmentID,
                     compID: event.compID,
+                    titleID: event.titleID,
+                    remindID: event.remindID,
+                    remindTitle: event.remindTitle,
                     appointmentDateRaw: event.appointmentDateRaw,
+                    appointmentRemindDate: event.appointmentRemindDate,
                     statusID: event.statusID,
                     location: event.location,
                     priority: event.priority,
                     priorityName: event.priorityName,
                     priorityColor: event.priorityColor,
+                    assignedPersonIDs: event.assignedPersonIDs,
+                    assignedPersonNames: event.assignedPersonNames,
                     logs: event.logs,
                     isAppointment: event.isAppointment,
                     trackingType: event.trackingType,
@@ -914,12 +926,18 @@ class _CalendarViewState extends State<CalendarView> {
                                   description: ev.description,
                                   appointmentID: ev.appointmentID,
                                   compID: ev.compID,
+                                  titleID: ev.titleID,
+                                  remindID: ev.remindID,
+                                  remindTitle: ev.remindTitle,
                                   appointmentDateRaw: ev.appointmentDateRaw,
+                                  appointmentRemindDate: ev.appointmentRemindDate,
                                   statusID: ev.statusID,
                                   location: ev.location,
                                   priority: ev.priority,
                                   priorityName: ev.priorityName,
                                   priorityColor: ev.priorityColor,
+                                  assignedPersonIDs: ev.assignedPersonIDs,
+                                  assignedPersonNames: ev.assignedPersonNames,
                                   logs: ev.logs,
                                   isAppointment: ev.isAppointment,
                                   trackingType: ev.trackingType,
@@ -996,7 +1014,11 @@ class _WeekdayLabel extends StatelessWidget {
 class _CalendarEvent {
   final int appointmentID;
   final int compID;
+  final int titleID;
+  final int remindID;
+  final String remindTitle;
   final String appointmentDateRaw;
+  final String appointmentRemindDate;
   final String title;
   final String timeRange;
   final String compName;
@@ -1008,6 +1030,8 @@ class _CalendarEvent {
   final int priority;
   final String priorityName;
   final Color priorityColor;
+  final List<int> assignedPersonIDs;
+  final List<String> assignedPersonNames;
   final List<AppointmentLog> logs;
   final bool isAppointment;
   final String? trackingType;
@@ -1022,7 +1046,11 @@ class _CalendarEvent {
   const _CalendarEvent({
     required this.appointmentID,
     required this.compID,
+    required this.titleID,
+    required this.remindID,
+    required this.remindTitle,
     required this.appointmentDateRaw,
+    required this.appointmentRemindDate,
     required this.title,
     required this.timeRange,
     required this.compName,
@@ -1034,6 +1062,8 @@ class _CalendarEvent {
     required this.priority,
     required this.priorityName,
     required this.priorityColor,
+    required this.assignedPersonIDs,
+    required this.assignedPersonNames,
     required this.logs,
     required this.isAppointment,
     this.trackingType,
@@ -1173,12 +1203,18 @@ class _InlineSelectedEvents extends StatelessWidget {
                             description: ev.description,
                             appointmentID: ev.appointmentID,
                             compID: ev.compID,
+                            titleID: ev.titleID,
+                            remindID: ev.remindID,
+                            remindTitle: ev.remindTitle,
                             appointmentDateRaw: ev.appointmentDateRaw,
+                            appointmentRemindDate: ev.appointmentRemindDate,
                             statusID: ev.statusID,
                             location: ev.location,
                             priority: ev.priority,
                             priorityName: ev.priorityName,
                             priorityColor: ev.priorityColor,
+                            assignedPersonIDs: ev.assignedPersonIDs,
+                            assignedPersonNames: ev.assignedPersonNames,
                             logs: ev.logs,
                             isAppointment: ev.isAppointment,
                             trackingType: ev.trackingType,
@@ -1266,12 +1302,18 @@ class _InlineSelectedEvents extends StatelessWidget {
                           description: ev.description,
                           appointmentID: ev.appointmentID,
                           compID: ev.compID,
+                          titleID: ev.titleID,
+                          remindID: ev.remindID,
+                          remindTitle: ev.remindTitle,
                           appointmentDateRaw: ev.appointmentDateRaw,
+                          appointmentRemindDate: ev.appointmentRemindDate,
                           statusID: ev.statusID,
                           location: ev.location,
                           priority: ev.priority,
                           priorityName: ev.priorityName,
                           priorityColor: ev.priorityColor,
+                          assignedPersonIDs: ev.assignedPersonIDs,
+                          assignedPersonNames: ev.assignedPersonNames,
                           logs: ev.logs,
                           isAppointment: ev.isAppointment,
                           trackingType: ev.trackingType,

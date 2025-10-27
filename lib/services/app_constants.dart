@@ -23,7 +23,7 @@ class AppConstants {
   static const String getAppointmentStatuses = '/service/general/general/appointmentStatuses/all';
   static const String getAppointmentPriorities = '/service/general/general/appointmentPriorities/all';
   static const String getAppointmentRemindTypes = '/service/general/general/appointmentRemindTypes/all';
-  static const String getAppointmentTitles = '/service/general/types/GetAppointmentTitles';
+  static const String getAppointmentTitles = '/service/general/general/appointmentTitles/all';
   static const String getFollowupStatuses = '/service/general/general/followupStatuses/all';
   static const String getFollowupTypes = '/service/general/general/followupTypes/all';
   static const String getFollowupTitles = '/service/general/general/followupTitles/all';
