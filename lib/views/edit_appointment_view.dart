@@ -15,6 +15,7 @@ class EditAppointmentView extends StatefulWidget {
     this.initialStatusID,
     this.initialLocation,
     this.initialPriority,
+    this.initialRemindID,
   });
 
   final int appointmentID;
@@ -25,6 +26,7 @@ class EditAppointmentView extends StatefulWidget {
   final int? initialStatusID;
   final String? initialLocation;
   final int? initialPriority;
+  final int? initialRemindID;
 
   @override
   State<EditAppointmentView> createState() => _EditAppointmentViewState();
@@ -42,9 +44,12 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
   AppointmentStatus? _selectedStatus;
   List<AppointmentPriority> _appointmentPriorities = [];
   AppointmentPriority? _selectedPriority;
+  List<AppointmentRemindType> _appointmentRemindTypes = [];
+  AppointmentRemindType? _selectedRemindType;
   bool _saving = false;
   bool _loadingStatuses = false;
   bool _loadingPriorities = false;
+  bool _loadingRemindTypes = false;
 
   @override
   void initState() {
@@ -55,6 +60,7 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     _selectedDateTime = _parseTrDateTime(widget.initialDateTimeStr) ?? DateTime.now();
     _loadAppointmentStatuses();
     _loadAppointmentPriorities();
+    _loadAppointmentRemindTypes();
   }
 
   Future<void> _loadAppointmentStatuses() async {
@@ -64,11 +70,15 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
       if (response.success && mounted) {
         setState(() {
           _appointmentStatuses = response.statuses;
-          // Mevcut status'u seç veya default olarak "Yeni Randevu" (statusID: 1) seç
-          _selectedStatus = _appointmentStatuses.firstWhere(
-            (status) => status.statusID == (widget.initialStatusID ?? 1),
-            orElse: () => _appointmentStatuses.isNotEmpty ? _appointmentStatuses.first : _appointmentStatuses.first,
-          );
+          // Mevcut status'u seç
+          if (widget.initialStatusID != null) {
+            _selectedStatus = _appointmentStatuses.firstWhere(
+              (status) => status.statusID == widget.initialStatusID,
+              orElse: () => _appointmentStatuses.first,
+            );
+          } else {
+            _selectedStatus = null;
+          }
         });
       }
     } catch (e) {
@@ -85,14 +95,14 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
       if (response.success && mounted) {
         setState(() {
           _appointmentPriorities = response.priorities;
-          // Mevcut priority'yi seç veya default olarak ilk priority'yi seç
+          // Mevcut priority'yi seç
           if (widget.initialPriority != null) {
             _selectedPriority = _appointmentPriorities.firstWhere(
               (priority) => priority.priorityID == widget.initialPriority,
-              orElse: () => _appointmentPriorities.isNotEmpty ? _appointmentPriorities.first : _appointmentPriorities.first,
+              orElse: () => _appointmentPriorities.first,
             );
           } else {
-            _selectedPriority = _appointmentPriorities.isNotEmpty ? _appointmentPriorities.first : null;
+            _selectedPriority = null;
           }
         });
       }
@@ -100,6 +110,31 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
       // Hata durumunda sessizce devam et
     } finally {
       if (mounted) setState(() => _loadingPriorities = false);
+    }
+  }
+
+  Future<void> _loadAppointmentRemindTypes() async {
+    setState(() => _loadingRemindTypes = true);
+    try {
+      final response = await _service.getAppointmentRemindTypes();
+      if (response.success && mounted) {
+        setState(() {
+          _appointmentRemindTypes = response.types;
+          // Mevcut remindID'yi seç
+          if (widget.initialRemindID != null) {
+            _selectedRemindType = _appointmentRemindTypes.firstWhere(
+              (type) => type.typeID == widget.initialRemindID,
+              orElse: () => _appointmentRemindTypes.first,
+            );
+          } else {
+            _selectedRemindType = null;
+          }
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingRemindTypes = false);
     }
   }
 
@@ -384,6 +419,66 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     );
   }
 
+  Future<void> _showRemindTypePicker() async {
+    if (_appointmentRemindTypes.isEmpty) return;
+    
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Hatırlatma Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 44,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: _appointmentRemindTypes.indexWhere((t) => t.typeID == (_selectedRemindType?.typeID ?? 1)).clamp(0, _appointmentRemindTypes.length - 1),
+                  ),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _selectedRemindType = _appointmentRemindTypes[index];
+                    });
+                  },
+                  children: _appointmentRemindTypes.map((remindType) {
+                    return Container(
+                      alignment: Alignment.center,
+                      child: Text(
+                        remindType.typeName,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Color _parseColor(String colorStr) {
     try {
       if (colorStr.startsWith('#')) {
@@ -393,6 +488,48 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     } catch (_) {
       return Colors.grey;
     }
+  }
+
+  Widget _buildCupertinoField({
+    required String placeholder,
+    required String? value,
+    required VoidCallback? onTap,
+    List<Widget>? trailing,
+    Widget? prefixIcon,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            if (prefixIcon != null) ...[
+              prefixIcon,
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                value == null || value.isEmpty ? placeholder : value,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: (value == null || value.isEmpty)
+                      ? AppColors.onSurface.withOpacity(0.6)
+                      : AppColors.onSurface,
+                ),
+              ),
+            ),
+            if (trailing != null) ...trailing,
+            Icon(CupertinoIcons.chevron_down, size: 18, color: AppColors.onSurface.withOpacity(0.6)),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -408,6 +545,7 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
         appointmentDate: _formatApiDate(_selectedDateTime),
         appointmentPriority: _selectedPriority?.priorityID ?? 1,
         appointmentStatus: _selectedStatus?.statusID ?? 1,
+        remindID: _selectedRemindType?.typeID ?? 1,
       );
       if (!mounted) return;
       if (resp.success) {
@@ -444,6 +582,8 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Text('Randevu Bilgileri', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 16),
                     TextFormField(
             textCapitalization: TextCapitalization.sentences,
                       controller: _titleController,
@@ -491,98 +631,43 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: _pickDateTime,
-                      child: Container(
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.event),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _formatApiDate(_selectedDateTime),
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    GestureDetector(
+                    _buildCupertinoField(
+                      placeholder: 'Öncelik',
+                      value: _selectedPriority?.priorityName,
                       onTap: _loadingPriorities ? null : _showPriorityPicker,
-                      child: Container(
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
+                      prefixIcon: const Icon(Icons.flag_outlined),
+                      trailing: _selectedPriority != null ? [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: _parseColor(_selectedPriority!.priorityColor),
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.flag_outlined),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _selectedPriority?.priorityName ?? 'Öncelik seçin',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: _selectedPriority != null ? Colors.black87 : Colors.grey,
-                                ),
-                              ),
-                            ),
-                            if (_selectedPriority != null)
-                              Container(
-                                width: 12,
-                                height: 12,
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  color: _parseColor(_selectedPriority!.priorityColor),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            const Icon(Icons.chevron_right),
-                          ],
-                        ),
-                      ),
+                      ] : null,
                     ),
                     const SizedBox(height: 12),
-                    GestureDetector(
+                    _buildCupertinoField(
+                      placeholder: 'Durum',
+                      value: _selectedStatus?.statusName,
                       onTap: _loadingStatuses ? null : _showStatusPicker,
-                      child: Container(
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.task_alt),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _selectedStatus?.statusName ?? 'Durum seçin',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: _selectedStatus != null ? Colors.black87 : Colors.grey,
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right),
-                          ],
-                        ),
-                      ),
+                      prefixIcon: const Icon(Icons.task_alt),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCupertinoField(
+                      placeholder: 'Hatırlatma',
+                      value: _selectedRemindType?.typeName,
+                      onTap: _loadingRemindTypes ? null : _showRemindTypePicker,
+                      prefixIcon: const Icon(Icons.notifications_outlined),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCupertinoField(
+                      placeholder: 'Tarih / Saat',
+                      value: _formatApiDate(_selectedDateTime),
+                      onTap: _pickDateTime,
+                      prefixIcon: const Icon(Icons.event),
                     ),
                   ],
                 ),

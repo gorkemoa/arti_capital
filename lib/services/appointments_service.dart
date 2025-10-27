@@ -53,6 +53,7 @@ class AppointmentsService {
     required String appointmentTitle,
     required String appointmentDate,
     required int appointmentPriority,
+    required int remindID,
     int? appointmentStatus,
     String? appointmentDesc,
     String? appointmentLocation,
@@ -74,6 +75,7 @@ class AppointmentsService {
       final body = {
         'userToken': token,
         'compID': compID,
+        'remindID': remindID,
         'appointmentTitle': appointmentTitle,
         'appointmentDesc': appointmentDesc ?? '',
         'appointmentLocation': appointmentLocation ?? '',
@@ -114,6 +116,7 @@ class AppointmentsService {
     required String appointmentTitle,
     required String appointmentDate,
     required int appointmentPriority,
+    required int remindID,
     int? appointmentStatus,
     String? appointmentDesc,
     String? appointmentLocation,
@@ -136,6 +139,7 @@ class AppointmentsService {
         'userToken': token,
         'compID': compID,
         'appointmentID': appointmentID,
+        'remindID': remindID,
         'appointmentTitle': appointmentTitle,
         'appointmentDesc': appointmentDesc ?? '',
         'appointmentLocation': appointmentLocation ?? '',
@@ -261,6 +265,31 @@ class AppointmentsService {
         error: true,
         success: false,
         priorities: const <AppointmentPriority>[],
+        message: e.message ?? 'Beklenmeyen hata',
+        statusCode: e.statusCode,
+        errorMessage: e.message,
+      );
+    }
+  }
+
+  Future<GetAppointmentRemindTypesResponse> getAppointmentRemindTypes() async {
+    try {
+      final endpoint = AppConstants.getAppointmentRemindTypes;
+      AppLogger.i('GET $endpoint', tag: 'GET_APPOINTMENT_REMIND_TYPES');
+
+      final Response resp = await ApiClient.getJson(endpoint);
+
+      final body = resp.data as Map<String, dynamic>;
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_APPOINTMENT_REMIND_TYPES');
+      AppLogger.i(body.toString(), tag: 'GET_APPOINTMENT_REMIND_TYPES_RES');
+
+      return GetAppointmentRemindTypesResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Get appointment remind types error ${e.statusCode} ${e.message}', tag: 'GET_APPOINTMENT_REMIND_TYPES');
+      return GetAppointmentRemindTypesResponse(
+        error: true,
+        success: false,
+        types: const <AppointmentRemindType>[],
         message: e.message ?? 'Beklenmeyen hata',
         statusCode: e.statusCode,
         errorMessage: e.message,

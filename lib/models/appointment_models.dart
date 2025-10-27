@@ -379,3 +379,130 @@ class GetAppointmentPrioritiesResponse {
     );
   }
 }
+
+class AppointmentRemindType {
+  final int typeID;
+  final String typeName;
+
+  AppointmentRemindType({
+    required this.typeID,
+    required this.typeName,
+  });
+
+  factory AppointmentRemindType.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic v) {
+      if (v is int) return v;
+      if (v is String) return int.tryParse(v) ?? 0;
+      return 0;
+    }
+
+    return AppointmentRemindType(
+      typeID: parseInt(json['typeID']),
+      typeName: (json['typeName'] ?? '').toString(),
+    );
+  }
+}
+
+class GetAppointmentRemindTypesResponse {
+  final bool error;
+  final bool success;
+  final List<AppointmentRemindType> types;
+  final String message;
+  final int? statusCode;
+  final String? errorMessage;
+
+  GetAppointmentRemindTypesResponse({
+    required this.error,
+    required this.success,
+    required this.types,
+    required this.message,
+    this.statusCode,
+    this.errorMessage,
+  });
+
+  factory GetAppointmentRemindTypesResponse.fromJson(Map<String, dynamic> json, [int? statusCode]) {
+    final List<AppointmentRemindType> typeList = [];
+    if (json['data'] != null && json['data']['types'] != null) {
+      final typesData = json['data']['types'] as List<dynamic>;
+      for (final item in typesData) {
+        if (item is Map<String, dynamic>) {
+          typeList.add(AppointmentRemindType.fromJson(item));
+        }
+      }
+    }
+
+    return GetAppointmentRemindTypesResponse(
+      error: (json['error'] ?? false) as bool,
+      success: (json['success'] ?? false) as bool,
+      types: typeList,
+      message: (json['message'] ?? '').toString(),
+      statusCode: statusCode,
+      errorMessage: json['error_message']?.toString(),
+    );
+  }
+}
+
+class AppointmentTitle {
+  final int titleID;
+  final String titleName;
+  final bool isOther;
+
+  AppointmentTitle({
+    required this.titleID,
+    required this.titleName,
+    required this.isOther,
+  });
+
+  factory AppointmentTitle.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic v) {
+      if (v is int) return v;
+      if (v is String) return int.tryParse(v) ?? 0;
+      return 0;
+    }
+
+    return AppointmentTitle(
+      titleID: parseInt(json['titleID']),
+      titleName: (json['titleName'] ?? '').toString(),
+      isOther: (json['isOther'] ?? false) as bool,
+    );
+  }
+}
+
+class GetAppointmentTitlesResponse {
+  final bool error;
+  final bool success;
+  final List<AppointmentTitle> titles;
+  final String message;
+  final int? statusCode;
+  final String? errorMessage;
+
+  GetAppointmentTitlesResponse({
+    required this.error,
+    required this.success,
+    required this.titles,
+    required this.message,
+    this.statusCode,
+    this.errorMessage,
+  });
+
+  factory GetAppointmentTitlesResponse.fromJson(Map<String, dynamic> json, [int? statusCode]) {
+    final List<AppointmentTitle> titleList = [];
+    if (json['data'] != null && json['data']['titles'] != null) {
+      final titlesData = json['data']['titles'] as List<dynamic>;
+      for (final item in titlesData) {
+        if (item is Map<String, dynamic>) {
+          titleList.add(AppointmentTitle.fromJson(item));
+        }
+      }
+    }
+
+    return GetAppointmentTitlesResponse(
+      error: (json['error'] ?? false) as bool,
+      success: (json['success'] ?? false) as bool,
+      titles: titleList,
+      message: (json['message'] ?? '').toString(),
+      statusCode: statusCode,
+      errorMessage: json['error_message']?.toString(),
+    );
+  }
+}

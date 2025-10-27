@@ -28,16 +28,20 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
   AppointmentStatus? _selectedStatus;
   List<AppointmentPriority> _appointmentPriorities = [];
   AppointmentPriority? _selectedPriority;
-  DateTime _selectedDateTime = DateTime.now().add(const Duration(minutes: 30));
+  List<AppointmentRemindType> _appointmentRemindTypes = [];
+  AppointmentRemindType? _selectedRemindType;
+  DateTime? _selectedDateTime;
   bool _submitting = false;
   bool _loadingStatuses = false;
   bool _loadingPriorities = false;
+  bool _loadingRemindTypes = false;
 
   @override
   void initState() {
     super.initState();
     _loadAppointmentStatuses();
     _loadAppointmentPriorities();
+    _loadAppointmentRemindTypes();
   }
 
   @override
@@ -55,11 +59,8 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       if (response.success && mounted) {
         setState(() {
           _appointmentStatuses = response.statuses;
-          // Default olarak "Yeni Randevu" (statusID: 1) seç
-          _selectedStatus = _appointmentStatuses.firstWhere(
-            (status) => status.statusID == 1,
-            orElse: () => _appointmentStatuses.isNotEmpty ? _appointmentStatuses.first : _appointmentStatuses.first,
-          );
+          // Başlangıçta seçim yapılmasın
+          _selectedStatus = null;
         });
       }
     } catch (e) {
@@ -76,14 +77,32 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       if (response.success && mounted) {
         setState(() {
           _appointmentPriorities = response.priorities;
-          // Default olarak ilk priority'yi seç (genelde "Düşük")
-          _selectedPriority = _appointmentPriorities.isNotEmpty ? _appointmentPriorities.first : null;
+          // Başlangıçta seçim yapılmasın
+          _selectedPriority = null;
         });
       }
     } catch (e) {
       // Hata durumunda sessizce devam et
     } finally {
       if (mounted) setState(() => _loadingPriorities = false);
+    }
+  }
+
+  Future<void> _loadAppointmentRemindTypes() async {
+    setState(() => _loadingRemindTypes = true);
+    try {
+      final response = await _appointmentsService.getAppointmentRemindTypes();
+      if (response.success && mounted) {
+        setState(() {
+          _appointmentRemindTypes = response.types;
+          // Başlangıçta seçim yapılmasın
+          _selectedRemindType = null;
+        });
+      }
+    } catch (e) {
+      // Hata durumunda sessizce devam et
+    } finally {
+      if (mounted) setState(() => _loadingRemindTypes = false);
     }
   }
 
@@ -96,7 +115,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
 
   Future<void> _pickDateTime() async {
     // First pick date
-    DateTime tempDate = _selectedDateTime;
+    DateTime tempDate = _selectedDateTime ?? DateTime.now().add(const Duration(minutes: 30));
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (ctx) {
@@ -131,7 +150,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
               Expanded(
                 child: CupertinoDatePicker(
                   mode: CupertinoDatePickerMode.date,
-                  initialDateTime: _selectedDateTime,
+                  initialDateTime: _selectedDateTime ?? DateTime.now().add(const Duration(minutes: 30)),
                   minimumDate: DateTime.now().subtract(const Duration(days: 0)),
                   maximumDate: DateTime.now().add(const Duration(days: 365 * 2)),
                   onDateTimeChanged: (d) { tempDate = d; },
@@ -146,12 +165,13 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
 
   Future<void> _pickTime(DateTime selectedDate) async {
     // Then pick time
+    final currentDateTime = _selectedDateTime ?? DateTime.now().add(const Duration(minutes: 30));
     DateTime tempDateTime = DateTime(
       selectedDate.year,
       selectedDate.month,
       selectedDate.day,
-      _selectedDateTime.hour,
-      _selectedDateTime.minute,
+      currentDateTime.hour,
+      currentDateTime.minute,
     );
     
     await showCupertinoModalPopup<void>(
@@ -347,6 +367,66 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
     );
   }
 
+  Future<void> _showRemindTypePicker() async {
+    if (_appointmentRemindTypes.isEmpty) return;
+    
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) {
+        return Container(
+          height: 300,
+          color: Colors.white,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                    Text('Hatırlatma Seç', style: Theme.of(context).textTheme.titleMedium),
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: const Text('Bitti'),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 44,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: _appointmentRemindTypes.indexWhere((t) => t.typeID == (_selectedRemindType?.typeID ?? 1)).clamp(0, _appointmentRemindTypes.length - 1),
+                  ),
+                  onSelectedItemChanged: (index) {
+                    setState(() {
+                      _selectedRemindType = _appointmentRemindTypes[index];
+                    });
+                  },
+                  children: _appointmentRemindTypes.map((remindType) {
+                    return Container(
+                      alignment: Alignment.center,
+                      child: Text(
+                        remindType.typeName,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Color _parseColor(String colorStr) {
     try {
       if (colorStr.startsWith('#')) {
@@ -423,6 +503,14 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
 
   Future<void> _addToCalendar() async {
     try {
+      // Tarih seçilmiş mi kontrol et
+      if (_selectedDateTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen önce tarih seçiniz')),
+        );
+        return;
+      }
+
       // Randevu başlığını oluştur
       final eventTitle = _titleController.text.trim();
       
@@ -439,8 +527,8 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
         title: eventTitle,
         description: notes.toString(),
         location: _selectedCompany?.compName ?? '',
-        startDate: _selectedDateTime,
-        endDate: _selectedDateTime.add(const Duration(hours: 1)), // 1 saat varsayılan süre
+        startDate: _selectedDateTime!,
+        endDate: _selectedDateTime!.add(const Duration(hours: 1)), // 1 saat varsayılan süre
         allDay: false,
       );
       
@@ -467,6 +555,10 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen şirket seçin')));
       return;
     }
+    if (_selectedDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen tarih seçin')));
+      return;
+    }
     setState(() => _submitting = true);
     try {
       final resp = await _appointmentsService.addAppointment(
@@ -474,9 +566,10 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
         appointmentTitle: _titleController.text.trim(),
         appointmentDesc: _descController.text.trim().isEmpty ? null : _descController.text.trim(),
         appointmentLocation: _locationController.text.trim().isEmpty ? null : _locationController.text.trim(),
-        appointmentDate: _formatApiDate(_selectedDateTime),
+        appointmentDate: _formatApiDate(_selectedDateTime!),
         appointmentPriority: _selectedPriority?.priorityID ?? 1,
         appointmentStatus: _selectedStatus?.statusID ?? 1,
+        remindID: _selectedRemindType?.typeID ?? 1,
       );
       if (!mounted) return;
       if (resp.success) {
@@ -623,7 +716,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     const SizedBox(height: 12),
                     _buildCupertinoField(
                       placeholder: 'Öncelik',
-                      value: _selectedPriority?.priorityName ?? 'Öncelik seçin',
+                      value: _selectedPriority?.priorityName,
                       onTap: _loadingPriorities ? null : _showPriorityPicker,
                       trailing: _selectedPriority != null ? [
                         Container(
@@ -645,8 +738,14 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     ),
                     const SizedBox(height: 12),
                     _buildCupertinoField(
+                      placeholder: 'Hatırlatma',
+                      value: _selectedRemindType?.typeName,
+                      onTap: _loadingRemindTypes ? null : _showRemindTypePicker,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCupertinoField(
                       placeholder: 'Tarih / Saat',
-                      value: _formatApiDate(_selectedDateTime),
+                      value: _selectedDateTime != null ? _formatApiDate(_selectedDateTime!) : null,
                       onTap: _pickDateTime,
                     ),
                   ],
