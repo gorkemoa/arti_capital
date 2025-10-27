@@ -410,7 +410,7 @@ class _TrackingDetailViewState extends State<TrackingDetailView> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _tracking.assignedUser,
+                        _tracking.assignedUserNames,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w500,
                           color: AppColors.onSurface,
@@ -422,38 +422,43 @@ class _TrackingDetailViewState extends State<TrackingDetailView> {
               ),
               theme: theme,
             ),
-            if (_tracking.notificationType != null && _tracking.notificationType!.isNotEmpty) ...[
+            if (_tracking.notificationTypes.isNotEmpty) ...[
               const SizedBox(height: 16),
               // Bildirim Türü
               _buildSection(
-                title: 'Bildirim Türü',
+                title: 'Bildirim Türleri',
                 child: Container(
                   padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _tracking.notificationTypes.map((type) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Icon(
-                          _getNotificationIcon(_tracking.notificationType!),
-                          size: 18,
-                          color: Colors.blue,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _getNotificationIcon(type),
+                              size: 16,
+                              color: Colors.blue,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _formatNotificationType(type),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.onSurface,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _formatNotificationType(_tracking.notificationType!),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   ),
                 ),
                 theme: theme,

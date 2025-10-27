@@ -29,18 +29,23 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   late TextEditingController _descController;
   late TextEditingController _dueDateController;
   late TextEditingController _remindDateController;
+  late TextEditingController _customTitleController;
   
-  int _selectedTypeID = 1;
-  int _selectedStatusID = 1;
-  int _selectedUserID = 1;
-  String? _selectedNotificationType;
+  int _selectedTypeID = -1;
+  int _selectedTitleID = -1;
+  int _selectedStatusID = -1;
+  List<int> _selectedUserIDs = [];
+  List<String> _selectedNotificationTypes = [];
   bool _isLoading = false;
+  bool _isOtherTitleSelected = false;
 
   // Notification type options
-  final List<String> _notificationTypes = ['push', 'email', 'sms', 'all'];
+  final List<String> _notificationTypes = ['push', 'email', 'sms'];
 
   // Mock data for dropdowns
   List<Map<String, dynamic>> trackingTypes = [];
+
+  List<Map<String, dynamic>> trackingTitles = [];
 
   List<Map<String, dynamic>> statuses = [];
 
@@ -53,12 +58,14 @@ class _AddTrackingViewState extends State<AddTrackingView> {
     _descController = TextEditingController();
     _dueDateController = TextEditingController();
     _remindDateController = TextEditingController();
+    _customTitleController = TextEditingController();
     _loadDropdownData();
   }
 
   Future<void> _loadDropdownData() async {
     try {
       final fetchedTypes = await _service.getFollowupTypes();
+      final fetchedTitles = await _service.getFollowupTitles();
       final fetchedStatuses = await _service.getFollowupStatuses();
       final fetchedPersons = await _service.getPersons();
       
@@ -68,6 +75,14 @@ class _AddTrackingViewState extends State<AddTrackingView> {
               .map((type) => {
                     'id': type.typeID,
                     'name': type.typeName,
+                  })
+              .toList();
+          
+          trackingTitles = fetchedTitles
+              .map((title) => {
+                    'id': title.titleID,
+                    'name': title.titleName,
+                    'isOther': title.isOther,
                   })
               .toList();
           
@@ -81,16 +96,8 @@ class _AddTrackingViewState extends State<AddTrackingView> {
           
           users = fetchedPersons;
           
-          // Set default values if data loaded
-          if (trackingTypes.isNotEmpty) {
-            _selectedTypeID = trackingTypes[0]['id'] as int;
-          }
-          if (statuses.isNotEmpty) {
-            _selectedStatusID = statuses[0]['id'] as int;
-          }
-          if (users.isNotEmpty) {
-            _selectedUserID = users[0]['id'] as int;
-          }
+          // Set default values if data loaded (don't auto-select first item)
+          // User must explicitly select
         });
       }
     } catch (e) {
@@ -104,6 +111,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
     _descController.dispose();
     _dueDateController.dispose();
     _remindDateController.dispose();
+    _customTitleController.dispose();
     super.dispose();
   }
 
@@ -184,22 +192,83 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   }
 
   Future<void> _submitForm() async {
+    // Validate type selection
+    if (_selectedTypeID == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen bir tip seçiniz'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate title selection
+    if (_selectedTitleID == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen bir başlık türü seçiniz'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate status selection
+    if (_selectedStatusID == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen bir durum seçiniz'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate that at least one user is selected
+    if (_selectedUserIDs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen en az bir kişi seçiniz'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate custom title if "Other" is selected
+    if (_isOtherTitleSelected && _customTitleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen özel başlık giriniz'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
+      // If "Other" is selected, use custom title, otherwise use empty or selected title name
+      final trackTitle = _isOtherTitleSelected 
+          ? _customTitleController.text.trim()
+          : ''; // Başlık türü seçiliyse boş gönder, API'de başlık türü kullanılacak
+
       final response = await _service.addTracking(
         appID: widget.projectID,
         compID: widget.compID,
         typeID: _selectedTypeID,
+        titleID: _selectedTitleID,
         statusID: _selectedStatusID,
-        trackTitle: _titleController.text,
+        trackTitle: trackTitle,
         trackDesc: _descController.text,
         trackDueDate: _dueDateController.text,
         trackRemindDate: _remindDateController.text,
-        assignedUserID: _selectedUserID,
-        notificationType: _selectedNotificationType,
+        assignedUserIDs: _selectedUserIDs,
+        notificationTypes: _selectedNotificationTypes.isNotEmpty ? _selectedNotificationTypes : null,
       );
 
       if (mounted) {
@@ -355,6 +424,75 @@ class _AddTrackingViewState extends State<AddTrackingView> {
     );
   }
 
+  Future<void> _showTitlePicker() async {
+    if (trackingTitles.isEmpty) return;
+
+    int selectedIndex = trackingTitles.indexWhere((t) => t['id'] == _selectedTitleID);
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('Seç'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedTitleID = trackingTitles[selectedIndex]['id'] as int;
+                          _isOtherTitleSelected = trackingTitles[selectedIndex]['isOther'] as bool? ?? false;
+                          // Clear custom title if not "Other"
+                          if (!_isOtherTitleSelected) {
+                            _customTitleController.clear();
+                          }
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+                  itemExtent: 32,
+                  onSelectedItemChanged: (int index) {
+                    selectedIndex = index;
+                  },
+                  children: trackingTitles.map((title) => Center(child: Text(title['name'] as String))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _showStatusPicker() async {
     if (statuses.isEmpty) return;
 
@@ -440,140 +578,145 @@ class _AddTrackingViewState extends State<AddTrackingView> {
   Future<void> _showUserPicker() async {
     if (users.isEmpty) return;
 
-    int selectedIndex = users.indexWhere((u) => u['id'] == _selectedUserID);
-    if (selectedIndex < 0) selectedIndex = 0;
-
-    await showCupertinoModalPopup<void>(
+    // Show a multi-select dialog
+    await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        return Container(
-          height: 250,
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          child: Column(
-            children: [
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemBackground.resolveFrom(context),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: CupertinoColors.separator.resolveFrom(context),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('İptal'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('Seç'),
-                      onPressed: () {
-                        setState(() {
-                          _selectedUserID = users[selectedIndex]['id'] as int;
+        // Create a local copy for the dialog state
+        List<int> tempSelectedUserIDs = List.from(_selectedUserIDs);
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Atanan Kişiler Seçiniz'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index];
+                    final userId = user['id'] as int;
+                    final userName = user['name'] as String;
+                    final isSelected = tempSelectedUserIDs.contains(userId);
+
+                    return CheckboxListTile(
+                      title: Text(userName),
+                      value: isSelected,
+                      activeColor: AppColors.primary,
+                      onChanged: (bool? value) {
+                        setDialogState(() {
+                          if (value == true) {
+                            tempSelectedUserIDs.add(userId);
+                          } else {
+                            tempSelectedUserIDs.remove(userId);
+                          }
                         });
-                        Navigator.of(context).pop();
                       },
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
-                  itemExtent: 32,
-                  onSelectedItemChanged: (int index) {
-                    selectedIndex = index;
+                    );
                   },
-                  children: users.map((user) => Center(child: Text(user['name'] as String))).toList(),
                 ),
               ),
-            ],
-          ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('İptal'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedUserIDs = tempSelectedUserIDs;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Seç'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
   Future<void> _showNotificationTypePicker() async {
-    int selectedIndex = 0;
-    if (_selectedNotificationType != null) {
-      selectedIndex = _notificationTypes.indexOf(_selectedNotificationType!);
-      if (selectedIndex < 0) selectedIndex = 0;
-    }
-
-    await showCupertinoModalPopup<void>(
+    // Show a multi-select dialog
+    await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        return Container(
-          height: 250,
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          child: Column(
-            children: [
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemBackground.resolveFrom(context),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: CupertinoColors.separator.resolveFrom(context),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('İptal'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('Seç'),
-                      onPressed: () {
-                        setState(() {
-                          _selectedNotificationType = _notificationTypes[selectedIndex];
+        // Create a local copy for the dialog state
+        List<String> tempSelectedNotificationTypes = List.from(_selectedNotificationTypes);
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Bildirim Türleri Seçiniz'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _notificationTypes.length,
+                  itemBuilder: (context, index) {
+                    final notifType = _notificationTypes[index];
+                    final isSelected = tempSelectedNotificationTypes.contains(notifType);
+                    
+                    String displayName;
+                    switch (notifType) {
+                      case 'push':
+                        displayName = 'Bildirim';
+                        break;
+                      case 'email':
+                        displayName = 'E-posta';
+                        break;
+                      case 'sms':
+                        displayName = 'SMS';
+                        break;
+                      default:
+                        displayName = notifType;
+                    }
+
+                    return CheckboxListTile(
+                      title: Text(displayName),
+                      value: isSelected,
+                      activeColor: AppColors.primary,
+                      onChanged: (bool? value) {
+                        setDialogState(() {
+                          if (value == true) {
+                            tempSelectedNotificationTypes.add(notifType);
+                          } else {
+                            tempSelectedNotificationTypes.remove(notifType);
+                          }
                         });
-                        Navigator.of(context).pop();
                       },
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
-                  itemExtent: 32,
-                  onSelectedItemChanged: (int index) {
-                    selectedIndex = index;
+                    );
                   },
-                  children: _notificationTypes
-                      .map((type) => Center(
-                            child: Text(
-                              type == 'push'
-                                  ? 'Bildirim'
-                                  : type == 'email'
-                                      ? 'E-posta'
-                                      : type == 'sms'
-                                          ? 'SMS'
-                                          : 'Tümü',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          ))
-                      .toList(),
                 ),
               ),
-            ],
-          ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('İptal'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedNotificationTypes = tempSelectedNotificationTypes;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Seç'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -607,18 +750,49 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Başlık
+                        // Başlık Türü (Üste al)
                         _buildFormSection(
-                          title: 'Başlık',
-                          child: TextFormField(
-            textCapitalization: TextCapitalization.sentences,
-                            controller: _titleController,
-                            decoration: _buildInputDecoration(
-                              hintText: 'Örn: Müşteri görüşmesi',
-                            ),
+                          title: 'Başlık Türü',
+                          child: _buildCupertinoField(
+                            placeholder: 'Başlık Türü',
+                            value: trackingTitles.isEmpty
+                                ? 'Başlık türleri yükleniyor...'
+                                : (_selectedTitleID == -1
+                                    ? null
+                                    : (
+                                        trackingTitles
+                                            .cast<Map<String, Object>>()
+                                            .firstWhere(
+                                              (t) => t['id'] == _selectedTitleID,
+                                              orElse: () => <String, Object>{'name': 'Başlık türü seçiniz'},
+                                            )['name'] as String
+                                      )
+                                  ),
+                            onTap: _showTitlePicker,
+                            isDisabled: trackingTitles.isEmpty,
                           ),
                           theme: theme,
                         ),
+
+                        // Özel Başlık ("Diğer" seçildiğinde göster)
+                        if (_isOtherTitleSelected)
+                          _buildFormSection(
+                            title: 'Özel Başlık',
+                            child: TextFormField(
+                              textCapitalization: TextCapitalization.sentences,
+                              controller: _customTitleController,
+                              decoration: _buildInputDecoration(
+                                hintText: 'Özel başlık giriniz...',
+                              ),
+                              validator: (value) {
+                                if (_isOtherTitleSelected && (value == null || value.isEmpty)) {
+                                  return 'Lütfen özel başlık giriniz';
+                                }
+                                return null;
+                              },
+                            ),
+                            theme: theme,
+                          ),
 
                         // Açıklama
                         _buildFormSection(
@@ -655,14 +829,17 @@ class _AddTrackingViewState extends State<AddTrackingView> {
 placeholder: 'Tip',
 value: trackingTypes.isEmpty
     ? 'Tipler yükleniyor...'
-    : (
-        trackingTypes
-            // (opsiyonel) listedeki map'leri doğru tipe dök
-            .cast<Map<String, Object>>()
-            .firstWhere(
-              (t) => t['id'] == _selectedTypeID,
-              orElse: () => <String, Object>{'name': 'Tip seçiniz'},
-            )['name'] as String
+    : (_selectedTypeID == -1
+        ? null
+        : (
+            trackingTypes
+                // (opsiyonel) listedeki map'leri doğru tipe dök
+                .cast<Map<String, Object>>()
+                .firstWhere(
+                  (t) => t['id'] == _selectedTypeID,
+                  orElse: () => <String, Object>{'name': 'Tip seçiniz'},
+                )['name'] as String
+          )
       ),
 onTap: _showTypePicker,
 isDisabled: trackingTypes.isEmpty,
@@ -687,14 +864,17 @@ isDisabled: trackingTypes.isEmpty,
 placeholder: 'Statü',
 value: statuses.isEmpty
     ? 'Statüler yükleniyor...'
-    : (
-        statuses
-            // (opsiyonel) listedeki map'leri doğru tipe dök
-            .cast<Map<String, Object>>()
-            .firstWhere(
-              (t) => t['id'] == _selectedStatusID,
-              orElse: () => <String, Object>{'name': 'Statü seçiniz'},
-            )['name'] as String
+    : (_selectedStatusID == -1
+        ? null
+        : (
+            statuses
+                // (opsiyonel) listedeki map'leri doğru tipe dök
+                .cast<Map<String, Object>>()
+                .firstWhere(
+                  (t) => t['id'] == _selectedStatusID,
+                  orElse: () => <String, Object>{'name': 'Statü seçiniz'},
+                )['name'] as String
+          )
       ),
 onTap: _showStatusPicker,
 isDisabled: statuses.isEmpty,
@@ -778,41 +958,47 @@ isDisabled: statuses.isEmpty,
                           theme: theme,
                         ),
 
-                        // Atanan Kişi
+                        // Atanan Kişiler
                       _buildFormSection(
-                        title: 'Atanan Kişi',
+                        title: 'Atanan Kişiler',
                         child: _buildCupertinoField(
-                        placeholder: 'Atanan Kişi',
+                        placeholder: 'Atanan Kişiler',
                         value: users.isEmpty
                             ? 'Kişiler yükleniyor...'
-                            : (
-                              users
-                              .cast<Map<String, Object>>() // listeyi hizala
-                              .firstWhere(
-                              (u) => u['id'] == _selectedUserID,
-                              orElse: () => const <String, Object>{'name': 'Kişi seçiniz'},
-                              )['name'] as String
-                              ),
+                            : _selectedUserIDs.isEmpty
+                              ? null
+                              : _selectedUserIDs.map((id) {
+                                  final user = users.firstWhere(
+                                    (u) => u['id'] == id,
+                                    orElse: () => <String, Object>{'name': 'Bilinmeyen'},
+                                  );
+                                  return user['name'] as String;
+                                }).join(', '),
                        onTap: _showUserPicker,
                        isDisabled: users.isEmpty,
                         ),
                       theme: theme,
                       ),
 
-                        // Bildirim Türü (Opsiyonel)
+                        // Bildirim Türleri (Opsiyonel)
                         _buildFormSection(
-                          title: 'Bildirim Türü (Opsiyonel)',
+                          title: 'Bildirim Türleri (Opsiyonel)',
                           child: _buildCupertinoField(
-                            placeholder: 'Bildirim türü seçiniz',
-                            value: _selectedNotificationType == null
+                            placeholder: 'Bildirim türleri seçiniz',
+                            value: _selectedNotificationTypes.isEmpty
                                 ? null
-                                : (_selectedNotificationType == 'push'
-                                    ? 'Bildirim'
-                                    : _selectedNotificationType == 'email'
-                                        ? 'E-posta'
-                                        : _selectedNotificationType == 'sms'
-                                            ? 'SMS'
-                                            : 'Tümü'),
+                                : _selectedNotificationTypes.map((type) {
+                                    switch (type) {
+                                      case 'push':
+                                        return 'Bildirim';
+                                      case 'email':
+                                        return 'E-posta';
+                                      case 'sms':
+                                        return 'SMS';
+                                      default:
+                                        return type;
+                                    }
+                                  }).join(', '),
                             onTap: _showNotificationTypePicker,
                           ),
                           theme: theme,

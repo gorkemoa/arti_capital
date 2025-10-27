@@ -32,16 +32,20 @@ class _EditTrackingViewState extends State<EditTrackingView> {
   late TextEditingController _descController;
   late TextEditingController _dueDateController;
   late TextEditingController _remindDateController;
+  late TextEditingController _customTitleController;
   
   late int _selectedTypeID;
+  late int _selectedTitleID;
   late int _selectedStatusID;
-  late int _selectedUserID;
-  String? _selectedNotificationType;
+  late List<int> _selectedUserIDs;
+  late List<String> _selectedNotificationTypes;
   bool _isLoading = false;
+  bool _isOtherTitleSelected = false;
 
-  final List<String> _notificationTypes = ['push', 'email', 'sms', 'all'];
+  final List<String> _notificationTypes = ['push', 'email', 'sms'];
 
   List<FollowupType> trackingTypes = [];
+  List<FollowupTitle> trackingTitles = [];
   List<FollowupStatus> statuses = [];
   List<Map<String, dynamic>> users = [];
 
@@ -52,17 +56,27 @@ class _EditTrackingViewState extends State<EditTrackingView> {
     _descController = TextEditingController(text: widget.tracking.trackDesc);
     _dueDateController = TextEditingController(text: widget.tracking.trackDueDate);
     _remindDateController = TextEditingController(text: widget.tracking.trackRemindDate);
+    _customTitleController = TextEditingController();
     
     // Mevcut değerleri başlat
     _selectedTypeID = widget.tracking.trackTypeID;
+    _selectedTitleID = widget.tracking.trackTitleID;
     _selectedStatusID = widget.tracking.trackStatusID;
-    _selectedUserID = widget.tracking.assignedUserID;
-    _selectedNotificationType = widget.tracking.notificationType;
+    
+    // Kullanıcı ID'lerini direkt al
+    _selectedUserIDs = List.from(widget.tracking.assignedUserIDs);
+    
+    // Notification types'ı direkt al
+    _selectedNotificationTypes = List.from(widget.tracking.notificationTypes);
     
     // Debug: Gelen değerleri logla
     print('🔍 EDIT_TRACKING - TypeID: $_selectedTypeID, TypeName: ${widget.tracking.trackTypeName}');
+    print('🔍 EDIT_TRACKING - TitleID: $_selectedTitleID, Title: ${widget.tracking.trackTitle}');
     print('🔍 EDIT_TRACKING - StatusID: $_selectedStatusID, StatusName: ${widget.tracking.statusName}');
-    print('🔍 EDIT_TRACKING - UserID: $_selectedUserID, UserName: ${widget.tracking.assignedUser}');
+    print('🔍 EDIT_TRACKING - UserIDs: $_selectedUserIDs (type: ${_selectedUserIDs.runtimeType}), UserNames: ${widget.tracking.assignedUserNames}');
+    print('🔍 EDIT_TRACKING - NotificationTypes: $_selectedNotificationTypes (type: ${_selectedNotificationTypes.runtimeType})');
+    print('🔍 EDIT_TRACKING - Raw UserIDs from model: ${widget.tracking.assignedUserIDs}');
+    print('🔍 EDIT_TRACKING - Raw NotificationTypes from model: ${widget.tracking.notificationTypes}');
     
     _loadDropdownData();
   }
@@ -70,11 +84,13 @@ class _EditTrackingViewState extends State<EditTrackingView> {
   Future<void> _loadDropdownData() async {
     try {
       final fetchedTypes = await _service.getFollowupTypes();
+      final fetchedTitles = await _service.getFollowupTitles();
       final fetchedStatuses = await _service.getFollowupStatuses();
       final fetchedPersons = await _service.getPersons();
       
       print('✅ Dropdown Data Loaded:');
       print('   Types: ${fetchedTypes.length} items');
+      print('   Titles: ${fetchedTitles.length} items');
       print('   Statuses: ${fetchedStatuses.length} items');
       print('   Users: ${fetchedPersons.length} items');
       
@@ -110,36 +126,109 @@ class _EditTrackingViewState extends State<EditTrackingView> {
         }
       }
 
-      // Kullanıcı ID'sini ad ile eşleştir (API'den gelen ad ile)
-      int matchedUserID = _selectedUserID;
-      if (matchedUserID == 0 || matchedUserID < 0) {
-        // assignedUserID yanlışsa, kullanıcı adına göre ara
-        try {
-          final matchedUser = fetchedPersons.firstWhere(
-            (u) => (u['name'] as String).toLowerCase().trim() == widget.tracking.assignedUser.toLowerCase().trim(),
-            orElse: () => fetchedPersons.isNotEmpty ? fetchedPersons[0] : {'id': 0, 'name': ''},
-          );
-          matchedUserID = matchedUser['id'] as int;
-          print('🔍 Kullanıcı eşleştirildi: "${widget.tracking.assignedUser}" -> ID: $matchedUserID');
-        } catch (e) {
-          print('⚠️ Kullanıcı eşleştirilemedi: $e');
+      // Başlık türü için - trackTitleID kullan
+      int matchedTitleID = _selectedTitleID;
+      bool shouldSelectOther = false;
+      
+      if (fetchedTitles.isNotEmpty) {
+        // trackTitleID geçerliyse kontrol et
+        if (_selectedTitleID > 0) {
+          final titleExists = fetchedTitles.any((t) => t.titleID == _selectedTitleID);
+          if (titleExists) {
+            matchedTitleID = _selectedTitleID;
+            final selectedTitle = fetchedTitles.firstWhere((t) => t.titleID == _selectedTitleID);
+            shouldSelectOther = selectedTitle.isOther || selectedTitle.titleName.toLowerCase() == 'diğer';
+            
+            // Eğer "Diğer" seçiliyse, mevcut trackTitle'ı custom title olarak kullan
+            if (shouldSelectOther && widget.tracking.trackTitle.isNotEmpty) {
+              _customTitleController.text = widget.tracking.trackTitle;
+            }
+            
+            print('🔍 Takip Başlığı ID: $matchedTitleID, Other: $shouldSelectOther, Title: "${widget.tracking.trackTitle}"');
+          } else {
+            print('⚠️ trackTitleID $_selectedTitleID listede bulunamadı');
+            // Varsayılan olarak ilk başlığı seç
+            matchedTitleID = fetchedTitles[0].titleID;
+            shouldSelectOther = fetchedTitles[0].isOther;
+          }
+        } else {
+          // titleID yoksa varsayılan seç
+          matchedTitleID = fetchedTitles[0].titleID;
+          shouldSelectOther = fetchedTitles[0].isOther;
         }
+      }
+
+      // Kullanıcı ID'lerini güncelle
+      List<int> matchedUserIDs = _selectedUserIDs;
+      
+      print('🔍 Kullanıcı Eşleştirme Başlangıcı:');
+      print('   Initial UserIDs: $matchedUserIDs');
+      print('   Available Users: ${fetchedPersons.map((u) => '${u["id"]} - ${u["name"]}').join(", ")}');
+      
+      // Eğer user ID'ler boş veya geçersizse
+      if (matchedUserIDs.isEmpty || matchedUserIDs.any((id) => id == 0 || id < 0)) {
+        print('   ⚠️ UserIDs boş veya geçersiz');
+        // assignedUserNames adına göre ara (eğer varsa)
+        if (widget.tracking.assignedUserNames.isNotEmpty && fetchedPersons.isNotEmpty) {
+          try {
+            final defaultUser = fetchedPersons.isNotEmpty 
+                ? <String, Object>{'id': fetchedPersons[0]['id'], 'name': fetchedPersons[0]['name']} 
+                : <String, Object>{'id': 0, 'name': ''};
+            
+            final matchedUser = fetchedPersons.firstWhere(
+              (u) => (u['name'] as String).toLowerCase().trim() == widget.tracking.assignedUserNames.toLowerCase().trim(),
+              orElse: () => defaultUser,
+            );
+            matchedUserIDs = [matchedUser['id'] as int];
+            print('🔍 Kullanıcı eşleştirildi: "${widget.tracking.assignedUserNames}" -> IDs: $matchedUserIDs');
+          } catch (e) {
+            print('⚠️ Kullanıcı eşleştirilemedi: $e');
+            // Hiç kullanıcı yoksa boş bırak
+            matchedUserIDs = [];
+          }
+        } else {
+          // Kullanıcı adı yoksa boş bırak
+          matchedUserIDs = [];
+        }
+      } else {
+        // User ID'ler geçerliyse, kullanıcıların listede olduğunu doğrula
+        print('   ✓ UserIDs geçerli, doğrulanıyor...');
+        final validUserIDs = matchedUserIDs.where((id) {
+          final exists = fetchedPersons.any((u) => u['id'] == id);
+          print('     - ID $id: ${exists ? "✓ Bulundu" : "✗ Bulunamadı"}');
+          return exists;
+        }).toList();
+        
+        if (validUserIDs.length != matchedUserIDs.length) {
+          print('⚠️ Bazı kullanıcı ID\'leri listede bulunamadı');
+          print('   Orijinal: $matchedUserIDs');
+          print('   Geçerli: $validUserIDs');
+        }
+        
+        matchedUserIDs = validUserIDs;
+        print('✅ ${validUserIDs.length} kullanıcı ID doğrulandı: $validUserIDs');
       }
       
       if (mounted) {
         setState(() {
           trackingTypes = fetchedTypes;
+          trackingTitles = fetchedTitles;
           statuses = fetchedStatuses;
           users = fetchedPersons;
           _selectedStatusID = matchedStatusID;
           _selectedTypeID = matchedTypeID;
-          _selectedUserID = matchedUserID;
+          _selectedTitleID = matchedTitleID;
+          _isOtherTitleSelected = shouldSelectOther;
+          _selectedUserIDs = matchedUserIDs;
         });
         
         print('🔄 After setState:');
         print('   Selected Type: ${_getSelectedTypeName()}');
+        print('   Selected Title ID: $_selectedTitleID (Other: $_isOtherTitleSelected)');
         print('   Selected Status: ${_getSelectedStatusName()}');
-        print('   Selected User: ${_getSelectedUserName()}');
+        print('   Selected Users: ${_getSelectedUserNames()} (IDs: $_selectedUserIDs)');
+        print('   Selected Notifications: ${_getSelectedNotificationTypes()} (Types: $_selectedNotificationTypes)');
+        print('   Available notification types: $_notificationTypes');
       }
     } catch (e) {
       print('❌ Error loading dropdown data: $e');
@@ -147,6 +236,21 @@ class _EditTrackingViewState extends State<EditTrackingView> {
     }
   }
   
+  String _getSelectedTitleName() {
+    if (trackingTitles.isEmpty) {
+      return 'Yükleniyor...';
+    }
+    if (_selectedTitleID == -1) {
+      return 'Takip Başlığı seçiniz';
+    }
+    try {
+      final title = trackingTitles.firstWhere((t) => t.titleID == _selectedTitleID);
+      return title.titleName;
+    } catch (e) {
+      return 'Takip Başlığı seçiniz';
+    }
+  }
+
   String _getSelectedTypeName() {
     if (trackingTypes.isEmpty) {
       // Dropdown henüz yüklenmediyse tracking'ten gelen ismi göster
@@ -175,17 +279,25 @@ class _EditTrackingViewState extends State<EditTrackingView> {
     }
   }
 
-  String _getSelectedUserName() {
+  String _getSelectedUserNames() {
     if (users.isEmpty) {
-      // Dropdown henüz yüklenmediyse tracking'ten gelen ismi göster
-      return widget.tracking.assignedUser;
+      // Dropdown henüz yüklenmediyse
+      return widget.tracking.assignedUserNames.isNotEmpty ? widget.tracking.assignedUserNames : 'Yükleniyor...';
+    }
+    if (_selectedUserIDs.isEmpty) {
+      return 'Atanan Kişi seçiniz';
     }
     try {
-      final user = users.firstWhere((u) => u['id'] == _selectedUserID);
-      return user['name'] as String;
+      return _selectedUserIDs.map((id) {
+        final user = users.firstWhere(
+          (u) => u['id'] == id,
+          orElse: () => {'name': 'Bilinmeyen'},
+        );
+        return user['name'] as String;
+      }).join(', ');
     } catch (e) {
-      // ID bulunamazsa tracking'ten gelen ismi göster
-      return widget.tracking.assignedUser;
+      // ID bulunamazsa
+      return widget.tracking.assignedUserNames.isNotEmpty ? widget.tracking.assignedUserNames : 'Atanan Kişi seçiniz';
     }
   }
 
@@ -205,9 +317,17 @@ class _EditTrackingViewState extends State<EditTrackingView> {
     }
   }
 
+  String _getSelectedNotificationTypes() {
+    if (_selectedNotificationTypes.isEmpty) {
+      return 'Seçilmedi';
+    }
+    return _selectedNotificationTypes.map((type) => _formatNotificationType(type)).join(', ');
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
+    _customTitleController.dispose();
     _descController.dispose();
     _dueDateController.dispose();
     _remindDateController.dispose();
@@ -325,12 +445,13 @@ class _EditTrackingViewState extends State<EditTrackingView> {
         compID: widget.compID,
         typeID: _selectedTypeID,
         statusID: _selectedStatusID,
-        trackTitle: _titleController.text,
+        titleID: _selectedTitleID != -1 ? _selectedTitleID : 0,
+        trackTitle: _isOtherTitleSelected ? _customTitleController.text : _titleController.text,
         trackDesc: _descController.text,
         trackDueDate: _dueDateController.text,
         trackRemindDate: _remindDateController.text,
-        assignedUserID: _selectedUserID,
-        notificationType: _selectedNotificationType,
+        assignedUserIDs: _selectedUserIDs,
+        notificationTypes: _selectedNotificationTypes,
       );
 
       if (mounted) {
@@ -574,10 +695,10 @@ class _EditTrackingViewState extends State<EditTrackingView> {
     );
   }
 
-  Future<void> _showUserPicker() async {
-    if (users.isEmpty) return;
+  Future<void> _showTitlePicker() async {
+    if (trackingTitles.isEmpty) return;
 
-    int selectedIndex = users.indexWhere((u) => u['id'] == _selectedUserID);
+    int selectedIndex = trackingTitles.indexWhere((t) => t.titleID == _selectedTitleID);
     if (selectedIndex < 0) selectedIndex = 0;
 
     await showCupertinoModalPopup<void>(
@@ -613,7 +734,11 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                       child: const Text('Seç'),
                       onPressed: () {
                         setState(() {
-                          _selectedUserID = users[selectedIndex]['id'] as int;
+                          _selectedTitleID = trackingTitles[selectedIndex].titleID;
+                          _isOtherTitleSelected = trackingTitles[selectedIndex].titleName == 'Diğer';
+                          if (!_isOtherTitleSelected) {
+                            _customTitleController.clear();
+                          }
                         });
                         Navigator.of(context).pop();
                       },
@@ -628,7 +753,7 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                   onSelectedItemChanged: (int index) {
                     selectedIndex = index;
                   },
-                  children: users.map((user) => Center(child: Text(user['name'] as String))).toList(),
+                  children: trackingTitles.map((title) => Center(child: Text(title.titleName))).toList(),
                 ),
               ),
             ],
@@ -638,79 +763,119 @@ class _EditTrackingViewState extends State<EditTrackingView> {
     );
   }
 
-  Future<void> _showNotificationTypePicker() async {
-    int selectedIndex = 0;
-    if (_selectedNotificationType != null) {
-      selectedIndex = _notificationTypes.indexOf(_selectedNotificationType!);
-      if (selectedIndex < 0) selectedIndex = 0;
-    }
+  Future<void> _showUserPicker() async {
+    if (users.isEmpty) return;
 
-    await showCupertinoModalPopup<void>(
+    List<int> tempSelectedUserIDs = List.from(_selectedUserIDs);
+
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Container(
-          height: 250,
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          child: Column(
-            children: [
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemBackground.resolveFrom(context),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: CupertinoColors.separator.resolveFrom(context),
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('İptal'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Text('Seç'),
-                      onPressed: () {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Kullanıcı Seçiniz'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index];
+                    final userId = user['id'] as int;
+                    final isSelected = tempSelectedUserIDs.contains(userId);
+
+                    return CheckboxListTile(
+                      title: Text(user['name'] as String),
+                      value: isSelected,
+                      onChanged: (bool? value) {
                         setState(() {
-                          _selectedNotificationType = _notificationTypes[selectedIndex];
+                          if (value == true) {
+                            tempSelectedUserIDs.add(userId);
+                          } else {
+                            tempSelectedUserIDs.remove(userId);
+                          }
                         });
-                        Navigator.of(context).pop();
                       },
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
-                  itemExtent: 32,
-                  onSelectedItemChanged: (int index) {
-                    selectedIndex = index;
+                    );
                   },
-                  children: _notificationTypes
-                      .map((type) => Center(
-                            child: Text(
-                              type == 'push'
-                                  ? 'Push Bildirim'
-                                  : type == 'email'
-                                      ? 'E-posta'
-                                      : type == 'sms'
-                                          ? 'SMS'
-                                          : 'Tümü',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          ))
-                      .toList(),
                 ),
               ),
-            ],
-          ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('İptal'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    this.setState(() {
+                      _selectedUserIDs = tempSelectedUserIDs;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Tamam'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showNotificationTypePicker() async {
+    List<String> tempSelectedNotificationTypes = List.from(_selectedNotificationTypes);
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Bildirim Türü Seçiniz'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _notificationTypes.length,
+                  itemBuilder: (context, index) {
+                    final type = _notificationTypes[index];
+                    final isSelected = tempSelectedNotificationTypes.contains(type);
+                    final displayName = _formatNotificationType(type);
+
+                    return CheckboxListTile(
+                      title: Text(displayName),
+                      value: isSelected,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            tempSelectedNotificationTypes.add(type);
+                          } else {
+                            tempSelectedNotificationTypes.remove(type);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('İptal'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    this.setState(() {
+                      _selectedNotificationTypes = tempSelectedNotificationTypes;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Tamam'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -744,24 +909,61 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Başlık
+                        // Takip Başlığı
                         _buildFormSection(
-                          title: 'Başlık *',
-                          child: TextFormField(
-            textCapitalization: TextCapitalization.sentences,
-                            controller: _titleController,
-                            decoration: _buildInputDecoration(
-                              hintText: 'Örn: Müşteri görüşmesi',
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Başlık gereklidir';
-                              }
-                              return null;
-                            },
+                          title: 'Takip Başlığı *',
+                          child: _buildCupertinoField(
+                            placeholder: 'Takip Başlığı seçiniz',
+                            value: _getSelectedTitleName(),
+                            onTap: _showTitlePicker,
+                            isDisabled: trackingTitles.isEmpty,
                           ),
                           theme: theme,
                         ),
+
+                        // Başlık (sadece "Diğer" seçiliyse veya normal title seçiliyse göster)
+                        if (_selectedTitleID != -1 && !_isOtherTitleSelected)
+                          _buildFormSection(
+                            title: 'Başlık *',
+                            child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
+                              controller: _titleController,
+                              decoration: _buildInputDecoration(
+                                hintText: 'Örn: Müşteri görüşmesi',
+                              ),
+                              validator: (value) {
+                                if (_selectedTitleID != -1 && !_isOtherTitleSelected) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Başlık gereklidir';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            theme: theme,
+                          ),
+
+                        // Custom Başlık (sadece "Diğer" seçiliyse göster)
+                        if (_isOtherTitleSelected)
+                          _buildFormSection(
+                            title: 'Başlık *',
+                            child: TextFormField(
+            textCapitalization: TextCapitalization.sentences,
+                              controller: _customTitleController,
+                              decoration: _buildInputDecoration(
+                                hintText: 'Özel başlık giriniz',
+                              ),
+                              validator: (value) {
+                                if (_isOtherTitleSelected) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Başlık gereklidir';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            theme: theme,
+                          ),
 
                         // Açıklama
                         _buildFormSection(
@@ -912,7 +1114,7 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                           title: 'Atanan Kişi *',
                           child: _buildCupertinoField(
                             placeholder: 'Atanan Kişi *',
-                            value: _getSelectedUserName(),
+                            value: _getSelectedUserNames(),
                             onTap: _showUserPicker,
                             isDisabled: users.isEmpty,
                           ),
@@ -924,7 +1126,7 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                           title: 'Bildirim Türü (Opsiyonel)',
                           child: _buildCupertinoField(
                             placeholder: 'Bildirim türü seçiniz',
-                            value: _formatNotificationType(_selectedNotificationType),
+                            value: _getSelectedNotificationTypes(),
                             onTap: _showNotificationTypePicker,
                           ),
                           theme: theme,

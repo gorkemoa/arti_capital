@@ -91,6 +91,48 @@ class ProjectsService {
     }
   }
 
+  // Takip başlıklarını getir
+  Future<List<FollowupTitle>> getFollowupTitles() async {
+    try {
+      final endpoint = AppConstants.getFollowupTitles;
+      AppLogger.i('GET $endpoint', tag: 'GET_FOLLOWUP_TITLES');
+
+      final resp = await ApiClient.getJson(endpoint);
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'GET_FOLLOWUP_TITLES');
+          return [];
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'GET_FOLLOWUP_TITLES');
+        return [];
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'GET_FOLLOWUP_TITLES');
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) return [];
+
+      final titlesJson = (data['titles'] as List<dynamic>?) ?? [];
+      return titlesJson
+          .map((e) => FollowupTitle.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      AppLogger.e('Get followup titles error ${e.statusCode} ${e.message}', tag: 'GET_FOLLOWUP_TITLES');
+      return [];
+    } catch (e) {
+      AppLogger.e('Unexpected error in getFollowupTitles: $e', tag: 'GET_FOLLOWUP_TITLES');
+      return [];
+    }
+  }
+
   // Kişileri getir (Persons/Users)
   Future<List<Map<String, dynamic>>> getPersons() async {
     try {
@@ -734,13 +776,14 @@ class ProjectsService {
     required int appID,
     required int compID,
     required int typeID,
+    required int titleID,
     required int statusID,
     required String trackTitle,
     required String trackDesc,
     required String trackDueDate,
     required String trackRemindDate,
-    required int assignedUserID,
-    String? notificationType,
+    required List<int> assignedUserIDs,
+    List<String>? notificationTypes,
   }) async {
     try {
       final token = StorageService.getToken();
@@ -760,16 +803,17 @@ class ProjectsService {
         appID: appID,
         compID: compID,
         typeID: typeID,
+        titleID: titleID,
         statusID: statusID,
         trackTitle: trackTitle,
         trackDesc: trackDesc,
         trackDueDate: trackDueDate,
         trackRemindDate: trackRemindDate,
-        assignedUserID: assignedUserID,
-        notificationType: notificationType,
+        assignedUserIDs: assignedUserIDs,
+        notificationTypes: notificationTypes,
       );
 
-      AppLogger.i('Request: appID=$appID, compID=$compID, typeID=$typeID, statusID=$statusID', tag: 'ADD_TRACKING');
+      AppLogger.i('Request: appID=$appID, compID=$compID, typeID=$typeID, titleID=$titleID, statusID=$statusID', tag: 'ADD_TRACKING');
 
       final resp = await ApiClient.postJson(endpoint, data: request.toJson());
 
@@ -824,13 +868,14 @@ class ProjectsService {
     required int appID,
     required int compID,
     required int typeID,
+    required int titleID,
     required int statusID,
     required String trackTitle,
     required String trackDesc,
     required String trackDueDate,
     required String trackRemindDate,
-    required int assignedUserID,
-    String? notificationType,
+    required List<int> assignedUserIDs,
+    List<String>? notificationTypes,
   }) async {
     try {
       final token = StorageService.getToken();
@@ -851,16 +896,17 @@ class ProjectsService {
         appID: appID,
         compID: compID,
         typeID: typeID,
+        titleID: titleID,
         statusID: statusID,
         trackTitle: trackTitle,
         trackDesc: trackDesc,
         trackDueDate: trackDueDate,
         trackRemindDate: trackRemindDate,
-        assignedUserID: assignedUserID,
-        notificationType: notificationType,
+        assignedUserIDs: assignedUserIDs,
+        notificationTypes: notificationTypes,
       );
 
-      AppLogger.i('Request: trackID=$trackID, appID=$appID, compID=$compID, typeID=$typeID, statusID=$statusID', tag: 'UPDATE_TRACKING');
+      AppLogger.i('Request: trackID=$trackID, appID=$appID, compID=$compID, typeID=$typeID, titleID=$titleID, statusID=$statusID', tag: 'UPDATE_TRACKING');
 
       final resp = await ApiClient.putJson(endpoint, data: request.toJson());
 

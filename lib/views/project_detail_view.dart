@@ -1133,7 +1133,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                   
                       ],
                     ),
-                   if (tracking.notificationType != null && tracking.notificationType!.isNotEmpty) ...[
+                   if (tracking.notificationTypes.isNotEmpty) ...[
                   const SizedBox(height: 10),
                    Row(
                   children: [
@@ -1141,7 +1141,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                   child: _buildTrackingInfo(
                         Icons.notifications,
                         'Bildirim',
-                        _formatNotificationType(tracking.notificationType!),
+                        tracking.notificationTypes.map((type) => _formatNotificationType(type)).join(', '),
                         theme,
                         ),
                             ),
@@ -1150,7 +1150,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                    child: _buildTrackingInfo(
                    Icons.person_outline,
                    'Atanan',
-                   tracking.assignedUser,
+                   tracking.assignedUserNames,
                    theme,
        ),
       ),

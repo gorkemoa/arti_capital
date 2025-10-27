@@ -37,6 +37,27 @@ class FollowupType {
   }
 }
 
+// Takip Başlığı modeli
+class FollowupTitle {
+  final int titleID;
+  final String titleName;
+  final bool isOther;
+
+  FollowupTitle({
+    required this.titleID,
+    required this.titleName,
+    required this.isOther,
+  });
+
+  factory FollowupTitle.fromJson(Map<String, dynamic> json) {
+    return FollowupTitle(
+      titleID: (json['titleID'] as num).toInt(),
+      titleName: json['titleName'] as String? ?? '',
+      isOther: json['isOther'] as bool? ?? false,
+    );
+  }
+}
+
 // Döküman modeli
 class ProjectDocument {
   final int documentID;
@@ -182,6 +203,7 @@ class RequiredDocument {
 // Tracking modeli
 class ProjectTracking {
   final int trackID;
+  final int trackTitleID;
   final String trackTitle;
   final String trackDesc;
   final int trackTypeID;
@@ -194,14 +216,15 @@ class ProjectTracking {
   final String statusBgColor;
   final String trackDueDate;
   final String trackRemindDate;
-  final int assignedUserID;
-  final String assignedUser;
+  final List<int> assignedUserIDs;
+  final String assignedUserNames;
+  final List<String> notificationTypes;
   final String createdDate;
   final String updatedDate;
-  final String? notificationType;
 
   ProjectTracking({
     required this.trackID,
+    required this.trackTitleID,
     required this.trackTitle,
     required this.trackDesc,
     required this.trackTypeID,
@@ -214,16 +237,38 @@ class ProjectTracking {
     required this.statusBgColor,
     required this.trackDueDate,
     required this.trackRemindDate,
-    required this.assignedUserID,
-    required this.assignedUser,
+    required this.assignedUserIDs,
+    required this.assignedUserNames,
+    required this.notificationTypes,
     required this.createdDate,
     required this.updatedDate,
-    this.notificationType,
   });
 
   factory ProjectTracking.fromJson(Map<String, dynamic> json) {
+    // Parse assignedUserIDs - string array'i int array'e çevir
+    List<int> userIDs = [];
+    if (json['assignedUserIDs'] != null) {
+      final userIDsData = json['assignedUserIDs'] as List;
+      userIDs = userIDsData.map((id) {
+        if (id is String) {
+          return int.tryParse(id) ?? 0;
+        } else if (id is num) {
+          return id.toInt();
+        }
+        return 0;
+      }).toList();
+    }
+
+    // Parse notificationTypes
+    List<String> notifTypes = [];
+    if (json['notificationTypes'] != null) {
+      final typesData = json['notificationTypes'] as List;
+      notifTypes = typesData.map((e) => e.toString()).toList();
+    }
+
     return ProjectTracking(
       trackID: (json['trackID'] as num).toInt(),
+      trackTitleID: (json['trackTitleID'] as num?)?.toInt() ?? 0,
       trackTitle: json['trackTitle'] as String? ?? '',
       trackDesc: json['trackDesc'] as String? ?? '',
       trackTypeID: (json['trackTypeID'] as num?)?.toInt() ?? 0,
@@ -236,11 +281,11 @@ class ProjectTracking {
       statusBgColor: json['statusBgColor'] as String? ?? '#E5E7EB',
       trackDueDate: json['trackDueDate'] as String? ?? '',
       trackRemindDate: json['trackRemindDate'] as String? ?? '',
-      assignedUserID: (json['assignedUserID'] as num?)?.toInt() ?? 0,
-      assignedUser: json['assignedUser'] as String? ?? '',
+      assignedUserIDs: userIDs,
+      assignedUserNames: json['assignedUserNames'] as String? ?? '',
+      notificationTypes: notifTypes,
       createdDate: json['createdDate'] as String? ?? '',
       updatedDate: json['updatedDate'] as String? ?? '',
-      notificationType: json['notificationType'] as String?,
     );
   }
 }
@@ -756,26 +801,28 @@ class AddTrackingRequest {
   final int appID;
   final int compID;
   final int typeID;
+  final int titleID;
   final int statusID;
   final String trackTitle;
   final String trackDesc;
   final String trackDueDate;
   final String trackRemindDate;
-  final int assignedUserID;
-  final String? notificationType;
+  final List<int> assignedUserIDs;
+  final List<String>? notificationTypes;
 
   AddTrackingRequest({
     required this.userToken,
     required this.appID,
     required this.compID,
     required this.typeID,
+    required this.titleID,
     required this.statusID,
     required this.trackTitle,
     required this.trackDesc,
     required this.trackDueDate,
     required this.trackRemindDate,
-    required this.assignedUserID,
-    this.notificationType,
+    required this.assignedUserIDs,
+    this.notificationTypes,
   });
 
   Map<String, dynamic> toJson() {
@@ -784,13 +831,15 @@ class AddTrackingRequest {
       'appID': appID,
       'compID': compID,
       'typeID': typeID,
+      'titleID': titleID,
       'statusID': statusID,
       'trackTitle': trackTitle,
       'trackDesc': trackDesc,
       'trackDueDate': trackDueDate,
       'trackRemindDate': trackRemindDate,
-      'assignedUserID': assignedUserID,
-      if (notificationType != null) 'notificationType': notificationType,
+      'assignedUserIDs': assignedUserIDs,
+      if (notificationTypes != null && notificationTypes!.isNotEmpty) 
+        'notificationTypes': notificationTypes,
     };
   }
 }
@@ -802,13 +851,14 @@ class UpdateTrackingRequest {
   final int appID;
   final int compID;
   final int typeID;
+  final int titleID;
   final int statusID;
   final String trackTitle;
   final String trackDesc;
   final String trackDueDate;
   final String trackRemindDate;
-  final int assignedUserID;
-  final String? notificationType;
+  final List<int> assignedUserIDs;
+  final List<String>? notificationTypes;
 
   UpdateTrackingRequest({
     required this.userToken,
@@ -816,13 +866,14 @@ class UpdateTrackingRequest {
     required this.appID,
     required this.compID,
     required this.typeID,
+    required this.titleID,
     required this.statusID,
     required this.trackTitle,
     required this.trackDesc,
     required this.trackDueDate,
     required this.trackRemindDate,
-    required this.assignedUserID,
-    this.notificationType,
+    required this.assignedUserIDs,
+    this.notificationTypes,
   });
 
   Map<String, dynamic> toJson() {
@@ -832,13 +883,15 @@ class UpdateTrackingRequest {
       'appID': appID,
       'compID': compID,
       'typeID': typeID,
+      'titleID': titleID,
       'statusID': statusID,
       'trackTitle': trackTitle,
       'trackDesc': trackDesc,
       'trackDueDate': trackDueDate,
       'trackRemindDate': trackRemindDate,
-      'assignedUserID': assignedUserID,
-      if (notificationType != null) 'notificationType': notificationType,
+      'assignedUserIDs': assignedUserIDs,
+      if (notificationTypes != null && notificationTypes!.isNotEmpty) 
+        'notificationTypes': notificationTypes,
     };
   }
 }
