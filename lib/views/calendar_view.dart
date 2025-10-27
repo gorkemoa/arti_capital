@@ -53,6 +53,7 @@ class _CalendarViewState extends State<CalendarView> {
         final timeStr = _formatTime(dt);
         final color = _parseStatusColor(item.statusColor);
         final priorityColor = _parseStatusColor(item.priorityColor);
+        
         list.add(
           _CalendarEvent(
             appointmentID: item.appointmentID,
@@ -70,6 +71,15 @@ class _CalendarViewState extends State<CalendarView> {
             priorityName: item.priorityName,
             priorityColor: priorityColor,
             logs: item.logs,
+            isAppointment: item.isAppointment,
+            trackingType: item.trackingType,
+            trackingTypeColor: item.trackingTypeColor,
+            trackingTypeColorBg: item.trackingTypeColorBg,
+            remindDate: item.remindDate,
+            notificationType: item.notificationType,
+            assignedUserNames: item.assignedUserNames,
+            assignedUserIDs: item.assignedUserIDs,
+            updatedDate: item.updatedDate,
           ),
         );
       }
@@ -413,6 +423,15 @@ class _CalendarViewState extends State<CalendarView> {
                     priorityName: event.priorityName,
                     priorityColor: event.priorityColor,
                     logs: event.logs,
+                    isAppointment: event.isAppointment,
+                    trackingType: event.trackingType,
+                    trackingTypeColor: event.trackingTypeColor,
+                    trackingTypeColorBg: event.trackingTypeColorBg,
+                    remindDate: event.remindDate,
+                    notificationType: event.notificationType,
+                    assignedUserNames: event.assignedUserNames,
+                    assignedUserIDs: event.assignedUserIDs,
+                    updatedDate: event.updatedDate,
                   ),
                 ),
               );
@@ -902,6 +921,15 @@ class _CalendarViewState extends State<CalendarView> {
                                   priorityName: ev.priorityName,
                                   priorityColor: ev.priorityColor,
                                   logs: ev.logs,
+                                  isAppointment: ev.isAppointment,
+                                  trackingType: ev.trackingType,
+                                  trackingTypeColor: ev.trackingTypeColor,
+                                  trackingTypeColorBg: ev.trackingTypeColorBg,
+                                  remindDate: ev.remindDate,
+                                  notificationType: ev.notificationType,
+                                  assignedUserNames: ev.assignedUserNames,
+                                  assignedUserIDs: ev.assignedUserIDs,
+                                  updatedDate: ev.updatedDate,
                                 ),
                               ),
                             );
@@ -981,6 +1009,15 @@ class _CalendarEvent {
   final String priorityName;
   final Color priorityColor;
   final List<AppointmentLog> logs;
+  final bool isAppointment;
+  final String? trackingType;
+  final String? trackingTypeColor;
+  final String? trackingTypeColorBg;
+  final String? remindDate;
+  final List<String>? notificationType;
+  final String? assignedUserNames;
+  final List<String>? assignedUserIDs;
+  final String? updatedDate;
 
   const _CalendarEvent({
     required this.appointmentID,
@@ -998,6 +1035,15 @@ class _CalendarEvent {
     required this.priorityName,
     required this.priorityColor,
     required this.logs,
+    required this.isAppointment,
+    this.trackingType,
+    this.trackingTypeColor,
+    this.trackingTypeColorBg,
+    this.remindDate,
+    this.notificationType,
+    this.assignedUserNames,
+    this.assignedUserIDs,
+    this.updatedDate,
   });
 }
 
@@ -1134,6 +1180,15 @@ class _InlineSelectedEvents extends StatelessWidget {
                             priorityName: ev.priorityName,
                             priorityColor: ev.priorityColor,
                             logs: ev.logs,
+                            isAppointment: ev.isAppointment,
+                            trackingType: ev.trackingType,
+                            trackingTypeColor: ev.trackingTypeColor,
+                            trackingTypeColorBg: ev.trackingTypeColorBg,
+                            remindDate: ev.remindDate,
+                            notificationType: ev.notificationType,
+                            assignedUserNames: ev.assignedUserNames,
+                            assignedUserIDs: ev.assignedUserIDs,
+                            updatedDate: ev.updatedDate,
                           ),
                         ),
                       );
@@ -1218,6 +1273,15 @@ class _InlineSelectedEvents extends StatelessWidget {
                           priorityName: ev.priorityName,
                           priorityColor: ev.priorityColor,
                           logs: ev.logs,
+                          isAppointment: ev.isAppointment,
+                          trackingType: ev.trackingType,
+                          trackingTypeColor: ev.trackingTypeColor,
+                          trackingTypeColorBg: ev.trackingTypeColorBg,
+                          remindDate: ev.remindDate,
+                          notificationType: ev.notificationType,
+                          assignedUserNames: ev.assignedUserNames,
+                          assignedUserIDs: ev.assignedUserIDs,
+                          updatedDate: ev.updatedDate,
                         ),
                       ),
                     );

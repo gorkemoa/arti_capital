@@ -24,6 +24,15 @@ class AppointmentDetailView extends StatelessWidget {
     this.priorityName,
     this.priorityColor,
     this.logs,
+    this.isAppointment,
+    this.trackingType,
+    this.trackingTypeColor,
+    this.trackingTypeColorBg,
+    this.remindDate,
+    this.notificationType,
+    this.assignedUserNames,
+    this.assignedUserIDs,
+    this.updatedDate,
   });
 
   final String title;
@@ -41,6 +50,15 @@ class AppointmentDetailView extends StatelessWidget {
   final String? priorityName;
   final Color? priorityColor;
   final List<AppointmentLog>? logs;
+  final bool? isAppointment;
+  final String? trackingType;
+  final String? trackingTypeColor;
+  final String? trackingTypeColorBg;
+  final String? remindDate;
+  final List<String>? notificationType;
+  final String? assignedUserNames;
+  final List<String>? assignedUserIDs;
+  final String? updatedDate;
 
   Event _toCalendarEvent() {
     // Zamanı ayırmak için basit ayrıştırma beklenen format: ".. · HH:MM" veya "HH:MM"
@@ -71,6 +89,23 @@ class AppointmentDetailView extends StatelessWidget {
       androidParams: const AndroidParams(emailInvites: []),
       iosParams: const IOSParams(reminder: Duration(minutes: 30)),
     );
+  }
+
+  static Color _parseColor(String raw) {
+    // Parse hex color: #RRGGBB or #AARRGGBB
+    final fallback = AppColors.primary;
+    final s = raw.trim();
+    if (s.isEmpty) return fallback;
+    String hex = s.startsWith('#') ? s.substring(1) : s;
+    if (hex.length == 6) {
+      hex = 'FF$hex';
+    }
+    try {
+      final value = int.parse(hex, radix: 16);
+      return Color(value);
+    } catch (_) {
+      return fallback;
+    }
   }
 
   @override
@@ -194,6 +229,91 @@ class AppointmentDetailView extends StatelessWidget {
                   title: 'Konum',
                   content: location!,
                 ),
+              ],
+
+              // Tracking fields (only for isAppointment = false)
+              if (isAppointment == false) ...[
+                if (trackingType != null && trackingType!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(width: 24, height: 24, child: Center(child: Icon(Icons.category_outlined, color: Colors.black54))),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Takip Türü',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: trackingTypeColorBg != null 
+                                      ? _parseColor(trackingTypeColorBg!)
+                                      : AppColors.primary.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  trackingType!,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: trackingTypeColor != null
+                                        ? _parseColor(trackingTypeColor!)
+                                        : Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (remindDate != null && remindDate!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _SectionCard(
+                    leading: const Icon(Icons.notifications_outlined, color: Colors.black54),
+                    title: 'Hatırlatma Tarihi',
+                    content: remindDate!,
+                  ),
+                ],
+                if (assignedUserNames != null && assignedUserNames!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _SectionCard(
+                    leading: const Icon(Icons.person_outline, color: Colors.black54),
+                    title: 'Atanan Kullanıcılar',
+                    content: assignedUserNames!,
+                  ),
+                ],
+                if (notificationType != null && notificationType!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _NotificationTypeCard(types: notificationType!),
+                ],
+                if (updatedDate != null && updatedDate!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _SectionCard(
+                    leading: const Icon(Icons.update_outlined, color: Colors.black54),
+                    title: 'Son Güncelleme',
+                    content: updatedDate!,
+                  ),
+                ],
               ],
 
               const SizedBox(height: 12),
@@ -538,6 +658,101 @@ class _LogItem extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _NotificationTypeCard extends StatelessWidget {
+  const _NotificationTypeCard({required this.types});
+
+  final List<String> types;
+
+  IconData _getIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'push':
+        return Icons.notifications_outlined;
+      case 'email':
+        return Icons.email_outlined;
+      case 'sms':
+        return Icons.sms_outlined;
+      default:
+        return Icons.notifications_outlined;
+    }
+  }
+
+  String _getLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'push':
+        return 'Push Bildirimi';
+      case 'email':
+        return 'E-posta';
+      case 'sms':
+        return 'SMS';
+      default:
+        return type;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(width: 24, height: 24, child: Center(child: Icon(Icons.notifications_active_outlined, color: Colors.black54))),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Bildirim Türleri',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: types.map((type) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_getIcon(type), size: 14, color: AppColors.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            _getLabel(type),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

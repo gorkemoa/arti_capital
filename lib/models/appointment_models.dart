@@ -47,7 +47,17 @@ class AppointmentItem {
   final String priorityName;
   final String priorityColor;
   final String createDate;
+  final bool isAppointment;
   final List<AppointmentLog> logs;
+  // Takip (tracking) alanları - sadece isAppointment=false ise dolu
+  final String? trackingType;
+  final String? trackingTypeColor;
+  final String? trackingTypeColorBg;
+  final String? remindDate;
+  final List<String>? notificationType;
+  final String? assignedUserNames;
+  final List<String>? assignedUserIDs;
+  final String? updatedDate;
 
   AppointmentItem({
     required this.appointmentID,
@@ -66,7 +76,16 @@ class AppointmentItem {
     required this.priorityName,
     required this.priorityColor,
     required this.createDate,
+    required this.isAppointment,
     required this.logs,
+    this.trackingType,
+    this.trackingTypeColor,
+    this.trackingTypeColorBg,
+    this.remindDate,
+    this.notificationType,
+    this.assignedUserNames,
+    this.assignedUserIDs,
+    this.updatedDate,
   });
 
   factory AppointmentItem.fromJson(Map<String, dynamic> json) {
@@ -80,6 +99,22 @@ class AppointmentItem {
         ?.whereType<Map<String, dynamic>>()
         .map((e) => AppointmentLog.fromJson(e))
         .toList() ?? <AppointmentLog>[];
+
+    // notificationType listesi
+    List<String>? notificationTypeList;
+    if (json['notificationType'] != null) {
+      notificationTypeList = (json['notificationType'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList();
+    }
+
+    // assignedUserIDs listesi
+    List<String>? assignedUserIDsList;
+    if (json['assignedUserIDs'] != null) {
+      assignedUserIDsList = (json['assignedUserIDs'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList();
+    }
 
     return AppointmentItem(
       appointmentID: parseInt(json['appointmentID']),
@@ -98,7 +133,16 @@ class AppointmentItem {
       priorityName: (json['priorityName'] ?? '').toString(),
       priorityColor: (json['priorityColor'] ?? '').toString(),
       createDate: (json['createDate'] ?? '').toString(),
+      isAppointment: (json['isAppointment'] ?? true) as bool,
       logs: logsList,
+      trackingType: json['trackingType']?.toString(),
+      trackingTypeColor: json['trackingTypeColor']?.toString(),
+      trackingTypeColorBg: json['trackingTypeColorBg']?.toString(),
+      remindDate: json['remindDate']?.toString(),
+      notificationType: notificationTypeList,
+      assignedUserNames: json['assignedUserNames']?.toString(),
+      assignedUserIDs: assignedUserIDsList,
+      updatedDate: json['updatedDate']?.toString(),
     );
   }
 }
