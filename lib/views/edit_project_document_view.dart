@@ -87,14 +87,22 @@ class _EditProjectDocumentViewState extends State<EditProjectDocumentView> {
         fileData = 'data:$mimeType;base64,$base64String';
       }
 
-      final response = await _projectsService.updateProjectDocument(
-        appID: widget.projectID,
-        compID: widget.compID,
-        documentID: widget.document.documentID,
-        documentType: widget.document.documentTypeID,
-        file: fileData,
-        documentDesc: _descController.text.trim(),
-      );
+      final response = widget.document.isCompDocument
+          ? await _projectsService.updateCompanyDocument(
+              compID: widget.compID,
+              documentID: widget.document.documentID,
+              documentType: widget.document.documentTypeID,
+              file: fileData,
+              documentDesc: _descController.text.trim(),
+            )
+          : await _projectsService.updateProjectDocument(
+              appID: widget.projectID,
+              compID: widget.compID,
+              documentID: widget.document.documentID,
+              documentType: widget.document.documentTypeID,
+              file: fileData,
+              documentDesc: _descController.text.trim(),
+            );
 
       if (mounted) {
         if (response.success) {

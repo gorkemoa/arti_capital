@@ -91,7 +91,7 @@ class ProjectDocument {
       validityDate: json['validityDate'] as String? ?? '',
       documentURL: json['documentURL'] as String? ?? '',
       createDate: json['createDate'] as String? ?? '',
-      documentDesc: json['documentDesc'] as String?,
+      documentDesc: json['description'] as String? ?? json['documentDesc'] as String?,
       isCompDocument: _parseBoolean(json['isCompDocument']),
     );
   }
@@ -744,6 +744,35 @@ class UpdateProjectDocumentRequest {
   }
 }
 
+class UpdateCompanyDocumentRequest {
+  final String userToken;
+  final int compID;
+  final int documentID;
+  final int documentType;
+  final String documentDesc;
+  final String file;
+
+  UpdateCompanyDocumentRequest({
+    required this.userToken,
+    required this.compID,
+    required this.documentID,
+    required this.documentType,
+    required this.documentDesc,
+    required this.file,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'compID': compID,
+      'documentID': documentID,
+      'documentType': documentType,
+      'documentDesc': documentDesc,
+      'file': file,
+    };
+  }
+}
+
 // Proje belge silme request
 class DeleteProjectDocumentRequest {
   final String userToken;
@@ -760,6 +789,26 @@ class DeleteProjectDocumentRequest {
     return {
       'userToken': userToken,
       'appID': appID,
+      'documentID': documentID,
+    };
+  }
+}
+
+class DeleteCompanyDocumentRequest {
+  final String userToken;
+  final int compID;
+  final int documentID;
+
+  DeleteCompanyDocumentRequest({
+    required this.userToken,
+    required this.compID,
+    required this.documentID,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userToken': userToken,
+      'compID': compID,
       'documentID': documentID,
     };
   }

@@ -375,6 +375,79 @@ class ProjectsService {
     }
   }
 
+  Future<AddProjectDocumentResponse> deleteCompanyDocument({
+    required int compID,
+    required int documentID,
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.deleteCompanyDocument;
+      AppLogger.i('Delete $endpoint', tag: 'DELETE_COMPANY_DOCUMENT');
+
+      final request = DeleteCompanyDocumentRequest(
+        userToken: token,
+        compID: compID,
+        documentID: documentID,
+      );
+
+      AppLogger.i('Request: compID=$compID, documentID=$documentID', tag: 'DELETE_COMPANY_DOCUMENT');
+
+      final resp = await ApiClient.deleteJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'DELETE_COMPANY_DOCUMENT');
+          return AddProjectDocumentResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'DELETE_COMPANY_DOCUMENT');
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'DELETE_COMPANY_DOCUMENT');
+      AppLogger.i(body.toString(), tag: 'DELETE_COMPANY_DOCUMENT_RES');
+
+      return AddProjectDocumentResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Delete company document error ${e.statusCode} ${e.message}', tag: 'DELETE_COMPANY_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.e('Unexpected error in deleteCompanyDocument: $e', tag: 'DELETE_COMPANY_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
   // Yeni proje ekle
   Future<AddProjectResponse> addProject({
     required int compID,
@@ -763,6 +836,85 @@ class ProjectsService {
       );
     } catch (e) {
       AppLogger.i('Unexpected error in updateProjectDocument: $e', tag: 'UPDATE_PROJECT_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: 'Beklenmeyen bir hata oluştu',
+      );
+    }
+  }
+
+  Future<AddProjectDocumentResponse> updateCompanyDocument({
+    required int compID,
+    required int documentID,
+    required int documentType,
+    required String file,
+    String documentDesc = '',
+  }) async {
+    try {
+      final token = StorageService.getToken();
+      if (token == null) {
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Token bulunamadı',
+        );
+      }
+
+      final endpoint = AppConstants.updateCompanyDocument;
+      AppLogger.i('POST $endpoint', tag: 'UPDATE_COMPANY_DOCUMENT');
+
+      final request = UpdateCompanyDocumentRequest(
+        userToken: token,
+        compID: compID,
+        documentID: documentID,
+        documentType: documentType,
+        documentDesc: documentDesc,
+        file: file,
+      );
+
+      AppLogger.i('Request: compID=$compID, documentID=$documentID, documentType=$documentType', tag: 'UPDATE_COMPANY_DOCUMENT');
+
+      final resp = await ApiClient.putJson(endpoint, data: request.toJson());
+
+      dynamic responseData = resp.data;
+      Map<String, dynamic> body;
+      if (responseData is String) {
+        try {
+          body = Map<String, dynamic>.from(jsonDecode(responseData));
+        } catch (e) {
+          AppLogger.e('Response parse error: $e', tag: 'UPDATE_COMPANY_DOCUMENT');
+          return AddProjectDocumentResponse(
+            error: true,
+            success: false,
+            message: 'Sunucudan geçersiz yanıt alındı',
+          );
+        }
+      } else if (responseData is Map<String, dynamic>) {
+        body = responseData;
+      } else {
+        AppLogger.e('Unexpected response type: ${responseData.runtimeType}', tag: 'UPDATE_COMPANY_DOCUMENT');
+        return AddProjectDocumentResponse(
+          error: true,
+          success: false,
+          message: 'Sunucudan beklenmeyen yanıt türü alındı',
+        );
+      }
+
+      AppLogger.i('Status ${resp.statusCode}', tag: 'UPDATE_COMPANY_DOCUMENT');
+      AppLogger.i(body.toString(), tag: 'UPDATE_COMPANY_DOCUMENT_RES');
+
+      return AddProjectDocumentResponse.fromJson(body, resp.statusCode);
+    } on ApiException catch (e) {
+      AppLogger.e('Update company document error ${e.statusCode} ${e.message}', tag: 'UPDATE_COMPANY_DOCUMENT');
+      return AddProjectDocumentResponse(
+        error: true,
+        success: false,
+        message: e.message,
+        statusCode: e.statusCode,
+      );
+    } catch (e) {
+      AppLogger.i('Unexpected error in updateCompanyDocument: $e', tag: 'UPDATE_COMPANY_DOCUMENT');
       return AddProjectDocumentResponse(
         error: true,
         success: false,

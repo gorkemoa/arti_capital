@@ -318,10 +318,15 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     );
 
     try {
-      final response = await _service.deleteProjectDocument(
-        appID: _project!.appID,
-        documentID: doc.documentID,
-      );
+      final response = doc.isCompDocument
+          ? await _service.deleteCompanyDocument(
+              compID: _project!.compID,
+              documentID: doc.documentID,
+            )
+          : await _service.deleteProjectDocument(
+              appID: _project!.appID,
+              documentID: doc.documentID,
+            );
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -1683,6 +1688,29 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                                         ),
                                       ],
                                     ),
+                                    if (addedDoc.documentDesc?.isNotEmpty == true) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.description_outlined,
+                                            size: 14,
+                                            color: AppColors.onSurface.withOpacity(0.5),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              addedDoc.documentDesc!,
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: AppColors.onSurface.withOpacity(0.7),
+                                              ),
+                                              maxLines: 3,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -1773,7 +1801,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
               ),
               
               // Güncelle
-              if (StorageService.hasPermission('projects', 'update') && !addedDoc.isCompDocument)
+              if (StorageService.hasPermission('projects', 'update'))
                 ListTile(
                   leading: Icon(
                     Icons.edit,
@@ -1786,14 +1814,14 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                   },
                 ),
               
-              if (StorageService.hasPermission('projects', 'update') && !addedDoc.isCompDocument)
+              if (StorageService.hasPermission('projects', 'update'))
                 Divider(
                   height: 1,
                   color: AppColors.onSurface.withOpacity(0.1),
                 ),
               
               // Sil
-              if (StorageService.hasPermission('projects', 'update') && !addedDoc.isCompDocument)
+              if (StorageService.hasPermission('projects', 'update'))
                 ListTile(
                   leading: const Icon(
                     Icons.delete_outline,
