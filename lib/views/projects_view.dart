@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/project_models.dart';
 import '../services/projects_service.dart';
 import '../theme/app_colors.dart';
@@ -22,10 +23,12 @@ class _ProjectsViewState extends State<ProjectsView> {
   bool _loading = true;
   String _query = '';
   Set<int> _expandedProjects = {};
+  Set<int> _pinnedProjects = {};
 
   @override
   void initState() {
     super.initState();
+    _loadPinnedProjects();
     _loadProjects();
     _searchController.addListener(() {
       setState(() {
@@ -33,6 +36,22 @@ class _ProjectsViewState extends State<ProjectsView> {
       });
       _applyFilter();
     });
+  }
+
+  Future<void> _loadPinnedProjects() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pinnedIds = prefs.getStringList('pinned_projects') ?? [];
+    setState(() {
+      _pinnedProjects = pinnedIds.map((id) => int.parse(id)).toSet();
+    });
+  }
+
+  Future<void> _savePinnedProjects() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'pinned_projects',
+      _pinnedProjects.map((id) => id.toString()).toList(),
+    );
   }
 
   Future<void> _loadProjects() async {
@@ -61,7 +80,7 @@ class _ProjectsViewState extends State<ProjectsView> {
   void _applyFilter() async {
     if (_query.isEmpty) {
       setState(() {
-        _filteredProjects = _projects;
+        _filteredProjects = _sortProjects(_projects);
       });
     } else {
       setState(() => _loading = true);
@@ -69,7 +88,7 @@ class _ProjectsViewState extends State<ProjectsView> {
         final filtered = await _service.getProjects(searchText: _query);
         if (mounted) {
           setState(() {
-            _filteredProjects = filtered;
+            _filteredProjects = _sortProjects(filtered);
           });
         }
       } finally {
@@ -78,6 +97,12 @@ class _ProjectsViewState extends State<ProjectsView> {
         }
       }
     }
+  }
+
+  List<ProjectItem> _sortProjects(List<ProjectItem> projects) {
+    final pinned = projects.where((p) => _pinnedProjects.contains(p.appID)).toList();
+    final unpinned = projects.where((p) => !_pinnedProjects.contains(p.appID)).toList();
+    return [...pinned, ...unpinned];
   }
 
   Color _parseStatusColor(String colorStr) {
@@ -92,58 +117,117 @@ class _ProjectsViewState extends State<ProjectsView> {
   }
 
   void _showProjectActions(BuildContext context, ProjectItem project) {
-    final theme = Theme.of(context);
+    final isPinned = _pinnedProjects.contains(project.appID);
     
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Başlık
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.onSurface.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // Proje başlığı
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          project.appTitle,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        project.appTitle,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurface,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
+                      const SizedBox(height: 4),
+                      Text(
+                        project.appCode,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.onSurface.withOpacity(0.5),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 20),
-                // Sabitle
+                
+                Divider(
+                  height: 1,
+                  color: AppColors.onSurface.withOpacity(0.1),
+                ),
+                
+                // Detayları Görüntüle
                 ListTile(
-                  leading: const Icon(Icons.push_pin, color: AppColors.primary),
-                  title: const Text('Sabitle'),
+                  leading: Icon(
+                    Icons.open_in_new_rounded,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Detayları Görüntüle'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => ProjectDetailView(projectId: project.appID),
+                      ),
+                    );
+                    if (result == true) {
+                      _loadProjects();
+                    }
+                  },
+                ),
+                
+                Divider(
+                  height: 1,
+                  color: AppColors.onSurface.withOpacity(0.1),
+                ),
+                
+                // Sabitle/Kaldır
+                ListTile(
+                  leading: Icon(
+                    isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                    color: AppColors.primary,
+                  ),
+                  title: Text(isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle'),
                   onTap: () {
                     Navigator.pop(context);
                     _pinProject(project);
                   },
                 ),
+                
+                Divider(
+                  height: 1,
+                  color: AppColors.onSurface.withOpacity(0.1),
+                ),
+                
                 // Güncelle
                 if (StorageService.hasPermission('projects', 'edit'))
                   ListTile(
-                    leading: const Icon(Icons.edit, color: AppColors.primary),
-                    title: const Text('Güncelle'),
+                    leading: const Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.primary,
+                    ),
+                    title: const Text('Projeyi Düzenle'),
                     onTap: () async {
                       Navigator.pop(context);
                       final result = await Navigator.of(context).push<bool>(
@@ -156,17 +240,31 @@ class _ProjectsViewState extends State<ProjectsView> {
                       }
                     },
                   ),
+                
+                if (StorageService.hasPermission('projects', 'edit'))
+                  Divider(
+                    height: 1,
+                    color: AppColors.onSurface.withOpacity(0.1),
+                  ),
+                
                 // Sil
                 if (StorageService.hasPermission('projects', 'delete'))
                   ListTile(
-                    leading: const Icon(Icons.delete, color: Colors.red),
-                    title: const Text('Sil', style: TextStyle(color: Colors.red)),
+                    leading: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red,
+                    ),
+                    title: const Text(
+                      'Projeyi Sil',
+                      style: TextStyle(color: Colors.red),
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       _deleteProject(project);
                     },
                   ),
-                const SizedBox(height: 10),
+                
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -176,51 +274,86 @@ class _ProjectsViewState extends State<ProjectsView> {
   }
 
   void _pinProject(ProjectItem project) {
-    // TODO: Sabitleme işlemi yapılacak
-   
+    setState(() {
+      if (_pinnedProjects.contains(project.appID)) {
+        _pinnedProjects.remove(project.appID);
+      } else {
+        _pinnedProjects.add(project.appID);
+      }
+    });
+    _savePinnedProjects();
+    _applyFilter();
+    
+    if (mounted) {
+      final isPinned = _pinnedProjects.contains(project.appID);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isPinned ? 'Proje sabitlendi' : 'Proje sabitleme kaldırıldı'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
-  void _deleteProject(ProjectItem project) {
-    showDialog(
+  void _deleteProject(ProjectItem project) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Projeyi Sil'),
         content: Text('${project.appTitle} projesini silmek istediğinize emin misiniz?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('İptal'),
           ),
           TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                final response = await _service.deleteProject(project.appID);
-                if (mounted) {
-                  if (response.success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(response.message ?? 'Proje silindi')),
-                    );
-                    _loadProjects();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(response.message ?? 'Proje silinemedi')),
-                    );
-                  }
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Proje silinemedi: $e')),
-                  );
-                }
-              }
-            },
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('Sil', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final response = await _service.deleteProject(project.appID);
+      if (!mounted) return;
+      
+      if (response.success) {
+        // Sabitlenmiş projelerden de kaldır
+        if (_pinnedProjects.contains(project.appID)) {
+          _pinnedProjects.remove(project.appID);
+          await _savePinnedProjects();
+        }
+        
+        // Listeyi yenile
+        await _loadProjects();
+        
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message ?? 'Proje silindi'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message ?? 'Proje silinemedi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Proje silinemedi: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -355,18 +488,27 @@ class _ProjectsViewState extends State<ProjectsView> {
     final cardBg = onSurface.withOpacity(0.02);
     const cardRadius = 12.0;
     final isExpanded = _expandedProjects.contains(project.appID);
+    final isPinned = _pinnedProjects.contains(project.appID);
 
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(cardRadius),
         border: Border.all(
-          color: isExpanded 
-            ? AppColors.primary.withOpacity(0.3) 
-            : onSurface.withOpacity(0.08), 
-          width: 1,
+          color: isPinned
+            ? AppColors.primary.withOpacity(0.4)
+            : isExpanded 
+              ? AppColors.primary.withOpacity(0.3) 
+              : onSurface.withOpacity(0.08), 
+          width: isPinned ? 1.5 : 1,
         ),
-        boxShadow: isExpanded ? [
+        boxShadow: isPinned ? [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ] : isExpanded ? [
           BoxShadow(
             color: AppColors.primary.withOpacity(0.08),
             blurRadius: 8,
@@ -378,14 +520,16 @@ class _ProjectsViewState extends State<ProjectsView> {
         children: [
           // Üst Kısım (Her Zaman Görünür)
           InkWell(
-            onTap: () {
-              setState(() {
-                if (isExpanded) {
-                  _expandedProjects.remove(project.appID);
-                } else {
-                  _expandedProjects.add(project.appID);
-                }
-              });
+            onTap: () async {
+              // Ana alana tıklandığında detaya git
+              final result = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => ProjectDetailView(projectId: project.appID),
+                ),
+              );
+              if (result == true) {
+                _loadProjects();
+              }
             },
             onLongPress: () {
               _showProjectActions(context, project);
@@ -399,6 +543,14 @@ class _ProjectsViewState extends State<ProjectsView> {
                   // Başlık ve Ok
                   Row(
                     children: [
+                      if (isPinned) ...[
+                        Icon(
+                          Icons.push_pin,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: Text(
                           project.appTitle,
@@ -411,13 +563,29 @@ class _ProjectsViewState extends State<ProjectsView> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      AnimatedRotation(
-                        turns: isExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: AppColors.primary,
-                          size: 24,
+                      // Ok ikonu - Ayrı tıklanabilir alan
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            if (isExpanded) {
+                              _expandedProjects.remove(project.appID);
+                            } else {
+                              _expandedProjects.add(project.appID);
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: AnimatedRotation(
+                            turns: isExpanded ? 0.5 : 0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: AppColors.primary,
+                              size: 24,
+                            ),
+                          ),
                         ),
                       ),
                     ],

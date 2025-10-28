@@ -632,7 +632,7 @@ class ProjectsService {
 
       AppLogger.i('Request: ${request.toJson()}', tag: 'DELETE_PROJECT');
 
-      final resp = await ApiClient.postJson(endpoint, data: request.toJson());
+      final resp = await ApiClient.deleteJson(endpoint, data: request.toJson());
 
       dynamic responseData = resp.data;
       Map<String, dynamic> body;
