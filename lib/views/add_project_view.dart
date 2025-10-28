@@ -9,9 +9,10 @@ import '../theme/app_colors.dart';
 import 'select_company_view.dart';
 
 class AddProjectView extends StatefulWidget {
-  const AddProjectView({super.key, this.preselectedService});
+  const AddProjectView({super.key, this.preselectedService, this.projectId});
 
   final ServiceItem? preselectedService;
+  final int? projectId;
 
   @override
   State<AddProjectView> createState() => _AddProjectViewState();
@@ -32,7 +33,9 @@ class _AddProjectViewState extends State<AddProjectView> {
   ServiceItem? _selectedService;
   
   bool _loadingServices = true;
+  bool _loadingProject = false;
   bool _submitting = false;
+  bool get _isEditMode => widget.projectId != null;
 
   @override
   void initState() {
@@ -40,6 +43,9 @@ class _AddProjectViewState extends State<AddProjectView> {
     _loadServices();
     if (widget.preselectedService != null) {
       _selectedService = widget.preselectedService;
+    }
+    if (_isEditMode) {
+      _loadProjectData();
     }
   }
 
@@ -58,6 +64,86 @@ class _AddProjectViewState extends State<AddProjectView> {
       }
     } finally {
       setState(() => _loadingServices = false);
+    }
+  }
+
+  Future<void> _loadProjectData() async {
+    if (widget.projectId == null) return;
+    
+    setState(() => _loadingProject = true);
+    try {
+      final response = await _projectsService.getProjectDetail(widget.projectId!);
+      if (response.success && response.project != null) {
+        final project = response.project!;
+        
+        setState(() {
+          _projectTitleController.text = project.appTitle;
+          _projectDescController.text = project.appDesc ?? '';
+          
+          // Firma seç
+          _selectedCompany = CompanyItem(
+            compID: project.compID,
+            compName: project.compName,
+            compLogo: '',
+            createdate: '',
+          );
+          
+          // Adresleri yükle
+          _loadAddresses(project.compID).then((_) {
+            if (_addresses.isNotEmpty) {
+              final addr = _addresses.firstWhere(
+                (a) => a.addressID == project.compAdrID,
+                orElse: () => _addresses.first,
+              );
+              setState(() => _selectedAddress = addr);
+            }
+          });
+          
+          // Destek seç
+          if (project.serviceID != null && _services.isNotEmpty) {
+            final service = _services.firstWhere(
+              (s) => s.serviceID == project.serviceID,
+              orElse: () => _services.first,
+            );
+            _selectedService = service;
+          }
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Proje yüklenemedi')),
+          );
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Proje yüklenemedi: $e')),
+        );
+        Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingProject = false);
+      }
+    }
+  }
+
+  Future<void> _loadAddresses(int compID) async {
+    try {
+      final addresses = await _companyService.getCompanyAddresses(compID);
+      if (mounted) {
+        setState(() {
+          _addresses = addresses;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Adresler yüklenemedi: $e')),
+        );
+      }
     }
   }
 
@@ -276,12 +362,12 @@ class _AddProjectViewState extends State<AddProjectView> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yeni Proje'),
+        title: Text(_isEditMode ? 'Projeyi Güncelle' : 'Yeni Proje'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
-      body: _loadingServices
+      body: _loadingServices || _loadingProject
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -394,29 +480,50 @@ class _AddProjectViewState extends State<AddProjectView> {
                           : () async {
                               setState(() => _submitting = true);
                               try {
-                                final response =
-                                    await _projectsService.addProject(
-                                  compID: _selectedCompany?.compID ?? 0,
-                                  compAdrID: _selectedAddress?.addressID ?? 0,
-                                  serviceID: _selectedService?.serviceID ?? 0,
-                                  projectTitle:
-                                      _projectTitleController.text.trim(),
-                                  projectDesc:
-                                      _projectDescController.text.trim(),
-                                );
-
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        response.message ?? 'Proje başarıyla eklendi'
-                                      ),
-                                      backgroundColor: response.success ? Colors.green : Colors.red,
-                                    ),
+                                if (_isEditMode) {
+                                  final response = await _projectsService.updateProject(
+                                    projectID: widget.projectId!,
+                                    compID: _selectedCompany?.compID ?? 0,
+                                    compAdrID: _selectedAddress?.addressID ?? 0,
+                                    serviceID: _selectedService?.serviceID ?? 0,
+                                    projectTitle: _projectTitleController.text.trim(),
+                                    projectDesc: _projectDescController.text.trim(),
                                   );
-                                  if (response.success && mounted) {
-                                    // Proje ID'si ile geri dön
-                                    Navigator.pop(context, response.projectID);
+                                  
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          response.message ?? 'Proje başarıyla güncellendi'
+                                        ),
+                                        backgroundColor: response.success ? Colors.green : Colors.red,
+                                      ),
+                                    );
+                                    if (response.success && mounted) {
+                                      Navigator.pop(context, true);
+                                    }
+                                  }
+                                } else {
+                                  final response = await _projectsService.addProject(
+                                    compID: _selectedCompany?.compID ?? 0,
+                                    compAdrID: _selectedAddress?.addressID ?? 0,
+                                    serviceID: _selectedService?.serviceID ?? 0,
+                                    projectTitle: _projectTitleController.text.trim(),
+                                    projectDesc: _projectDescController.text.trim(),
+                                  );
+                                  
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          response.message ?? 'Proje başarıyla eklendi'
+                                        ),
+                                        backgroundColor: response.success ? Colors.green : Colors.red,
+                                      ),
+                                    );
+                                    if (response.success && mounted) {
+                                      Navigator.pop(context, true);
+                                    }
                                   }
                                 }
                               } finally {
@@ -443,9 +550,9 @@ class _AddProjectViewState extends State<AddProjectView> {
                                     Colors.white),
                               ),
                             )
-                          : const Text(
-                              'Proje Ekle',
-                              style: TextStyle(
+                          : Text(
+                              _isEditMode ? 'Projeyi Güncelle' : 'Proje Ekle',
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),

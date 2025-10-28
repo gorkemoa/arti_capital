@@ -1,4 +1,5 @@
 import 'package:arti_capital/views/panel_view.dart';
+import 'package:arti_capital/views/projects_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -264,7 +265,7 @@ class _MainNavigationState extends State<_MainNavigation> {
             case 0:
               return PanelView(userName: _userName, userVersion: homeViewModel.user?.userVersion ?? '', profilePhoto: homeViewModel.user?.profilePhoto ?? '');
             case 1:
-              return const RequestsView();
+              return const ProjectsView();
             case 2:
               return const CalendarView();
             case 3:

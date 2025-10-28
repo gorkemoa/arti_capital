@@ -95,9 +95,9 @@ class PanelView extends StatelessWidget {
             const SizedBox(height: 12),
             _StatsGrid(cards: const [
               _StatData(title: 'Bekleyen İşler', value: '7'),
-              _StatData(title: 'Onay Bekleyenler', value: '3'),
+              _StatData(title: 'Devam Edenler', value: '3'),
               _StatData(title: 'Okunmamış Mesaj', value: '12'),
-              _StatData(title: 'Bugünkü İşlem', value: '5'),
+              _StatData(title: 'Onaylananlar', value: '5'),
             ]),
             const SizedBox(height: 20),
             Text('Hızlı İşlemler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
