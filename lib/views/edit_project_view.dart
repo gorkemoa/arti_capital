@@ -30,13 +30,16 @@ class _EditProjectViewState extends State<EditProjectView> {
 
   List<ServiceItem> _services = [];
   List<CompanyAddressItem> _addresses = [];
+  List<ProjectStatus> _statuses = [];
   
   CompanyItem? _selectedCompany;
   CompanyAddressItem? _selectedAddress;
   ServiceItem? _selectedService;
+  ProjectStatus? _selectedStatus;
   
   bool _loadingServices = true;
   bool _loadingCompany = true;
+  bool _loadingStatuses = true;
   bool _submitting = false;
 
   @override
@@ -58,7 +61,35 @@ class _EditProjectViewState extends State<EditProjectView> {
     await Future.wait([
       _loadServices(),
       _loadCompanyAndAddress(),
+      _loadStatuses(),
     ]);
+  }
+
+  Future<void> _loadStatuses() async {
+    setState(() => _loadingStatuses = true);
+    try {
+      final statuses = await _generalService.getProjectStatuses();
+      if (mounted) {
+        setState(() {
+          _statuses = statuses;
+          // Mevcut statusu seç
+          if (_statuses.isNotEmpty) {
+            _selectedStatus = _statuses.firstWhere(
+              (s) => s.statusID == widget.project.appStatus,
+              orElse: () => _statuses.first,
+            );
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Proje durumları yüklenemedi: $e')),
+        );
+      }
+    } finally {
+      setState(() => _loadingStatuses = false);
+    }
   }
 
   Future<void> _loadServices() async {
@@ -324,6 +355,72 @@ class _EditProjectViewState extends State<EditProjectView> {
     );
   }
 
+  Future<void> _showStatusPicker() async {
+    if (_statuses.isEmpty) return;
+
+    int selectedIndex = _selectedStatus != null
+        ? _statuses.indexWhere((s) => s.statusID == _selectedStatus!.statusID)
+        : 0;
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text('Seç'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedStatus = _statuses[selectedIndex];
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+                  itemExtent: 32,
+                  onSelectedItemChanged: (int index) {
+                    selectedIndex = index;
+                  },
+                  children: _statuses.map((status) => Center(child: Text(status.statusName))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -337,7 +434,7 @@ class _EditProjectViewState extends State<EditProjectView> {
         elevation: 0,
       ),
       backgroundColor: AppColors.background,
-      body: _loadingServices || _loadingCompany
+      body: _loadingServices || _loadingCompany || _loadingStatuses
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             )
@@ -398,6 +495,21 @@ class _EditProjectViewState extends State<EditProjectView> {
                         : null,
                     isDisabled: _selectedCompany == null || _addresses.isEmpty,
                     onTap: _selectedCompany == null || _addresses.isEmpty ? null : _showAddressPicker,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Proje Durumu
+                  Text(
+                    'Proje Durumu',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCupertinoField(
+                    placeholder: 'Durum seçin',
+                    value: _selectedStatus?.statusName,
+                    onTap: _loadingStatuses ? null : _showStatusPicker,
                   ),
                   const SizedBox(height: 16),
 
@@ -522,6 +634,7 @@ class _EditProjectViewState extends State<EditProjectView> {
         serviceID: _selectedService!.serviceID,
         projectTitle: _projectTitleController.text.trim(),
         projectDesc: _projectDescController.text.trim(),
+        statusID: _selectedStatus?.statusID ?? widget.project.appStatus,
       );
 
       if (mounted) {

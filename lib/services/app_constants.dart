@@ -28,6 +28,7 @@ class AppConstants {
   static const String getFollowupTypes = '/service/general/general/followupTypes/all';
   static const String getFollowupTitles = '/service/general/general/followupTitles/all';
   static const String getPersons = '/service/general/general/persons/all';
+  static const String getProjectStatuses = '/service/general/general/projectStatuses/all';
   static const String allReadNotifications = '/service/user/account/notification/allRead';
   static const String deleteNotification = '/service/user/account/notification/delete';
   static const String deleteAllNotifications = '/service/user/account/notification/allDelete';

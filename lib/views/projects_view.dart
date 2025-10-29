@@ -7,6 +7,53 @@ import '../services/storage_service.dart';
 import 'add_project_view.dart';
 import 'project_detail_view.dart';
 
+// Bekleyen işleri hesapla (Status ID: 1 veya 3)
+Future<int> getPendingProjectsCount() async {
+  try {
+    final service = ProjectsService();
+    final projects = await service.getProjects();
+    // appStatus 1 (Yeni Randevu) veya 3 (Belge Bekleniyor) olanları say
+    return projects.where((p) => p.appStatus == 1 || p.appStatus == 3).length;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Devam eden işleri hesapla (Status ID: 3 veya 4)
+Future<int> getOngoingProjectsCount() async {
+  try {
+    final service = ProjectsService();
+    final projects = await service.getProjects();
+    // appStatus 3 (Belge Bekleniyor) veya 4 (Devam Ediyor) olanları say
+    return projects.where((p) => p.appStatus == 3 || p.appStatus == 4).length;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Tamamlanan işleri hesapla (Status ID: 5)
+Future<int> getCompletedProjectsCount() async {
+  try {
+    final service = ProjectsService();
+    final projects = await service.getProjects();
+    // appStatus 5 (Tamamlandı) olanları say
+    return projects.where((p) => p.appStatus == 5).length;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Toplam proje sayısını hesapla
+Future<int> getTotalProjectsCount() async {
+  try {
+    final service = ProjectsService();
+    final projects = await service.getProjects();
+    return projects.length;
+  } catch (e) {
+    return 0;
+  }
+}
+
 class ProjectsView extends StatefulWidget {
   const ProjectsView({super.key});
 
@@ -221,7 +268,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                 ),
                 
                 // Güncelle
-                if (StorageService.hasPermission('projects', 'edit'))
+                if (StorageService.hasPermission('projects', 'update'))
                   ListTile(
                     leading: const Icon(
                       Icons.edit_outlined,
@@ -241,7 +288,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                     },
                   ),
                 
-                if (StorageService.hasPermission('projects', 'edit'))
+                if (StorageService.hasPermission('projects', 'update'))
                   Divider(
                     height: 1,
                     color: AppColors.onSurface.withOpacity(0.1),

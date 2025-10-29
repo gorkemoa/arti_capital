@@ -6,22 +6,85 @@ import 'package:arti_capital/views/support_view.dart';
 import 'package:arti_capital/views/projects_view.dart';
 import 'package:flutter/material.dart';
 import 'package:arti_capital/views/requests_view.dart';
-import 'package:arti_capital/views/messages_view.dart';
-import 'package:arti_capital/views/reports_view.dart';
 import 'package:arti_capital/views/missing_documents_view.dart';
 
-class PanelView extends StatelessWidget {
+class PanelView extends StatefulWidget {
   const PanelView({super.key, required this.userName, required this.userVersion , required this.profilePhoto});
   final String userName;
   final String userVersion;
   final String profilePhoto;
+
+  @override
+  State<PanelView> createState() => _PanelViewState();
+}
+
+class _PanelViewState extends State<PanelView> {
+  int _pendingProjectsCount = 0;
+  int _ongoingProjectsCount = 0;
+  int _completedProjectsCount = 0;
+  int _totalProjectsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingProjectsCount();
+    _loadOngoingProjectsCount();
+    _loadCompletedProjectsCount();
+    _loadTotalProjectsCount();
+  }
+
+  Future<void> _loadPendingProjectsCount() async {
+    final count = await getPendingProjectsCount();
+    if (mounted) {
+      setState(() {
+        _pendingProjectsCount = count;
+      });
+    }
+  }
+
+  Future<void> _loadOngoingProjectsCount() async {
+    final count = await getOngoingProjectsCount();
+    if (mounted) {
+      setState(() {
+        _ongoingProjectsCount = count;
+      });
+    }
+  }
+
+  Future<void> _loadCompletedProjectsCount() async {
+    final count = await getCompletedProjectsCount();
+    if (mounted) {
+      setState(() {
+        _completedProjectsCount = count;
+      });
+    }
+  }
+
+  Future<void> _loadTotalProjectsCount() async {
+    final count = await getTotalProjectsCount();
+    if (mounted) {
+      setState(() {
+        _totalProjectsCount = count;
+      });
+    }
+  }
+
+  Future<void> _refreshData() async {
+    await Future.wait([
+      _loadPendingProjectsCount(),
+      _loadOngoingProjectsCount(),
+      _loadCompletedProjectsCount(),
+      _loadTotalProjectsCount(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
       backgroundColor: colorScheme.background,
-      drawer: _AppInfoDrawer(userName: userName, userVersion: userVersion),
+      drawer: _AppInfoDrawer(userName: widget.userName, userVersion: widget.userVersion),
       appBar: AppBar(
         backgroundColor: colorScheme.primary,
         automaticallyImplyLeading: false,
@@ -36,11 +99,11 @@ class PanelView extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 18,
                   backgroundColor: colorScheme.onPrimary.withOpacity(0.2),
-                  backgroundImage: _resolveProfileImage(profilePhoto),
-                  child: _resolveProfileImage(profilePhoto) != null
+                  backgroundImage: _resolveProfileImage(widget.profilePhoto),
+                  child: _resolveProfileImage(widget.profilePhoto) != null
                       ? null
                       : Text(
-                          (userName.isNotEmpty ? userName.trim().characters.first : '?'),
+                          (widget.userName.isNotEmpty ? widget.userName.trim().characters.first : '?'),
                           style: theme.textTheme.labelLarge?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
                         ),
                 ),
@@ -56,7 +119,7 @@ class PanelView extends StatelessWidget {
                   style: theme.textTheme.labelSmall?.copyWith(color: colorScheme.onPrimary.withOpacity(0.9)),
                 ),
                 Text(
-                  userName,
+                  widget.userName,
                   style: theme.textTheme.titleSmall?.copyWith(color: colorScheme.onPrimary, fontWeight: FontWeight.w700),
                 ),
               ],
@@ -86,18 +149,22 @@ class PanelView extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        color: colorScheme.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
              Text('Hızlı İstatistikler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
-            _StatsGrid(cards: const [
-              _StatData(title: 'Bekleyen İşler', value: '7'),
-              _StatData(title: 'Devam Edenler', value: '3'),
-              _StatData(title: 'Okunmamış Mesaj', value: '12'),
-              _StatData(title: 'Onaylananlar', value: '5'),
+            _StatsGrid(cards: [
+              _StatData(title: 'Bekleyen Projeler', value: '$_pendingProjectsCount'),
+              _StatData(title: 'Devam Eden Projeler', value: '$_ongoingProjectsCount'),
+              _StatData(title: 'Toplam Projeler', value: '$_totalProjectsCount'),
+              _StatData(title: 'Onaylananlar Projeler', value: '$_completedProjectsCount'),
             ]),
             const SizedBox(height: 20),
             Text('Hızlı İşlemler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
@@ -120,13 +187,13 @@ class PanelView extends StatelessWidget {
                   icon: Icons.chat_bubble_outline,
                   label: 'Mesajlar',
                   routeTitle: 'Mesajlar',
-                  builder: (context) => const MessagesView(),
+                  isComingSoon: true,
                 ),
                 _QuickAction(
                   icon: Icons.insights_outlined, 
                   label: 'Raporlar', 
                   routeTitle: 'Raporlar',
-                  builder: (context) => const ReportsView(),
+                  isComingSoon: true,
                 ),
                 _QuickAction(
                   icon: Icons.business_outlined,
@@ -155,18 +222,6 @@ class PanelView extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            Text('Son Aktiviteler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            _RecentActivities(
-              items: [
-                _ActivityItem(date: '12:45', title: 'Teklif güncellendi', status: 'Tamamlandı', statusColor: colorScheme.primary),
-                _ActivityItem(date: '11:30', title: 'Yeni mesaj alındı', status: 'Okunmadı', statusColor: colorScheme.primary),
-                _ActivityItem(date: 'Dün', title: 'Talep oluşturuldu', status: 'Bekliyor', statusColor: colorScheme.primary),
-                _ActivityItem(date: 'Dün', title: 'Profil bilgisi güncellendi', status: 'Tamamlandı', statusColor: colorScheme.primary),
-                _ActivityItem(date: '2 gün önce', title: 'Rapor indirildi', status: 'Tamamlandı', statusColor: colorScheme.primary),
-              ], 
-            ),
             const SizedBox(height: 8),
             Center(
               child: Builder(
@@ -190,7 +245,7 @@ class PanelView extends StatelessWidget {
                     lastLoginText = 'Son giriş: $dayPrefix$hh:$mm';
                   }
                   return Text(
-                    '$lastLoginText  • Versiyon: $userVersion',
+                    '$lastLoginText  • Versiyon: ${widget.userVersion}',
                     style: theme.textTheme.bodySmall?.copyWith(color: colorScheme.onSurface.withOpacity(0.6)),
                   );
                 },
@@ -198,6 +253,7 @@ class PanelView extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -519,9 +575,9 @@ class _QuickActions extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 1,
-        childAspectRatio: 0.85,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 0,
+        childAspectRatio: 0.80,
       ),
       itemBuilder: (context, index) {
         final action = actions[index];
@@ -545,6 +601,24 @@ class _QuickActionButton extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
+          if (action.isComingSoon) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: colorScheme.onPrimary, size: 20),
+                    const SizedBox(width: 12),
+                    const Text('Bu özellik yakında kullanıma sunulacak'),
+                  ],
+                ),
+                backgroundColor: colorScheme.primary,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+            return;
+          }
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => action.builder != null
@@ -553,33 +627,38 @@ class _QuickActionButton extends StatelessWidget {
             ),
           );
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(action.icon, color: colorScheme.primary),
+                    ),
+                    const SizedBox(height: 8),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.center,
+                      child: Text(
+                        action.label,
+                        style: theme.textTheme.labelSmall?.copyWith(fontSize: 11, height: 1.4, fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Icon(action.icon, color: colorScheme.primary),
               ),
-              const SizedBox(height: 8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: Text(
-                  action.label,
-                  style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, height: 1.4, fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  softWrap: false,
-                ),
-              ),
-            ],
-          ),
+ 
+          ],
         ),
       ),
     );
@@ -587,13 +666,15 @@ class _QuickActionButton extends StatelessWidget {
 }
 
 class _QuickAction {
-  const _QuickAction({required this.icon, required this.label, required this.routeTitle, this.builder});
+  const _QuickAction({required this.icon, required this.label, required this.routeTitle, this.builder, this.isComingSoon = false});
   final IconData icon;
   final String label;
   final String routeTitle;
   final WidgetBuilder? builder;
+  final bool isComingSoon;
 }
 
+// ignore: unused_element
 class _RecentActivities extends StatelessWidget {
   const _RecentActivities({required this.items});
   final List<_ActivityItem> items;

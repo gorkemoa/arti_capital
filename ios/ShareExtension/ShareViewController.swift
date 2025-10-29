@@ -31,6 +31,10 @@ final class ShareViewController: UIViewController {
     private var userRank: String = ""
     private var isAdmin: Bool = false
     private var companies: [String] = []
+    private var userToken: String = ""
+    private var compID: Int = 0
+    private var compAdrID: Int = 0
+    private var projectTitle: String = ""
     
     // UI Elements
     private let containerView = UIView()
@@ -44,6 +48,8 @@ final class ShareViewController: UIViewController {
     private let optionsTitleLabel = UILabel()
     private let noteTextView = UITextView()
     private let noteTitleLabel = UILabel()
+    private let projectTitleTextField = UITextField()
+    private let projectTitleLabel = UILabel()
     private let optionsStackView = UIStackView()
     private let buttonsContainerView = UIView()
     private let footerBlurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
@@ -57,6 +63,9 @@ final class ShareViewController: UIViewController {
         let ud = UserDefaults(suiteName: appGroupId)
         accountName = ud?.string(forKey: "LoggedInUserName") ?? ""
         userRank = ud?.string(forKey: "UserRank") ?? ""
+        userToken = ud?.string(forKey: "UserToken") ?? ""
+        compID = ud?.integer(forKey: "CompID") ?? 0
+        compAdrID = ud?.integer(forKey: "CompAdrID") ?? 0
         
         // App Group'tan firma listelerini al (tüm kullanıcılar için)
         if let companiesString = ud?.string(forKey: "Companies") {
@@ -172,6 +181,39 @@ final class ShareViewController: UIViewController {
         optionsStackView.spacing = 8
         optionsStackView.backgroundColor = .clear
         contentView.addSubview(optionsStackView)
+        
+        // Section Title: Proje Başlığı
+        projectTitleLabel.text = "Proje Başlığı"
+        projectTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        projectTitleLabel.textColor = .secondaryLabel
+        contentView.addSubview(projectTitleLabel)
+        
+        // Project Title Text Field
+        projectTitleTextField.placeholder = "Proje başlığı girin..."
+        projectTitleTextField.borderStyle = .roundedRect
+        projectTitleTextField.backgroundColor = .secondarySystemBackground
+        projectTitleTextField.font = .systemFont(ofSize: 16)
+        projectTitleTextField.autocapitalizationType = .sentences
+        projectTitleTextField.delegate = self
+        contentView.addSubview(projectTitleTextField)
+        
+        // Note Text View (İsteğe bağlı not ekleme)
+        noteTextView.layer.borderColor = UIColor.systemGray4.cgColor
+        noteTextView.layer.borderWidth = 1
+        noteTextView.layer.cornerRadius = 10
+        noteTextView.font = .systemFont(ofSize: 16)
+        noteTextView.backgroundColor = .secondarySystemBackground
+        noteTextView.textContainerInset = UIEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
+        noteTextView.text = "Not ekle..."
+        noteTextView.textColor = .placeholderText
+        noteTextView.delegate = self
+        contentView.addSubview(noteTextView)
+        
+        // Section Title: Not
+        noteTitleLabel.text = "Not (opsiyonel)"
+        noteTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        noteTitleLabel.textColor = .secondaryLabel
+        contentView.addSubview(noteTitleLabel)
         
         // Buttons Container
         buttonsContainerView.backgroundColor = .systemBackground
@@ -359,7 +401,7 @@ final class ShareViewController: UIViewController {
     }
     
     private func setupConstraints() {
-        [containerView, headerView, headerBlurView, titleLabel, cancelButton, shareButton, scrollView, contentView, optionsTitleLabel, noteTextView, noteTitleLabel, optionsStackView, buttonsContainerView, footerBlurView, footerSeparatorView, buttonsStackView].forEach {
+        [containerView, headerView, headerBlurView, titleLabel, cancelButton, shareButton, scrollView, contentView, optionsTitleLabel, projectTitleLabel, projectTitleTextField, noteTextView, noteTitleLabel, optionsStackView, buttonsContainerView, footerBlurView, footerSeparatorView, buttonsStackView].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
         }
         
@@ -439,8 +481,19 @@ final class ShareViewController: UIViewController {
             optionsStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             optionsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
+            // Project Title Label
+            projectTitleLabel.topAnchor.constraint(equalTo: optionsStackView.bottomAnchor, constant: 16),
+            projectTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            projectTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
+            
+            // Project Title Text Field
+            projectTitleTextField.topAnchor.constraint(equalTo: projectTitleLabel.bottomAnchor, constant: 8),
+            projectTitleTextField.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            projectTitleTextField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            projectTitleTextField.heightAnchor.constraint(equalToConstant: 44),
+            
             // Note Title
-            noteTitleLabel.topAnchor.constraint(equalTo: optionsStackView.bottomAnchor, constant: 16),
+            noteTitleLabel.topAnchor.constraint(equalTo: projectTitleTextField.bottomAnchor, constant: 16),
             noteTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             noteTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
 
@@ -495,7 +548,33 @@ final class ShareViewController: UIViewController {
 
     @objc private func shareAsProjectTapped() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        share(withMode: "project")
+        
+        // Validasyon
+        guard !userToken.isEmpty else {
+            showAlert(title: "Hata", message: "Kullanıcı token bulunamadı. Lütfen uygulamaya giriş yapın.")
+            return
+        }
+        
+        guard compID > 0 else {
+            showAlert(title: "Hata", message: "Firma seçilmedi.")
+            return
+        }
+        
+        guard let serviceID = selectedProjectId, serviceID > 0 else {
+            showAlert(title: "Hata", message: "Proje seçilmedi.")
+            return
+        }
+        
+        guard !projectTitle.isEmpty else {
+            showAlert(title: "Hata", message: "Lütfen proje başlığı girin.")
+            return
+        }
+        
+        // Dosyaları topla ve API'ye gönder
+        collectItems { [weak self] items in
+            guard let self = self else { return }
+            self.createProject(items: items)
+        }
     }
 
     @objc private func shareAsMessageTapped() {
@@ -823,6 +902,120 @@ extension ShareViewController {
 
 // MARK: - Networking (Service Detail -> Duties)
 extension ShareViewController {
+    private func createProject(items: [[String: Any]]) {
+        let urlString = "https://api.office701.com/arti-capital/service/user/account/projects/add"
+        guard let url = URL(string: urlString) else { return }
+        
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        request.httpMethod = "POST"
+        
+        // Basic Auth
+        let username = "Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM"
+        let password = "vRParTCAqTjtmkI17I1EVpPH57Edl0"
+        let authString = "\(username):\(password)"
+        if let authData = authString.data(using: .utf8) {
+            let authHeader = authData.base64EncodedString()
+            request.setValue("Basic \(authHeader)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        // Request Body
+        let projectDesc = noteText.isEmpty || noteText == "Not ekle..." ? "" : noteText
+        let body: [String: Any] = [
+            "userToken": userToken,
+            "compID": compID,
+            "compAdrID": compAdrID > 0 ? compAdrID : 1, // Default 1 if not set
+            "serviceID": selectedProjectId ?? 0,
+            "projectTitle": projectTitle,
+            "projectDesc": projectDesc
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        } catch {
+            DispatchQueue.main.async {
+                self.showAlert(title: "Hata", message: "İstek oluşturulamadı.")
+            }
+            return
+        }
+        
+        // Loading göster
+        DispatchQueue.main.async {
+            self.showLoading()
+        }
+        
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                self.hideLoading()
+            }
+            
+            if let error = error {
+                DispatchQueue.main.async {
+                    self.showAlert(title: "Hata", message: "Bağlantı hatası: \(error.localizedDescription)")
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    self.showAlert(title: "Hata", message: "Veri alınamadı.")
+                }
+                return
+            }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                    let success = json["success"] as? Bool ?? false
+                    let message = json["message"] as? String ?? ""
+                    
+                    DispatchQueue.main.async {
+                        if success {
+                            self.showAlert(title: "Başarılı", message: message.isEmpty ? "Proje başarıyla oluşturuldu." : message) {
+                                self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+                            }
+                        } else {
+                            self.showAlert(title: "Hata", message: message.isEmpty ? "Proje oluşturulamadı." : message)
+                        }
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.showAlert(title: "Hata", message: "Yanıt işlenemedi.")
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func showAlert(title: String, message: String, completion: (() -> Void)? = nil) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Tamam", style: .default) { _ in
+            completion?()
+        })
+        present(alert, animated: true)
+    }
+    
+    private func showLoading() {
+        // Basit loading gösterimi (activity indicator)
+        let alert = UIAlertController(title: nil, message: "Lütfen bekleyin...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        alert.view.addSubview(loadingIndicator)
+        present(alert, animated: true)
+    }
+    
+    private func hideLoading() {
+        if let presented = presentedViewController as? UIAlertController,
+           presented.title == nil && presented.message == "Lütfen bekleyin..." {
+            presented.dismiss(animated: true)
+        }
+    }
+    
     private func fetchServiceDetail(projectId: Int) {
         guard projectId > 0 else { return }
         let urlString = "https://api.office701.com/arti-capital/service/general/general/services/\(projectId)"
@@ -1032,6 +1225,18 @@ extension ShareViewController: UITextViewDelegate {
         if textView.textColor != .placeholderText {
             noteText = textView.text
         }
+    }
+}
+
+// MARK: - UITextFieldDelegate
+extension ShareViewController: UITextFieldDelegate {
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        projectTitle = textField.text ?? ""
+    }
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
 }
 

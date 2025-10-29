@@ -6,6 +6,7 @@ import 'remote_config_service.dart';
 import '../models/support_models.dart';
 import '../models/location_models.dart';
 import '../models/company_models.dart';
+import '../models/project_models.dart';
 
 class GeneralService {
   Future<List<ServiceItem>> getAllServices() async {
@@ -104,6 +105,17 @@ class GeneralService {
       throw ApiException(message: 'NACE kodları yüklenemedi: $e');
     }
   }
+
+  Future<List<ProjectStatus>> getProjectStatuses() async {
+    final Response resp = await ApiClient.getJson(AppConstants.getProjectStatuses);
+    final body = resp.data as Map<String, dynamic>;
+    final data = body['data'] as Map<String, dynamic>?;
+    final list = (data?['statuses'] as List<dynamic>? ?? [])
+        .map((e) => ProjectStatus.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return list;
+  }
 }
+
 
 

@@ -536,6 +536,7 @@ class ProjectsService {
     required int serviceID,
     required String projectTitle,
     required String projectDesc,
+    int statusID = 1,
   }) async {
     try {
       final token = StorageService.getToken();
@@ -558,11 +559,12 @@ class ProjectsService {
         serviceID: serviceID,
         projectTitle: projectTitle,
         projectDesc: projectDesc,
+        statusID: statusID,
       );
 
       AppLogger.i('Request: ${request.toJson()}', tag: 'UPDATE_PROJECT');
 
-      final resp = await ApiClient.postJson(endpoint, data: request.toJson());
+      final resp = await ApiClient.putJson(endpoint, data: request.toJson());
 
       dynamic responseData = resp.data;
       Map<String, dynamic> body;

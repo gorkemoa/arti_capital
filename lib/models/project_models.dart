@@ -19,6 +19,27 @@ class FollowupStatus {
   }
 }
 
+// Proje Statüsü modeli
+class ProjectStatus {
+  final int statusID;
+  final String statusName;
+  final String statusColor;
+
+  ProjectStatus({
+    required this.statusID,
+    required this.statusName,
+    required this.statusColor,
+  });
+
+  factory ProjectStatus.fromJson(Map<String, dynamic> json) {
+    return ProjectStatus(
+      statusID: (json['statusID'] as num).toInt(),
+      statusName: json['statusName'] as String? ?? '',
+      statusColor: json['statusColor'] as String? ?? '#000000',
+    );
+  }
+}
+
 // Takip Türü modeli
 class FollowupType {
   final int typeID;
@@ -413,6 +434,7 @@ class UpdateProjectRequest {
   final int serviceID;
   final String projectTitle;
   final String projectDesc;
+  final int statusID;
 
   UpdateProjectRequest({
     required this.userToken,
@@ -422,6 +444,7 @@ class UpdateProjectRequest {
     required this.serviceID,
     required this.projectTitle,
     required this.projectDesc,
+    this.statusID = 1,
   });
 
   Map<String, dynamic> toJson() {
@@ -433,6 +456,7 @@ class UpdateProjectRequest {
       'serviceID': serviceID,
       'projectTitle': projectTitle,
       'projectDesc': projectDesc,
+      'statusID': statusID,
     };
   }
 }
