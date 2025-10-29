@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import '../models/project_models.dart';
 import '../models/company_models.dart';
 import '../services/projects_service.dart';
+import '../services/general_service.dart';
 import '../services/logger.dart';
 import '../theme/app_colors.dart';
 
@@ -26,6 +27,7 @@ class AddProjectDocumentView extends StatefulWidget {
 
 class _AddProjectDocumentViewState extends State<AddProjectDocumentView> {
   final ProjectsService _projectsService = ProjectsService();
+  final GeneralService _generalService = GeneralService();
 
   List<DocumentTypeItem> _documentTypes = [];
   DocumentTypeItem? _selectedDocType;
@@ -43,20 +45,32 @@ class _AddProjectDocumentViewState extends State<AddProjectDocumentView> {
   Future<void> _loadDocumentTypes() async {
     setState(() => _loading = true);
     try {
+      // API'den belge türlerini çek (1 = Belgeler için)
+      final apiDocTypes = await _generalService.getDocumentTypes(1);
+      
       if (mounted) {
         setState(() {
-          // requiredDocuments'ten doğrudan al ve sadece isAdded: false olanları göster
           if (widget.requiredDocuments != null && widget.requiredDocuments!.isNotEmpty) {
-            // isAdded false olanları DocumentTypeItem'e çevir
-            _documentTypes = widget.requiredDocuments!
+            // RequiredDocuments'teki eklenmemiş belgeleri önce ekle
+            final requiredNotAdded = widget.requiredDocuments!
                 .where((doc) => !doc.isAdded)
                 .map((doc) => DocumentTypeItem(
                   documentID: doc.documentID,
                   documentName: doc.documentName,
                 ))
                 .toList();
+            
+            // API'den gelen tüm belge türlerini ekle
+            // Duplicates'leri önlemek için ID kontrolü yap
+            final requiredIds = requiredNotAdded.map((d) => d.documentID).toSet();
+            final additionalTypes = apiDocTypes
+                .where((apiDoc) => !requiredIds.contains(apiDoc.documentID))
+                .toList();
+            
+            _documentTypes = [...requiredNotAdded, ...additionalTypes];
           } else {
-            _documentTypes = [];
+            // RequiredDocuments yoksa sadece API'den gelenleri kullan
+            _documentTypes = apiDocTypes;
           }
           
           if (_documentTypes.isNotEmpty) {
@@ -208,8 +222,9 @@ class _AddProjectDocumentViewState extends State<AddProjectDocumentView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Gerekli belgeleri göster
-                  if (widget.requiredDocuments != null && widget.requiredDocuments!.isNotEmpty) ...[
+                  // Gerekli belgeleri göster - Sadece zorunlu ve eklenmemiş belgeler varsa
+                  if (widget.requiredDocuments != null && 
+                      widget.requiredDocuments!.any((doc) => doc.isRequired && !doc.isAdded)) ...[
                     Text(
                       'Gerekli Belgeler',
                       style: theme.textTheme.titleMedium?.copyWith(
