@@ -27,6 +27,7 @@ import 'services/auth_service.dart';
 import 'services/notifications_service.dart';
 import 'services/api_client.dart';
 import 'services/remote_config_service.dart';
+import 'services/version_control_service.dart';
 import 'firebase_options.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'dart:async';
@@ -37,6 +38,7 @@ import 'services/app_group_service.dart';
 import 'views/nace_search_view.dart';
 import 'views/new_appointment_view.dart';
 import 'views/select_company_view.dart';
+import 'widgets/update_bottom_sheet.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -94,7 +96,7 @@ class MyApp extends StatelessWidget {
                 FocusManager.instance.primaryFocus?.unfocus();
               }
             },
-            child: child,
+            child: _VersionCheckWrapper(child: child!),
           );
         },
         localizationsDelegates: const [
@@ -135,6 +137,44 @@ class MyApp extends StatelessWidget {
       return const LoginView();
     }
   }
+}
+
+class _VersionCheckWrapper extends StatefulWidget {
+  final Widget child;
+
+  const _VersionCheckWrapper({required this.child});
+
+  @override
+  State<_VersionCheckWrapper> createState() => _VersionCheckWrapperState();
+}
+
+class _VersionCheckWrapperState extends State<_VersionCheckWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkVersion();
+    });
+  }
+
+  Future<void> _checkVersion() async {
+    try {
+      final versionStatus = await VersionControlService().getVersionStatus();
+      if (mounted && versionStatus != null && versionStatus.canUpdate) {
+        // Güncelleme mevcutsa bottom sheet göster
+        await UpdateBottomSheet.show(
+          context,
+          versionStatus: versionStatus,
+          isMandatory: false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Version check error: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _ShareIntentGate extends StatefulWidget {

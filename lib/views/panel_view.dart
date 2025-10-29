@@ -23,6 +23,7 @@ class _PanelViewState extends State<PanelView> {
   int _ongoingProjectsCount = 0;
   int _completedProjectsCount = 0;
   int _totalProjectsCount = 0;
+  int _missingDocumentsCount = 0;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _PanelViewState extends State<PanelView> {
     _loadOngoingProjectsCount();
     _loadCompletedProjectsCount();
     _loadTotalProjectsCount();
+    _loadMissingDocumentsCount();
   }
 
   Future<void> _loadPendingProjectsCount() async {
@@ -69,12 +71,22 @@ class _PanelViewState extends State<PanelView> {
     }
   }
 
+  Future<void> _loadMissingDocumentsCount() async {
+    final count = await getMissingDocumentsCount();
+    if (mounted) {
+      setState(() {
+        _missingDocumentsCount = count;
+      });
+    }
+  }
+
   Future<void> _refreshData() async {
     await Future.wait([
       _loadPendingProjectsCount(),
       _loadOngoingProjectsCount(),
       _loadCompletedProjectsCount(),
       _loadTotalProjectsCount(),
+      _loadMissingDocumentsCount(),
     ]);
   }
 
@@ -154,7 +166,7 @@ class _PanelViewState extends State<PanelView> {
         color: colorScheme.primary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -219,6 +231,7 @@ class _PanelViewState extends State<PanelView> {
                   label: 'Eksik Evraklar',
                   routeTitle: 'Eksik Evraklar',
                   builder: (context) => const MissingDocumentsView(),
+                  badgeCount: _missingDocumentsCount,
                 ),
               ],
             ),
@@ -575,7 +588,7 @@ class _QuickActions extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        crossAxisSpacing: 20,
+        crossAxisSpacing: 26,
         mainAxisSpacing: 0,
         childAspectRatio: 0.80,
       ),
@@ -657,7 +670,40 @@ class _QuickActionButton extends StatelessWidget {
                   ],
                 ),
               ),
- 
+            if (action.badgeCount > 0)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Center(
+                    child: Text(
+                      action.badgeCount > 99 ? '99+' : '${action.badgeCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -666,12 +712,13 @@ class _QuickActionButton extends StatelessWidget {
 }
 
 class _QuickAction {
-  const _QuickAction({required this.icon, required this.label, required this.routeTitle, this.builder, this.isComingSoon = false});
+  const _QuickAction({required this.icon, required this.label, required this.routeTitle, this.builder, this.isComingSoon = false, this.badgeCount = 0});
   final IconData icon;
   final String label;
   final String routeTitle;
   final WidgetBuilder? builder;
   final bool isComingSoon;
+  final int badgeCount;
 }
 
 // ignore: unused_element

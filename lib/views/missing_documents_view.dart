@@ -2,6 +2,31 @@ import 'package:flutter/material.dart';
 import '../models/project_models.dart';
 import '../services/projects_service.dart';
 
+// Eksik evrak sayısını hesapla
+Future<int> getMissingDocumentsCount() async {
+  try {
+    final service = ProjectsService();
+    final projects = await service.getProjects();
+    
+    int totalMissingCount = 0;
+    
+    // Her proje için detay getir ve eksik evrakları say
+    for (final project in projects) {
+      final response = await service.getProjectDetail(project.appID);
+      if (response.success && response.project != null) {
+        final missing = response.project!.requiredDocuments
+            .where((doc) => !doc.isAdded)
+            .length;
+        totalMissingCount += missing;
+      }
+    }
+    
+    return totalMissingCount;
+  } catch (e) {
+    return 0;
+  }
+}
+
 class MissingDocumentsView extends StatefulWidget {
   const MissingDocumentsView({super.key});
 

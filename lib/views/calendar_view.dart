@@ -1120,7 +1120,7 @@ class _InlineSelectedEvents extends StatelessWidget {
           Row(
             children: [
               Text(
-                '${events.length} randevu',
+                '${events.length} Randevu',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const Spacer(),

@@ -78,6 +78,48 @@ class AppGroupService {
       return false;
     }
   }
+
+  static Future<bool> setUserToken(String token) async {
+    if (!(Platform.isIOS || Platform.isAndroid)) return false;
+    try {
+      final bool result = await _channel.invokeMethod('setString', {
+        'group': _groupId,
+        'key': 'UserToken',
+        'value': token,
+      });
+      return result;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> setCompID(int compID) async {
+    if (!(Platform.isIOS || Platform.isAndroid)) return false;
+    try {
+      final bool result = await _channel.invokeMethod('setInt', {
+        'group': _groupId,
+        'key': 'CompID',
+        'value': compID,
+      });
+      return result;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> setCompAdrID(int compAdrID) async {
+    if (!(Platform.isIOS || Platform.isAndroid)) return false;
+    try {
+      final bool result = await _channel.invokeMethod('setInt', {
+        'group': _groupId,
+        'key': 'CompAdrID',
+        'value': compAdrID,
+      });
+      return result;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 

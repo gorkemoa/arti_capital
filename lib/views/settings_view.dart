@@ -1,13 +1,43 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'contact_view.dart';
 import 'change_password_view.dart';
 import '../services/user_service.dart';
 import '../models/user_request_models.dart';
+import '../models/user_model.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 
-class SettingsView extends StatelessWidget {
+class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
+
+  @override
+  State<SettingsView> createState() => _SettingsViewState();
+}
+
+class _SettingsViewState extends State<SettingsView> {
+  String? _userVersion;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserVersion();
+  }
+
+  void _loadUserVersion() {
+    final userData = StorageService.getUserData();
+    if (userData != null) {
+      try {
+        final json = jsonDecode(userData);
+        final user = User.fromJson(json);
+        setState(() {
+          _userVersion = user.userVersion;
+        });
+      } catch (e) {
+        // Hata durumunda versiyon boş kalacak
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,13 +64,7 @@ class SettingsView extends StatelessWidget {
               Navigator.pushNamed(context, '/notifications');
             },
           ),
-          _Divider(subtleBorder: subtleBorder),
-          _NavTile(
-            icon: Icons.language_outlined,
-            label: 'Dil',
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
-          ),
+         
           _Divider(subtleBorder: subtleBorder),
           _NavTile(
             icon: Icons.support_agent_outlined,
@@ -109,7 +133,7 @@ class SettingsView extends StatelessWidget {
             icon: Icons.info_outline,
             label: 'Sürüm Bilgisi',
             trailing: Text(
-              'Uygulama',
+              _userVersion ?? '-',
               style: theme.textTheme.bodySmall,
             ),
             onTap: () {},

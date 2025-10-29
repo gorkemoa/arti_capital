@@ -16,16 +16,21 @@ final class ShareViewController: UIViewController {
     private let appGroupId = "group.com.office701.articapital" // App Group
     private let userDefaultsKey = "ShareMedia" // receive_sharing_intent key
     // Projeler (API'den yüklenecek); boşsa geçici fallback olarak mock kullanılabilir
-    private struct Project { let id: Int; let name: String }
+    private struct Project { let id: Int; let name: String; let code: String }
+    private struct RequiredDocument { let documentID: Int; let documentName: String; let isRequired: Bool; let isAdded: Bool }
     private var projects: [Project] = []
-    private let fallbackProjects: [Project] = [Project(id: -1, name: "Seçiniz")]
-    // Belgeler projeye göre dinamik olarak duties'den gelir
-    private var documentTypes: [String] = []
+    private let fallbackProjects: [Project] = [Project(id: -1, name: "Seçiniz", code: "")]
+    // Belgeler projeye göre dinamik olarak requiredDocuments'tan gelir
+    private var requiredDocuments: [RequiredDocument] = []
+    private var selectedDocumentType: RequiredDocument?
     private static var actionKey: UInt8 = 0
     
     private var accountName: String = ""
     private var selectedFolder: String = ""
     private var selectedProjectId: Int?
+    private var selectedProjectCode: String = ""
+    private var selectedProjectCompID: Int = 0
+    private var selectedProjectCompAdrID: Int = 0
     private var shareWith: String = ""
     private var noteText: String = ""
     private var userRank: String = ""
@@ -34,7 +39,6 @@ final class ShareViewController: UIViewController {
     private var userToken: String = ""
     private var compID: Int = 0
     private var compAdrID: Int = 0
-    private var projectTitle: String = ""
     
     // UI Elements
     private let containerView = UIView()
@@ -48,15 +52,12 @@ final class ShareViewController: UIViewController {
     private let optionsTitleLabel = UILabel()
     private let noteTextView = UITextView()
     private let noteTitleLabel = UILabel()
-    private let projectTitleTextField = UITextField()
-    private let projectTitleLabel = UILabel()
     private let optionsStackView = UIStackView()
     private let buttonsContainerView = UIView()
     private let footerBlurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
     private let footerSeparatorView = UIView()
     private let buttonsStackView = UIStackView()
-    private let sendProjectButton = UIButton(type: .system)
-    private let sendMessageButton = UIButton(type: .system)
+    private let sendDocumentButton = UIButton(type: .system)
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -66,6 +67,9 @@ final class ShareViewController: UIViewController {
         userToken = ud?.string(forKey: "UserToken") ?? ""
         compID = ud?.integer(forKey: "CompID") ?? 0
         compAdrID = ud?.integer(forKey: "CompAdrID") ?? 0
+        
+        // Debug log
+        print("[ShareExtension] viewDidLoad - userToken: \(userToken.isEmpty ? "EMPTY" : "EXISTS"), compID: \(compID)")
         
         // App Group'tan firma listelerini al (tüm kullanıcılar için)
         if let companiesString = ud?.string(forKey: "Companies") {
@@ -79,18 +83,20 @@ final class ShareViewController: UIViewController {
         } else if accountName.isEmpty, let first = companies.first {
             accountName = first
         }
-        if isAdmin {
-            // Yönetici için dosya adından otomatik parse et
-            parseFileNameForAdmin()
-        }
         
         if selectedFolder.isEmpty { selectedFolder = projects.first?.name ?? fallbackProjects.first?.name ?? "" }
-        if shareWith.isEmpty { shareWith = documentTypes.first ?? "" }
+        if shareWith.isEmpty { shareWith = requiredDocuments.first?.documentName ?? "" }
         
         setupUI()
         setupConstraints()
-        // Projeleri API'den çek
-        fetchProjects()
+        
+        // Token kontrolü
+        if userToken.isEmpty {
+            showAlert(title: "Giriş Gerekli", message: "Lütfen önce Arti Capital uygulamasından giriş yapın.")
+        } else {
+            // Projeleri API'den çek
+            fetchProjects()
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -171,7 +177,7 @@ final class ShareViewController: UIViewController {
         contentView.addSubview(noteTextView)
         
         // Section Title: Not
-        noteTitleLabel.text = "Not (opsiyonel)"
+        noteTitleLabel.text = "Açıklama (opsiyonel)"
         noteTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         noteTitleLabel.textColor = .secondaryLabel
         contentView.addSubview(noteTitleLabel)
@@ -181,39 +187,6 @@ final class ShareViewController: UIViewController {
         optionsStackView.spacing = 8
         optionsStackView.backgroundColor = .clear
         contentView.addSubview(optionsStackView)
-        
-        // Section Title: Proje Başlığı
-        projectTitleLabel.text = "Proje Başlığı"
-        projectTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
-        projectTitleLabel.textColor = .secondaryLabel
-        contentView.addSubview(projectTitleLabel)
-        
-        // Project Title Text Field
-        projectTitleTextField.placeholder = "Proje başlığı girin..."
-        projectTitleTextField.borderStyle = .roundedRect
-        projectTitleTextField.backgroundColor = .secondarySystemBackground
-        projectTitleTextField.font = .systemFont(ofSize: 16)
-        projectTitleTextField.autocapitalizationType = .sentences
-        projectTitleTextField.delegate = self
-        contentView.addSubview(projectTitleTextField)
-        
-        // Note Text View (İsteğe bağlı not ekleme)
-        noteTextView.layer.borderColor = UIColor.systemGray4.cgColor
-        noteTextView.layer.borderWidth = 1
-        noteTextView.layer.cornerRadius = 10
-        noteTextView.font = .systemFont(ofSize: 16)
-        noteTextView.backgroundColor = .secondarySystemBackground
-        noteTextView.textContainerInset = UIEdgeInsets(top: 12, left: 10, bottom: 12, right: 10)
-        noteTextView.text = "Not ekle..."
-        noteTextView.textColor = .placeholderText
-        noteTextView.delegate = self
-        contentView.addSubview(noteTextView)
-        
-        // Section Title: Not
-        noteTitleLabel.text = "Not (opsiyonel)"
-        noteTitleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
-        noteTitleLabel.textColor = .secondaryLabel
-        contentView.addSubview(noteTitleLabel)
         
         // Buttons Container
         buttonsContainerView.backgroundColor = .systemBackground
@@ -229,39 +202,15 @@ final class ShareViewController: UIViewController {
         buttonsStackView.spacing = 10
         buttonsContainerView.addSubview(buttonsStackView)
 
-        // Yönetici ise sadece "Mesaj olarak gönder" butonu
-        if isAdmin {
-            // Send Message Button (tek buton)
-            var configPrimary = UIButton.Configuration.filled()
-            configPrimary.cornerStyle = .large
-            configPrimary.baseBackgroundColor = .systemBlue
-            configPrimary.baseForegroundColor = .white
-            configPrimary.title = "Mesaj Olarak Gönder"
-            sendMessageButton.configuration = configPrimary
-            sendMessageButton.addTarget(self, action: #selector(shareAsMessageTapped), for: .touchUpInside)
-            buttonsStackView.addArrangedSubview(sendMessageButton)
-        } else {
-            // Normal kullanıcı için her iki buton
-            // Send Project Button (üstte)
-            var configPrimary = UIButton.Configuration.filled()
-            configPrimary.cornerStyle = .large
-            configPrimary.baseBackgroundColor = .systemBlue
-            configPrimary.baseForegroundColor = .white
-            configPrimary.title = "Projeye Kaydet"
-            sendProjectButton.configuration = configPrimary
-            sendProjectButton.addTarget(self, action: #selector(shareAsProjectTapped), for: .touchUpInside)
-            buttonsStackView.addArrangedSubview(sendProjectButton)
-
-            // Send Message Button (altta)
-            var configSecondary = UIButton.Configuration.gray()
-            configSecondary.cornerStyle = .large
-            configSecondary.baseBackgroundColor = .secondarySystemBackground
-            configSecondary.baseForegroundColor = .label
-            configSecondary.title = "Mesaj olarak gönder"
-            sendMessageButton.configuration = configSecondary
-            sendMessageButton.addTarget(self, action: #selector(shareAsMessageTapped), for: .touchUpInside)
-            buttonsStackView.addArrangedSubview(sendMessageButton)
-        }
+        // Send Document Button
+        var configPrimary = UIButton.Configuration.filled()
+        configPrimary.cornerStyle = .large
+        configPrimary.baseBackgroundColor = .systemBlue
+        configPrimary.baseForegroundColor = .white
+        configPrimary.title = "Belgeyi Yükle"
+        sendDocumentButton.configuration = configPrimary
+        sendDocumentButton.addTarget(self, action: #selector(uploadDocumentTapped), for: .touchUpInside)
+        buttonsStackView.addArrangedSubview(sendDocumentButton)
 
         setupOptions()
     }
@@ -294,7 +243,7 @@ final class ShareViewController: UIViewController {
         let shareOption = createOptionRow(
             title: "Belge Türü",
             value: shareWith.isEmpty ? "Seçiniz" : shareWith,
-            icon: "person.2"
+            icon: "doc.fill"
         ) { [weak self] in
             self?.showShareOptions()
         }
@@ -401,7 +350,7 @@ final class ShareViewController: UIViewController {
     }
     
     private func setupConstraints() {
-        [containerView, headerView, headerBlurView, titleLabel, cancelButton, shareButton, scrollView, contentView, optionsTitleLabel, projectTitleLabel, projectTitleTextField, noteTextView, noteTitleLabel, optionsStackView, buttonsContainerView, footerBlurView, footerSeparatorView, buttonsStackView].forEach {
+        [containerView, headerView, headerBlurView, titleLabel, cancelButton, shareButton, scrollView, contentView, optionsTitleLabel, noteTextView, noteTitleLabel, optionsStackView, buttonsContainerView, footerBlurView, footerSeparatorView, buttonsStackView].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
         }
         
@@ -481,19 +430,8 @@ final class ShareViewController: UIViewController {
             optionsStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             optionsStackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             
-            // Project Title Label
-            projectTitleLabel.topAnchor.constraint(equalTo: optionsStackView.bottomAnchor, constant: 16),
-            projectTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            projectTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
-            
-            // Project Title Text Field
-            projectTitleTextField.topAnchor.constraint(equalTo: projectTitleLabel.bottomAnchor, constant: 8),
-            projectTitleTextField.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            projectTitleTextField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            projectTitleTextField.heightAnchor.constraint(equalToConstant: 44),
-            
             // Note Title
-            noteTitleLabel.topAnchor.constraint(equalTo: projectTitleTextField.bottomAnchor, constant: 16),
+            noteTitleLabel.topAnchor.constraint(equalTo: optionsStackView.bottomAnchor, constant: 16),
             noteTitleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             noteTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -16),
 
@@ -514,39 +452,10 @@ final class ShareViewController: UIViewController {
     
     @objc private func shareTapped() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        collectItems { [weak self] result in
-            guard let self else { return }
-            
-            var payload: [String: Any] = [
-                "items": result,
-                "type": "share",
-            ]
-            
-            if !self.noteText.isEmpty && self.noteText != "Not ekle..." {
-                payload["text"] = self.noteText
-            }
-            
-            payload["account"] = self.accountName
-            payload["folder"] = self.selectedFolder
-            payload["shareWith"] = self.shareWith
-            
-            let ud = UserDefaults(suiteName: self.appGroupId)
-            ud?.set(payload, forKey: self.userDefaultsKey)
-            if let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                ud?.set(jsonString, forKey: "ShareMediaJSON")
-            }
-            ud?.synchronize()
-            
-            self.extensionContext?.completeRequest(returningItems: [], completionHandler: { _ in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    self.openHostApp()
-                }
-            })
-        }
+        uploadDocumentTapped()
     }
 
-    @objc private func shareAsProjectTapped() {
+    @objc private func uploadDocumentTapped() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         
         // Validasyon
@@ -555,59 +464,45 @@ final class ShareViewController: UIViewController {
             return
         }
         
-        guard compID > 0 else {
-            showAlert(title: "Hata", message: "Firma seçilmedi.")
-            return
-        }
-        
-        guard let serviceID = selectedProjectId, serviceID > 0 else {
+        guard let projectId = selectedProjectId, projectId > 0 else {
             showAlert(title: "Hata", message: "Proje seçilmedi.")
             return
         }
         
-        guard !projectTitle.isEmpty else {
-            showAlert(title: "Hata", message: "Lütfen proje başlığı girin.")
+        guard selectedProjectCompID > 0 else {
+            showAlert(title: "Hata", message: "Proje bilgileri yüklenemedi. Lütfen tekrar proje seçin.")
             return
         }
         
+        guard let docType = selectedDocumentType else {
+            showAlert(title: "Hata", message: "Belge türü seçilmedi.")
+            return
+        }
+        
+        // Loading göster
+        showLoading()
+        
         // Dosyaları topla ve API'ye gönder
         collectItems { [weak self] items in
-            guard let self = self else { return }
-            self.createProject(items: items)
-        }
-    }
-
-    @objc private func shareAsMessageTapped() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        share(withMode: "message")
-    }
-
-    private func share(withMode mode: String) {
-        collectItems { [weak self] result in
-            guard let self else { return }
-            var payload: [String: Any] = [
-                "items": result,
-                "type": "share",
-                "mode": mode,
-            ]
-            if !self.noteText.isEmpty && self.noteText != "Not ekle..." {
-                payload["text"] = self.noteText
-            }
-            payload["account"] = self.accountName
-            payload["folder"] = self.selectedFolder
-            payload["shareWith"] = self.shareWith
-            let ud = UserDefaults(suiteName: self.appGroupId)
-            ud?.set(payload, forKey: self.userDefaultsKey)
-            if let jsonData = try? JSONSerialization.data(withJSONObject: payload, options: []),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
-                ud?.set(jsonString, forKey: "ShareMediaJSON")
-            }
-            ud?.synchronize()
-            self.extensionContext?.completeRequest(returningItems: [], completionHandler: { _ in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    self.openHostApp()
+            guard let self = self else {
+                DispatchQueue.main.async {
+                    self?.hideLoading()
                 }
-            })
+                return
+            }
+            
+            guard !items.isEmpty else {
+                DispatchQueue.main.async {
+                    self.hideLoading()
+                    self.showAlert(title: "Hata", message: "Yüklenecek dosya bulunamadı.")
+                }
+                return
+            }
+            
+            // Background thread'de upload et
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.uploadDocument(projectId: projectId, documentType: docType, items: items)
+            }
         }
     }
     
@@ -633,34 +528,62 @@ final class ShareViewController: UIViewController {
             guard let self = self else { return }
             if let folder = selectedFolder {
                 self.selectedFolder = folder
-                self.selectedProjectId = sourceProjects.first(where: { $0.name == folder })?.id
+                if let project = sourceProjects.first(where: { $0.name == folder }) {
+                    self.selectedProjectId = project.id
+                    self.selectedProjectCode = project.code
+                }
                 self.setupOptions()
                 if let pid = self.selectedProjectId, pid > 0 {
-                    self.fetchServiceDetail(projectId: pid)
+                    // Proje detayını çek, tamamlandığında Belge Türü seçimine geç
+                    self.fetchProjectDetail(projectId: pid) {
+                        // Proje detayı yüklendikten sonra otomatik olarak Belge Türü seçimine geç
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            self.showShareOptions()
+                        }
+                    }
                 } else {
-                    // Belgeler yalnızca API'den gelir; fallback yok
-                    self.documentTypes = []
+                    // Belgeler yalnızca API'den gelir
+                    self.requiredDocuments = []
                     self.shareWith = ""
+                    self.selectedDocumentType = nil
                     self.setupOptions()
-                }
-                // Proje seçildikten sonra otomatik olarak Belge Türü seçimine geç
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    self.showShareOptions()
                 }
             }
         }
     }
     
     private func showShareOptions() {
-        let shareOptions = documentTypes
-        if shareOptions.isEmpty { return }
+        // Sadece eklenmemiş gerekli belgeleri göster
+        print("[ShareExtension] showShareOptions called")
+        print("[ShareExtension] Total requiredDocuments: \(requiredDocuments.count)")
+        
+        for (index, doc) in requiredDocuments.enumerated() {
+            print("[ShareExtension] Doc[\(index)]: \(doc.documentName), isRequired: \(doc.isRequired), isAdded: \(doc.isAdded)")
+        }
+        
+        let notAddedDocs = requiredDocuments.filter { !$0.isAdded }
+        print("[ShareExtension] Not added documents after filter: \(notAddedDocs.count)")
+        
+        let shareOptions = notAddedDocs.map { $0.documentName }
+        
+        if shareOptions.isEmpty {
+            print("[ShareExtension] No options available, showing alert")
+            showAlert(title: "Bilgi", message: "Bu proje için eklenecek gerekli belge kalmamıştır.")
+            return
+        }
+        
+        print("[ShareExtension] Showing \(shareOptions.count) options: \(shareOptions)")
+        
         showBottomSheetSelection(title: "Belge Türü Seç", options: shareOptions, currentSelection: shareWith) { [weak self] selectedOption in
+            guard let self = self else { return }
             if let option = selectedOption {
-                self?.shareWith = option
-                self?.setupOptions()
+                self.shareWith = option
+                self.selectedDocumentType = notAddedDocs.first(where: { $0.documentName == option })
+                print("[ShareExtension] Selected document: \(option)")
+                self.setupOptions()
                 // Belge türü seçildikten sonra Not alanına odaklan
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    self?.noteTextView.becomeFirstResponder()
+                    self.noteTextView.becomeFirstResponder()
                 }
             }
         }
@@ -717,60 +640,7 @@ final class ShareViewController: UIViewController {
         }
         return accounts
     }
-    
-    private func parseFileNameForAdmin() {
-        guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { return }
-        
-        for item in items {
-            guard let attachments = item.attachments else { continue }
-            for provider in attachments {
-                if #available(iOS 14.0, *) {
-                    if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-                        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { [weak self] data, _ in
-                            guard let self = self, let url = data as? URL else { return }
-                            
-                            DispatchQueue.main.async {
-                                self.parseFileName(from: url)
-                            }
-                        }
-                        return // İlk dosyayı parse et ve çık
-                    }
-                }
-            }
-        }
-    }
-    
-    private func parseFileName(from url: URL) {
-        let fileName = url.deletingPathExtension().lastPathComponent
-        let components = fileName.components(separatedBy: "_")
-        
-        // Format: Firma_Proje_BelgeTürü
-        if components.count >= 3 {
-            let parsedCompany = components[0].trimmingCharacters(in: .whitespaces)
-            let parsedProject = components[1].trimmingCharacters(in: .whitespaces)
-            let parsedDocType = components[2].trimmingCharacters(in: .whitespaces)
-            
-            // Firma listesinde varsa seç
-            if companies.contains(parsedCompany) {
-                accountName = parsedCompany
-            }
-            
-            // Proje listesinde varsa seç
-            if let match = projects.first(where: { $0.name == parsedProject }) {
-                selectedFolder = match.name
-                selectedProjectId = match.id
-                if match.id > 0 { fetchServiceDetail(projectId: match.id) }
-            }
-            
-            // Belge türü listesinde varsa seç (dinamik documentTypes)
-            if documentTypes.contains(parsedDocType) {
-                shareWith = parsedDocType
-            }
-            
-            // UI'ı güncelle
-            setupOptions()
-        }
-    }
+
 
     private func collectItems(completion: @escaping ([[String: Any]]) -> Void) {
         guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { completion([]); return }
@@ -845,11 +715,12 @@ final class ShareViewController: UIViewController {
 // MARK: - Networking (Projects)
 extension ShareViewController {
     private func fetchProjects() {
-        // API: services/all
-        guard let url = URL(string: "https://api.office701.com/arti-capital/service/general/general/services/all") else { return }
+        // API: projects/all - Kullanıcının projeleri
+        let urlString = "https://api.office701.com/arti-capital/service/user/account/projects/all?userToken=\(userToken)"
+        guard let url = URL(string: urlString) else { return }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.httpMethod = "GET"
-        // Basic Auth (App ile aynı kimlik)
+        // Basic Auth
         let username = "Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM"
         let password = "vRParTCAqTjtmkI17I1EVpPH57Edl0"
         let authString = "\(username):\(password)"
@@ -862,34 +733,59 @@ extension ShareViewController {
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
             if let error = error {
-                // Sessizce fallback ile devam et
                 print("[ShareExtension] fetchProjects error: \(error)")
+                DispatchQueue.main.async {
+                    self.showAlert(title: "Bağlantı Hatası", message: "Projeler yüklenemedi: \(error.localizedDescription)")
+                }
                 return
             }
-            guard let data = data else { return }
+            guard let data = data else {
+                print("[ShareExtension] fetchProjects: no data")
+                return
+            }
+            
+            // Response'u log'la
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("[ShareExtension] fetchProjects response: \(responseString)")
+            }
+            
             do {
-                // Beklenen JSON şeması: { data: { services: [ { serviceID:Int, serviceName:String } ] } }
-                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                   let dataObj = json["data"] as? [String: Any],
-                   let services = dataObj["services"] as? [[String: Any]] {
-                    let items: [Project] = services.compactMap { dict in
-                        let name = (dict["serviceName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                        let idVal = dict["serviceID"]
-                        let id: Int
-                        if let i = idVal as? Int { id = i } else if let s = idVal as? String, let parsed = Int(s) { id = parsed } else { id = -1 }
-                        return name.isEmpty ? nil : Project(id: id, name: name)
-                    }
-                    DispatchQueue.main.async {
-                        self.projects = items.isEmpty ? self.fallbackProjects : items
-                        if self.selectedFolder.isEmpty { self.selectedFolder = (self.projects.first?.name ?? self.fallbackProjects.first?.name) ?? "" }
-                        self.selectedProjectId = self.projects.first(where: { $0.name == self.selectedFolder })?.id
-                        if let pid = self.selectedProjectId, pid > 0 {
-                            self.fetchServiceDetail(projectId: pid)
-                        } else {
-                            self.documentTypes = []
-                            if self.shareWith.isEmpty { self.shareWith = "" }
+                // Beklenen JSON: { data: { projects: [ { appID:Int, appTitle:String, appCode:String } ] } }
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                    // API hata kontrolü
+                    if let success = json["success"] as? Bool, !success {
+                        let message = json["message"] as? String ?? "Bilinmeyen hata"
+                        print("[ShareExtension] fetchProjects API error: \(message)")
+                        DispatchQueue.main.async {
+                            self.showAlert(title: "API Hatası", message: message)
                         }
-                        self.setupOptions()
+                        return
+                    }
+                    
+                    if let dataObj = json["data"] as? [String: Any],
+                       let projectsArray = dataObj["projects"] as? [[String: Any]] {
+                        let items: [Project] = projectsArray.compactMap { dict in
+                            let name = (dict["appTitle"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                            let code = (dict["appCode"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                            let idVal = dict["appID"]
+                            let id: Int
+                            if let i = idVal as? Int { id = i } else if let s = idVal as? String, let parsed = Int(s) { id = parsed } else { id = -1 }
+                            return name.isEmpty ? nil : Project(id: id, name: name, code: code)
+                        }
+                        print("[ShareExtension] fetchProjects: \(items.count) projects loaded")
+                        DispatchQueue.main.async {
+                            self.projects = items.isEmpty ? self.fallbackProjects : items
+                            if self.selectedFolder.isEmpty { 
+                                self.selectedFolder = (self.projects.first?.name ?? self.fallbackProjects.first?.name) ?? "" 
+                            }
+                            if let first = self.projects.first {
+                                self.selectedProjectId = first.id
+                                self.selectedProjectCode = first.code
+                            }
+                            self.setupOptions()
+                        }
+                    } else {
+                        print("[ShareExtension] fetchProjects: unexpected JSON structure")
                     }
                 }
             } catch {
@@ -900,11 +796,201 @@ extension ShareViewController {
     }
 }
 
-// MARK: - Networking (Service Detail -> Duties)
+// MARK: - Networking (Project Detail & Document Upload)
 extension ShareViewController {
-    private func createProject(items: [[String: Any]]) {
-        let urlString = "https://api.office701.com/arti-capital/service/user/account/projects/add"
-        guard let url = URL(string: urlString) else { return }
+    private func fetchProjectDetail(projectId: Int, completion: (() -> Void)? = nil) {
+        guard projectId > 0 else {
+            completion?()
+            return
+        }
+        let urlString = "https://api.office701.com/arti-capital/service/user/account/projects/\(projectId)?userToken=\(userToken)"
+        guard let url = URL(string: urlString) else {
+            completion?()
+            return
+        }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.httpMethod = "GET"
+        let username = "Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM"
+        let password = "vRParTCAqTjtmkI17I1EVpPH57Edl0"
+        let authString = "\(username):\(password)"
+        if let authData = authString.data(using: .utf8) {
+            let authHeader = authData.base64EncodedString()
+            request.setValue("Basic \(authHeader)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else {
+                completion?()
+                return
+            }
+            if let error = error {
+                print("[ShareExtension] fetchProjectDetail error: \(error)")
+                DispatchQueue.main.async {
+                    completion?()
+                }
+                return
+            }
+            guard let data = data else {
+                print("[ShareExtension] fetchProjectDetail: no data")
+                DispatchQueue.main.async {
+                    completion?()
+                }
+                return
+            }
+            // Response'u log'la
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("[ShareExtension] fetchProjectDetail response: \(responseString)")
+            }
+            
+            do {
+                // Beklenen JSON: { data: { project: { requiredDocuments: [ { documentID, documentName, isRequired, isAdded } ] } } }
+                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                    // API hata kontrolü
+                    if let success = json["success"] as? Bool, !success {
+                        let message = json["message"] as? String ?? "Bilinmeyen hata"
+                        print("[ShareExtension] fetchProjectDetail API error: \(message)")
+                        DispatchQueue.main.async {
+                            self.showAlert(title: "API Hatası", message: message)
+                            completion?()
+                        }
+                        return
+                    }
+                    
+                    if let dataObj = json["data"] as? [String: Any],
+                       let projectObj = dataObj["project"] as? [String: Any] {
+                        
+                        // CompID ve CompAdrID'yi parse et
+                        if let compIDVal = projectObj["compID"] {
+                            if let i = compIDVal as? Int {
+                                self.selectedProjectCompID = i
+                            } else if let s = compIDVal as? String, let parsed = Int(s) {
+                                self.selectedProjectCompID = parsed
+                            }
+                        }
+                        if let compAdrIDVal = projectObj["compAdrID"] {
+                            if let i = compAdrIDVal as? Int {
+                                self.selectedProjectCompAdrID = i
+                            } else if let s = compAdrIDVal as? String, let parsed = Int(s) {
+                                self.selectedProjectCompAdrID = parsed
+                            }
+                        }
+                        
+                        print("[ShareExtension] Parsed compID: \(self.selectedProjectCompID), compAdrID: \(self.selectedProjectCompAdrID)")
+                        
+                        let requiredDocsArray = (projectObj["requiredDocuments"] as? [[String: Any]] ?? [])
+                        print("[ShareExtension] requiredDocuments array count: \(requiredDocsArray.count)")
+                        
+                        let docs: [RequiredDocument] = requiredDocsArray.compactMap { dict in
+                            print("[ShareExtension] Processing document: \(dict)")
+                            guard let docID = dict["documentID"] as? Int,
+                                  let docName = dict["documentName"] as? String else {
+                                print("[ShareExtension] Missing documentID or documentName")
+                                return nil
+                            }
+                            let isRequired = dict["isRequired"] as? Bool ?? false
+                            let isAdded = dict["isAdded"] as? Bool ?? false
+                            print("[ShareExtension] Document: \(docName), isRequired: \(isRequired), isAdded: \(isAdded)")
+                            return RequiredDocument(documentID: docID, documentName: docName, isRequired: isRequired, isAdded: isAdded)
+                        }
+                        
+                        print("[ShareExtension] Total parsed documents: \(docs.count)")
+                        
+                        DispatchQueue.main.async {
+                            self.requiredDocuments = docs
+                            // Sadece eklenmemiş belgeleri seçilebilir yap
+                            let notAdded = docs.filter { !$0.isAdded }
+                            print("[ShareExtension] Not added documents: \(notAdded.count)")
+                            
+                            if let first = notAdded.first {
+                                self.shareWith = first.documentName
+                                self.selectedDocumentType = first
+                                print("[ShareExtension] Selected first not-added document: \(first.documentName)")
+                            } else {
+                                self.shareWith = ""
+                                self.selectedDocumentType = nil
+                                print("[ShareExtension] No not-added documents found")
+                            }
+                            self.setupOptions()
+                            completion?()
+                        }
+                    } else {
+                        print("[ShareExtension] fetchProjectDetail: unexpected JSON structure")
+                        DispatchQueue.main.async {
+                            completion?()
+                        }
+                    }
+                }
+            } catch {
+                print("[ShareExtension] fetchProjectDetail parse error: \(error)")
+                DispatchQueue.main.async {
+                    completion?()
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func uploadDocument(projectId: Int, documentType: RequiredDocument, items: [[String: Any]]) {
+        // İlk item'ı al (path içeren dosya)
+        guard let firstItem = items.first,
+              let pathString = firstItem["path"] as? String,
+              let fileURL = URL(string: pathString) else {
+            DispatchQueue.main.async {
+                self.hideLoading()
+                self.showAlert(title: "Hata", message: "Dosya yolu bulunamadı.")
+            }
+            return
+        }
+        
+        print("[ShareExtension] uploadDocument - fileURL: \(fileURL)")
+        
+        // Dosyayı oku ve base64'e çevir
+        do {
+            let fileData = try Data(contentsOf: fileURL)
+            let base64String = fileData.base64EncodedString()
+            
+            print("[ShareExtension] File size: \(fileData.count) bytes")
+            
+            // MIME type belirle
+            let ext = fileURL.pathExtension.lowercased()
+            var mimeType = "application/octet-stream"
+            if ext == "pdf" {
+                mimeType = "application/pdf"
+            } else if ["jpg", "jpeg"].contains(ext) {
+                mimeType = "image/jpeg"
+            } else if ext == "png" {
+                mimeType = "image/png"
+            } else if ["doc", "docx"].contains(ext) {
+                mimeType = "application/msword"
+            } else if ["xls", "xlsx"].contains(ext) {
+                mimeType = "application/vnd.ms-excel"
+            }
+            
+            let fileDataString = "data:\(mimeType);base64,\(base64String)"
+            
+            print("[ShareExtension] Uploading document: \(documentType.documentName), type: \(mimeType)")
+            
+            // API'ye gönder (main thread'e dön)
+            DispatchQueue.main.async {
+                self.uploadToAPI(projectId: projectId, documentTypeID: documentType.documentID, fileData: fileDataString)
+            }
+        } catch {
+            print("[ShareExtension] File read error: \(error)")
+            DispatchQueue.main.async {
+                self.hideLoading()
+                self.showAlert(title: "Hata", message: "Dosya okunamadı: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func uploadToAPI(projectId: Int, documentTypeID: Int, fileData: String) {
+        let urlString = "https://api.office701.com/arti-capital/service/user/account/projects/documentAdd"
+        guard let url = URL(string: urlString) else {
+            hideLoading()
+            showAlert(title: "Hata", message: "Geçersiz URL.")
+            return
+        }
         
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         request.httpMethod = "POST"
@@ -921,49 +1007,66 @@ extension ShareViewController {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
         // Request Body
-        let projectDesc = noteText.isEmpty || noteText == "Not ekle..." ? "" : noteText
+        let documentDesc = noteText.isEmpty || noteText == "Not ekle..." ? "" : noteText
         let body: [String: Any] = [
             "userToken": userToken,
-            "compID": compID,
-            "compAdrID": compAdrID > 0 ? compAdrID : 1, // Default 1 if not set
-            "serviceID": selectedProjectId ?? 0,
-            "projectTitle": projectTitle,
-            "projectDesc": projectDesc
+            "appID": projectId,
+            "compID": selectedProjectCompID,
+            "compAdrID": selectedProjectCompAdrID,
+            "documentType": documentTypeID,
+            "documentDesc": documentDesc,
+            "file": fileData
         ]
+        
+        print("[ShareExtension] uploadToAPI - Request body (without file): userToken=\(userToken.prefix(10))..., appID=\(projectId), compID=\(selectedProjectCompID), compAdrID=\(selectedProjectCompAdrID), documentType=\(documentTypeID)")
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+            print("[ShareExtension] Request body size: \((request.httpBody?.count ?? 0) / 1024) KB")
         } catch {
             DispatchQueue.main.async {
-                self.showAlert(title: "Hata", message: "İstek oluşturulamadı.")
+                self.hideLoading()
+                self.showAlert(title: "Hata", message: "İstek oluşturulamadı: \(error.localizedDescription)")
             }
             return
         }
         
-        // Loading göster
-        DispatchQueue.main.async {
-            self.showLoading()
-        }
+        // Loading zaten gösteriliyor, sadece upload başladığını log'la
+        print("[ShareExtension] Starting upload request...")
         
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
+            
+            print("[ShareExtension] Upload request completed")
             
             DispatchQueue.main.async {
                 self.hideLoading()
             }
             
             if let error = error {
+                print("[ShareExtension] Upload error: \(error)")
                 DispatchQueue.main.async {
                     self.showAlert(title: "Hata", message: "Bağlantı hatası: \(error.localizedDescription)")
                 }
                 return
             }
             
+            // HTTP response status code'u kontrol et
+            if let httpResponse = response as? HTTPURLResponse {
+                print("[ShareExtension] HTTP Status Code: \(httpResponse.statusCode)")
+            }
+            
             guard let data = data else {
+                print("[ShareExtension] No response data")
                 DispatchQueue.main.async {
                     self.showAlert(title: "Hata", message: "Veri alınamadı.")
                 }
                 return
+            }
+            
+            // Response'u log'la
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("[ShareExtension] Upload response: \(responseString)")
             }
             
             do {
@@ -971,19 +1074,23 @@ extension ShareViewController {
                     let success = json["success"] as? Bool ?? false
                     let message = json["message"] as? String ?? ""
                     
+                    print("[ShareExtension] Upload result - success: \(success), message: \(message)")
+                    
                     DispatchQueue.main.async {
                         if success {
-                            self.showAlert(title: "Başarılı", message: message.isEmpty ? "Proje başarıyla oluşturuldu." : message) {
+                            self.showAlert(title: "Başarılı", message: message.isEmpty ? "Belge başarıyla yüklendi." : message) {
+                                print("[ShareExtension] Closing extension...")
                                 self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
                             }
                         } else {
-                            self.showAlert(title: "Hata", message: message.isEmpty ? "Proje oluşturulamadı." : message)
+                            self.showAlert(title: "Hata", message: message.isEmpty ? "Belge yüklenemedi." : message)
                         }
                     }
                 }
             } catch {
+                print("[ShareExtension] Response parse error: \(error)")
                 DispatchQueue.main.async {
-                    self.showAlert(title: "Hata", message: "Yanıt işlenemedi.")
+                    self.showAlert(title: "Hata", message: "Yanıt işlenemedi: \(error.localizedDescription)")
                 }
             }
         }
@@ -999,7 +1106,6 @@ extension ShareViewController {
     }
     
     private func showLoading() {
-        // Basit loading gösterimi (activity indicator)
         let alert = UIAlertController(title: nil, message: "Lütfen bekleyin...", preferredStyle: .alert)
         let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
         loadingIndicator.hidesWhenStopped = true
@@ -1014,48 +1120,6 @@ extension ShareViewController {
            presented.title == nil && presented.message == "Lütfen bekleyin..." {
             presented.dismiss(animated: true)
         }
-    }
-    
-    private func fetchServiceDetail(projectId: Int) {
-        guard projectId > 0 else { return }
-        let urlString = "https://api.office701.com/arti-capital/service/general/general/services/\(projectId)"
-        guard let url = URL(string: urlString) else { return }
-        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
-        request.httpMethod = "GET"
-        let username = "Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM"
-        let password = "vRParTCAqTjtmkI17I1EVpPH57Edl0"
-        let authString = "\(username):\(password)"
-        if let authData = authString.data(using: .utf8) {
-            let authHeader = authData.base64EncodedString()
-            request.setValue("Basic \(authHeader)", forHTTPHeaderField: "Authorization")
-        }
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-
-        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self else { return }
-            if let error = error {
-                print("[ShareExtension] fetchServiceDetail error: \(error)")
-                return
-            }
-            guard let data = data else { return }
-            do {
-                // Beklenen JSON: { data: { service: { duties: [ { dutyName:String } ] } } }
-                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                   let dataObj = json["data"] as? [String: Any],
-                   let serviceObj = dataObj["service"] as? [String: Any] {
-                    let duties = (serviceObj["duties"] as? [[String: Any]] ?? [])
-                    let names: [String] = duties.compactMap { ($0["dutyName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-                    DispatchQueue.main.async {
-                        self.documentTypes = names
-                        if self.shareWith.isEmpty || !self.documentTypes.contains(self.shareWith) { self.shareWith = self.documentTypes.first ?? "" }
-                        self.setupOptions()
-                    }
-                }
-            } catch {
-                print("[ShareExtension] fetchServiceDetail parse error: \(error)")
-            }
-        }
-        task.resume()
     }
 }
 
@@ -1228,15 +1292,5 @@ extension ShareViewController: UITextViewDelegate {
     }
 }
 
-// MARK: - UITextFieldDelegate
-extension ShareViewController: UITextFieldDelegate {
-    func textFieldDidEndEditing(_ textField: UITextField) {
-        projectTitle = textField.text ?? ""
-    }
-    
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        textField.resignFirstResponder()
-        return true
-    }
-}
+
 

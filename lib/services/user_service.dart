@@ -99,9 +99,17 @@ class UserService {
       if (getUserResponse.success && getUserResponse.user != null) {
         await StorageService.saveUserData(jsonEncode(getUserResponse.user!.toJson()));
         
+        // Token'ı al
+        final token = StorageService.getToken();
+        
         // App Group'a kullanıcı bilgilerini kaydet
         await AppGroupService.setLoggedInUserName(getUserResponse.user!.userFullname);
         await AppGroupService.setUserRank(getUserResponse.user!.userRank);
+        
+        // Token'ı App Group'a kaydet
+        if (token != null && token.isNotEmpty) {
+          await AppGroupService.setUserToken(token);
+        }
         
         // Başarılı girişten hemen sonra firmaları da çekip App Group'a yaz
         try {

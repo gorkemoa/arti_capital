@@ -8,6 +8,8 @@ class StorageService {
   static const String _twoFactorEnabledKey = 'two_factor_enabled';
   static const String _twoFactorSendTypeKey = 'two_factor_send_type';
   static const String _lastLoginAtKey = 'last_login_at';
+  static const String _compIDKey = 'comp_id';
+  static const String _compAdrIDKey = 'comp_adr_id';
 
   static SharedPreferences? _prefs;
 
@@ -73,6 +75,8 @@ class StorageService {
     await removeUserId();
     await removeUserData();
     await removeLastLoginAt();
+    await removeCompID();
+    await removeCompAdrID();
   }
 
   // Kullanıcı giriş yapmış mı kontrol et
@@ -114,6 +118,32 @@ class StorageService {
 
   static Future<void> removeLastLoginAt() async {
     await _prefs?.remove(_lastLoginAtKey);
+  }
+
+  // Company ID işlemleri
+  static Future<void> saveCompID(int compID) async {
+    await _prefs?.setInt(_compIDKey, compID);
+  }
+
+  static int? getCompID() {
+    return _prefs?.getInt(_compIDKey);
+  }
+
+  static Future<void> removeCompID() async {
+    await _prefs?.remove(_compIDKey);
+  }
+
+  // Company Address ID işlemleri
+  static Future<void> saveCompAdrID(int compAdrID) async {
+    await _prefs?.setInt(_compAdrIDKey, compAdrID);
+  }
+
+  static int? getCompAdrID() {
+    return _prefs?.getInt(_compAdrIDKey);
+  }
+
+  static Future<void> removeCompAdrID() async {
+    await _prefs?.remove(_compAdrIDKey);
   }
 
   // Permission helpers - check user permissions (PHP isset logic)
