@@ -6,11 +6,13 @@ import '../theme/app_colors.dart';
 class AddInformationView extends StatefulWidget {
   final int projectID;
   final RequiredInfo requiredInfo;
+  final ProjectInformation? existingInformation;
 
   const AddInformationView({
     super.key,
     required this.projectID,
     required this.requiredInfo,
+    this.existingInformation,
   });
 
   @override
@@ -29,14 +31,29 @@ class _AddInformationViewState extends State<AddInformationView> {
   @override
   void initState() {
     super.initState();
-    _valueController = TextEditingController(text: widget.requiredInfo.defaultValue);
-    _descController = TextEditingController();
     
-    // Eğer select tipiyse ve default value varsa
-    if (widget.requiredInfo.infoType == 'select' && 
-        widget.requiredInfo.defaultValue.isNotEmpty &&
-        widget.requiredInfo.options.contains(widget.requiredInfo.defaultValue)) {
-      _selectedOption = widget.requiredInfo.defaultValue;
+    // Eğer güncelleme modundaysa mevcut değerleri doldur
+    if (widget.existingInformation != null) {
+      _valueController = TextEditingController(text: widget.existingInformation!.infoValue);
+      _descController = TextEditingController(text: widget.existingInformation!.infoDesc);
+      
+      // Select tipi için mevcut değeri seç
+      if (widget.requiredInfo.infoType == 'select' && 
+          widget.existingInformation!.infoValue.isNotEmpty &&
+          widget.requiredInfo.options.contains(widget.existingInformation!.infoValue)) {
+        _selectedOption = widget.existingInformation!.infoValue;
+      }
+    } else {
+      // Yeni ekleme modunda default değerleri kullan
+      _valueController = TextEditingController(text: widget.requiredInfo.defaultValue);
+      _descController = TextEditingController();
+      
+      // Eğer select tipiyse ve default value varsa
+      if (widget.requiredInfo.infoType == 'select' && 
+          widget.requiredInfo.defaultValue.isNotEmpty &&
+          widget.requiredInfo.options.contains(widget.requiredInfo.defaultValue)) {
+        _selectedOption = widget.requiredInfo.defaultValue;
+      }
     }
   }
 
@@ -81,7 +98,9 @@ class _AddInformationViewState extends State<AddInformationView> {
         if (response.success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response.message ?? 'Bilgi başarıyla eklendi'),
+              content: Text(response.message ?? (widget.existingInformation != null 
+                  ? 'Bilgi başarıyla güncellendi' 
+                  : 'Bilgi başarıyla eklendi')),
               backgroundColor: Colors.green,
             ),
           );
@@ -114,7 +133,7 @@ class _AddInformationViewState extends State<AddInformationView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bilgi Ekle'),
+        title: Text(widget.existingInformation != null ? 'Bilgi Güncelle' : 'Bilgi Ekle'),
         centerTitle: true,
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,

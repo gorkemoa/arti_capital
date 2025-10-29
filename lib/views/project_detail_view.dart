@@ -86,12 +86,13 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
     }
   }
 
-  void _openAddInformationView(RequiredInfo info) async {
+  void _openAddInformationView(RequiredInfo info, [ProjectInformation? existingInfo]) async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => AddInformationView(
           projectID: _project!.appID,
           requiredInfo: info,
+          existingInformation: existingInfo,
         ),
       ),
     );
@@ -168,7 +169,7 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                 title: const Text('Güncelle'),
                 onTap: () {
                   Navigator.pop(context);
-                  _openAddInformationView(info);
+                  _openAddInformationView(info, addedInfo);
                 },
               ),
               
