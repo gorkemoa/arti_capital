@@ -601,6 +601,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                     final isSelected = tempSelectedUserIDs.contains(userId);
 
                     return CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
                       title: Text(userName),
                       value: isSelected,
                       activeColor: AppColors.primary,
@@ -680,6 +681,7 @@ class _AddTrackingViewState extends State<AddTrackingView> {
                     }
 
                     return CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
                       title: Text(displayName),
                       value: isSelected,
                       activeColor: AppColors.primary,

@@ -17,6 +17,7 @@ class EditAppointmentView extends StatefulWidget {
     this.initialPriority,
     this.initialRemindID,
     this.initialTitleID,
+    this.initialPersonIDs,
   });
 
   final int appointmentID;
@@ -29,6 +30,7 @@ class EditAppointmentView extends StatefulWidget {
   final int? initialPriority;
   final int? initialRemindID;
   final int? initialTitleID;
+  final List<int>? initialPersonIDs;
 
   @override
   State<EditAppointmentView> createState() => _EditAppointmentViewState();
@@ -69,6 +71,8 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
     // Initialize custom title controller - will be populated if "Diğer" is selected
     _customTitleController = TextEditingController();
     _selectedDateTime = _parseTrDateTime(widget.initialDateTimeStr) ?? DateTime.now();
+    // Set initial selected person IDs
+    _selectedPersonIDs = widget.initialPersonIDs ?? [];
     _loadAppointmentStatuses();
     _loadAppointmentPriorities();
     _loadAppointmentRemindTypes();
@@ -650,6 +654,7 @@ class _EditAppointmentViewState extends State<EditAppointmentView> {
                     final isSelected = tempSelectedIDs.contains(personID);
                     
                     return CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
                       value: isSelected,
                       onChanged: (value) {
                         setModalState(() {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
@@ -152,12 +153,25 @@ class _AddProjectDocumentViewState extends State<AddProjectDocumentView> {
 
       final fileData = 'data:$mimeType;base64,$base64String';
 
+      // isAdditional belirleme: Eğer seçilen belge requiredDocuments listesinde değilse 1, varsa 0
+      int isAdditional = 0;
+      if (widget.requiredDocuments != null) {
+        final isInRequiredList = widget.requiredDocuments!.any(
+          (doc) => doc.documentID == _selectedDocType!.documentID
+        );
+        isAdditional = isInRequiredList ? 0 : 1;
+      } else {
+        // RequiredDocuments listesi yoksa, ek belge olarak kabul et
+        isAdditional = 1;
+      }
+
       final response = await _projectsService.addProjectDocument(
         appID: widget.projectID,
         compID: widget.compID,
         documentType: _selectedDocType!.documentID,
         file: fileData,
         documentDesc: _descController.text.trim(),
+        isAdditional: isAdditional,
       );
 
       if (mounted) {
@@ -199,6 +213,120 @@ class _AddProjectDocumentViewState extends State<AddProjectDocumentView> {
   void dispose() {
     _descController.dispose();
     super.dispose();
+  }
+
+  Widget _buildCupertinoField({
+    required String placeholder,
+    String? value,
+    VoidCallback? onTap,
+    bool isDisabled = false,
+  }) {
+    return GestureDetector(
+      onTap: isDisabled ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDisabled 
+              ? AppColors.onSurface.withOpacity(0.03)
+              : AppColors.onSurface.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.onSurface.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                value == null || value.isEmpty ? placeholder : value,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: (value == null || value.isEmpty)
+                      ? AppColors.onSurface.withOpacity(isDisabled ? 0.4 : 0.4)
+                      : AppColors.onSurface.withOpacity(isDisabled ? 0.5 : 1),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            Icon(
+              CupertinoIcons.chevron_down,
+              size: 18,
+              color: AppColors.onSurface.withOpacity(isDisabled ? 0.3 : 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDocumentTypePicker() async {
+    if (_documentTypes.isEmpty) return;
+
+    int selectedIndex = _documentTypes.indexWhere((t) => t.documentID == _selectedDocType?.documentID);
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      child: Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      child: Text('Tamam'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedDocType = _documentTypes[selectedIndex];
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+                  itemExtent: 40,
+                  onSelectedItemChanged: (index) {
+                    selectedIndex = index;
+                  },
+                  children: _documentTypes.map((type) {
+                    return Center(
+                      child: Text(
+                        type.documentName,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -282,28 +410,15 @@ class _AddProjectDocumentViewState extends State<AddProjectDocumentView> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: DropdownButton<DocumentTypeItem>(
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      value: _selectedDocType,
-                      items: _documentTypes.map((type) {
-                        return DropdownMenuItem<DocumentTypeItem>(
-                          value: type,
-                          child: Text(type.documentName),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedDocType = value;
-                        });
-                      },
-                    ),
+                  _buildCupertinoField(
+                    placeholder: 'Belge Türü',
+                    value: _documentTypes.isEmpty
+                        ? 'Belge türleri yükleniyor...'
+                        : (_selectedDocType == null
+                            ? null
+                            : _selectedDocType!.documentName),
+                    onTap: _showDocumentTypePicker,
+                    isDisabled: _documentTypes.isEmpty,
                   ),
                   const SizedBox(height: 16),
 

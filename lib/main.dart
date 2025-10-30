@@ -14,7 +14,6 @@ import 'views/settings_view.dart';
 import 'views/change_password_view.dart';
 import 'views/two_factor_view.dart';
 import 'views/notifications_view.dart';
-import 'views/requests_view.dart';
 import 'views/companies_view.dart';
 import 'views/support_view.dart';
 import 'views/calendar_view.dart';

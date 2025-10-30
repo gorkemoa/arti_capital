@@ -452,6 +452,7 @@ class AppointmentDetailView extends StatelessWidget {
           initialPriority: priority,
           initialTitleID: titleID,
           initialRemindID: remindID,
+          initialPersonIDs: assignedPersonIDs,
         ),
       ),
     );

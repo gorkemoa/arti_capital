@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../models/project_models.dart';
 import '../services/projects_service.dart';
 import '../theme/app_colors.dart';
@@ -125,6 +126,120 @@ class _AddInformationViewState extends State<AddInformationView> {
         );
       }
     }
+  }
+
+  Widget _buildCupertinoField({
+    required String placeholder,
+    String? value,
+    VoidCallback? onTap,
+    bool isDisabled = false,
+  }) {
+    return GestureDetector(
+      onTap: isDisabled ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDisabled 
+              ? AppColors.onSurface.withOpacity(0.03)
+              : AppColors.onSurface.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppColors.onSurface.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                value == null || value.isEmpty ? placeholder : value,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: (value == null || value.isEmpty)
+                      ? AppColors.onSurface.withOpacity(isDisabled ? 0.4 : 0.4)
+                      : AppColors.onSurface.withOpacity(isDisabled ? 0.5 : 1),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            Icon(
+              CupertinoIcons.chevron_down,
+              size: 18,
+              color: AppColors.onSurface.withOpacity(isDisabled ? 0.3 : 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showOptionPicker() async {
+    if (widget.requiredInfo.options.isEmpty) return;
+
+    int selectedIndex = widget.requiredInfo.options.indexOf(_selectedOption ?? '');
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      child: Text('İptal'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    CupertinoButton(
+                      child: Text('Tamam'),
+                      onPressed: () {
+                        setState(() {
+                          _selectedOption = widget.requiredInfo.options[selectedIndex];
+                        });
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+                  itemExtent: 40,
+                  onSelectedItemChanged: (index) {
+                    selectedIndex = index;
+                  },
+                  children: widget.requiredInfo.options.map((option) {
+                    return Center(
+                      child: Text(
+                        option,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -359,45 +474,35 @@ class _AddInformationViewState extends State<AddInformationView> {
         );
 
       case 'select':
-        return DropdownButtonFormField<String>(
-          value: _selectedOption,
-          decoration: InputDecoration(
-            labelText: '${widget.requiredInfo.infoName} *',
-            prefixIcon: const Icon(Icons.list),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: AppColors.onSurface.withOpacity(0.2),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${widget.requiredInfo.infoName} *',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface.withOpacity(0.7),
               ),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primary,
-                width: 2,
-              ),
+            const SizedBox(height: 8),
+            _buildCupertinoField(
+              placeholder: widget.requiredInfo.infoName,
+              value: _selectedOption,
+              onTap: _showOptionPicker,
             ),
-          ),
-          items: widget.requiredInfo.options.map((option) {
-            return DropdownMenuItem<String>(
-              value: option,
-              child: Text(option),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedOption = value;
-            });
-          },
-          validator: (value) {
-            if (widget.requiredInfo.isRequired && value == null) {
-              return 'Lütfen bir seçenek seçin';
-            }
-            return null;
-          },
+            if (widget.requiredInfo.isRequired && _selectedOption == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 14),
+                child: Text(
+                  'Lütfen bir seçenek seçin',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
         );
 
       default:

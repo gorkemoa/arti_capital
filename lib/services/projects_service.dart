@@ -689,6 +689,7 @@ class ProjectsService {
     required int documentType,
     required String file,
     String documentDesc = '',
+    int isAdditional = 0,
   }) async {
     try {
       final token = StorageService.getToken();
@@ -710,9 +711,10 @@ class ProjectsService {
         documentType: documentType,
         documentDesc: documentDesc,
         file: file,
+        isAdditional: isAdditional,
       );
 
-      AppLogger.i('Request: appID=$appID, compID=$compID, documentType=$documentType', tag: 'ADD_PROJECT_DOCUMENT');
+      AppLogger.i('Request: appID=$appID, compID=$compID, documentType=$documentType, isAdditional=$isAdditional', tag: 'ADD_PROJECT_DOCUMENT');
 
       final resp = await ApiClient.postJson(endpoint, data: request.toJson());
 

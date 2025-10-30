@@ -122,6 +122,17 @@ class UserService {
             if (names.isNotEmpty) {
               await AppGroupService.setCompanies(names);
             }
+            
+            // Firma ID'leriyle birlikte kaydet
+            final companiesWithIDs = companiesResp.companies
+                .map((e) => {
+                      'compName': e.compName,
+                      'compID': e.compID,
+                    })
+                .toList();
+            if (companiesWithIDs.isNotEmpty) {
+              await AppGroupService.setCompaniesWithIDs(companiesWithIDs);
+            }
           }
         } catch (_) {}
         

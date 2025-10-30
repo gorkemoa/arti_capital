@@ -11,8 +11,8 @@ class VersionControlService {
   VersionControlService._internal();
 
   final NewVersionPlus _newVersion = NewVersionPlus(
-    iOSId: 'com.office701.arti_capital',
-    androidId: 'com.office701.arti_capital',
+    iOSId: 'com.office701.articapital',
+    androidId: 'com.office701.articapital',
   );
 
   /// Yeni versiyon kontrolü yapan ve sonucu döndüren metod

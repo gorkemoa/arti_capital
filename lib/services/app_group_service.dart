@@ -79,6 +79,22 @@ class AppGroupService {
     }
   }
 
+  // Firma listesini ID'leriyle birlikte JSON formatında sakla
+  static Future<bool> setCompaniesWithIDs(List<Map<String, dynamic>> companies) async {
+    if (!(Platform.isIOS || Platform.isAndroid)) return false;
+    try {
+      final jsonString = jsonEncode(companies);
+      final bool result = await _channel.invokeMethod('setString', {
+        'group': _groupId,
+        'key': 'CompaniesWithIDs',
+        'value': jsonString,
+      });
+      return result;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<bool> setUserToken(String token) async {
     if (!(Platform.isIOS || Platform.isAndroid)) return false;
     try {

@@ -584,6 +584,7 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
                     final isSelected = tempSelectedIDs.contains(personID);
                     
                     return CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
                       value: isSelected,
                       onChanged: (value) {
                         setModalState(() {

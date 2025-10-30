@@ -786,6 +786,7 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                     final isSelected = tempSelectedUserIDs.contains(userId);
 
                     return CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
                       title: Text(user['name'] as String),
                       value: isSelected,
                       onChanged: (bool? value) {
@@ -844,6 +845,7 @@ class _EditTrackingViewState extends State<EditTrackingView> {
                     final displayName = _formatNotificationType(type);
 
                     return CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
                       title: Text(displayName),
                       value: isSelected,
                       onChanged: (bool? value) {

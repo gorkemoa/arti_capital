@@ -1479,11 +1479,8 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
   }
 
   Widget _buildRequiredDocumentsCard(ThemeData theme) {
-    // Gerekli belgelerden eklenen belgeleri bul (documentType ile eşleştir)
-    final addedDocumentsMap = <String, ProjectDocument>{};
-    for (var doc in _project!.documents) {
-      addedDocumentsMap[doc.documentType] = doc;
-    }
+    // SADECE gerekli belgeleri al (isAdditional: false)
+    final requiredDocs = _project!.documents.where((doc) => !doc.isAdditional).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -1515,175 +1512,197 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
             ],
           ),
           const SizedBox(height: 16),
-          _project!.requiredDocuments.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Text(
-                      'Gerekli belge bulunmuyor',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.onSurface.withOpacity(0.4),
+          
+          if (_project!.requiredDocuments.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'Gerekli belge bulunmuyor',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.4),
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _project!.requiredDocuments.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final reqDoc = _project!.requiredDocuments[index];
+                
+                // reqDoc.isAdded zaten API'den geliyor, onu kullan
+                final isAdded = reqDoc.isAdded;
+                
+                // Eğer eklenmişse, documents dizisinden bul
+                // DİKKAT: documentType (isim) ile documentName'i eşleştir
+                ProjectDocument? addedDoc;
+                if (isAdded) {
+                  try {
+                    addedDoc = requiredDocs.firstWhere(
+                      (doc) => doc.documentType.toLowerCase().trim() == reqDoc.documentName.toLowerCase().trim(),
+                    );
+                  } catch (e) {
+                    // Bulunamazsa null kalsın
+                    addedDoc = null;
+                  }
+                }
+                
+                return InkWell(
+                  onTap: isAdded && addedDoc != null
+                      ? () => _showDocumentActions(reqDoc, addedDoc!)
+                      : _openAddDocumentPage,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isAdded
+                          ? Colors.green.withOpacity(0.04)
+                          : AppColors.onSurface.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isAdded
+                            ? Colors.green.withOpacity(0.2)
+                            : (reqDoc.isRequired
+                                ? Colors.red.withOpacity(0.2)
+                                : AppColors.onSurface.withOpacity(0.08)),
+                        width: 1,
                       ),
                     ),
-                  ),
-                )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _project!.requiredDocuments.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final reqDoc = _project!.requiredDocuments[index];
-                    final addedDoc = addedDocumentsMap[reqDoc.documentName];
-                    
-                    return InkWell(
-                      onTap: addedDoc != null
-                          ? () => _showDocumentActions(reqDoc, addedDoc)
-                          : _openAddDocumentPage,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: addedDoc != null
-                              ? Colors.green.withOpacity(0.04)
-                              : AppColors.onSurface.withOpacity(0.03),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: addedDoc != null
-                                ? Colors.green.withOpacity(0.2)
-                                : (reqDoc.isRequired
-                                    ? Colors.red.withOpacity(0.2)
-                                    : AppColors.onSurface.withOpacity(0.08)),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    reqDoc.documentName,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                if (addedDoc == null) ...[
-                                  if (reqDoc.isRequired)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Zorunlu',
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          color: Colors.red.shade700,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 16,
-                                    color: AppColors.onSurface.withOpacity(0.4),
-                                  ),
-                                ] else
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.green,
-                                    size: 20,
-                                  ),
-                              ],
-                            ),
-                            
-                            // Eklenen belge bilgilerini göster
-                            if (addedDoc != null) ...[
-                              const SizedBox(height: 10),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppColors.onSurface.withOpacity(0.03),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.person_outline,
-                                          size: 14,
-                                          color: AppColors.onSurface.withOpacity(0.5),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          addedDoc.partner,
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: AppColors.onSurface.withOpacity(0.7),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.calendar_today,
-                                          size: 14,
-                                          color: AppColors.onSurface.withOpacity(0.5),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Geçerlilik: ${addedDoc.validityDate}',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: AppColors.onSurface.withOpacity(0.7),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (addedDoc.documentDesc?.isNotEmpty == true) ...[
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.description_outlined,
-                                            size: 14,
-                                            color: AppColors.onSurface.withOpacity(0.5),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              addedDoc.documentDesc!,
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                color: AppColors.onSurface.withOpacity(0.7),
-                                              ),
-                                              maxLines: 3,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ],
+                            Expanded(
+                              child: Text(
+                                reqDoc.documentName,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ],
+                            ),
+                            if (!isAdded) ...[
+                              if (reqDoc.isRequired)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Zorunlu',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.red.shade700,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: AppColors.onSurface.withOpacity(0.4),
+                              ),
+                            ] else
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 20,
+                              ),
                           ],
                         ),
-                      ),
-                    );
-                  },
-                ),
+                        
+                        // Eklenen belge bilgilerini göster
+                        if (isAdded && addedDoc != null) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.onSurface.withOpacity(0.03),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_outline,
+                                      size: 14,
+                                      color: AppColors.onSurface.withOpacity(0.5),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        addedDoc.partner,
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: AppColors.onSurface.withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (addedDoc.validityDate.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today,
+                                        size: 14,
+                                        color: AppColors.onSurface.withOpacity(0.5),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Geçerlilik: ${addedDoc.validityDate}',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: AppColors.onSurface.withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (addedDoc.documentDesc?.isNotEmpty == true) ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.description_outlined,
+                                        size: 14,
+                                        color: AppColors.onSurface.withOpacity(0.5),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          addedDoc.documentDesc!,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: AppColors.onSurface.withOpacity(0.7),
+                                          ),
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -1809,6 +1828,9 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
   }
 
   Widget _buildDocumentsCard(ThemeData theme) {
+    // SADECE ek belgeleri al (isAdditional: true)
+    final additionalDocs = _project!.documents.where((doc) => doc.isAdditional).toList();
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1854,21 +1876,291 @@ class _ProjectDetailViewState extends State<ProjectDetailView> {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                'Ek dökümanlar eklemek için "Ekle" butonunu kullanın',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.onSurface.withOpacity(0.5),
-                  fontStyle: FontStyle.italic,
+          const SizedBox(height: 16),
+          
+          if (additionalDocs.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'Ek döküman bulunmuyor',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.onSurface.withOpacity(0.5),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: additionalDocs.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final doc = additionalDocs[index];
+                
+                return InkWell(
+                  onTap: () => _showAdditionalDocumentActions(doc),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.onSurface.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.onSurface.withOpacity(0.08),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.insert_drive_file,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    doc.documentType,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    doc.partner,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.onSurface.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: AppColors.onSurface.withOpacity(0.4),
+                            ),
+                          ],
+                        ),
+                        
+                        if (doc.documentDesc?.isNotEmpty == true || doc.validityDate.isNotEmpty || doc.createDate.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.onSurface.withOpacity(0.02),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (doc.createDate.isNotEmpty)
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.access_time,
+                                        size: 14,
+                                        color: AppColors.onSurface.withOpacity(0.5),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        doc.createDate,
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: AppColors.onSurface.withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                if (doc.validityDate.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today,
+                                        size: 14,
+                                        color: AppColors.onSurface.withOpacity(0.5),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Geçerlilik: ${doc.validityDate}',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: AppColors.onSurface.withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (doc.documentDesc?.isNotEmpty == true) ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.description_outlined,
+                                        size: 14,
+                                        color: AppColors.onSurface.withOpacity(0.5),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          doc.documentDesc!,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: AppColors.onSurface.withOpacity(0.7),
+                                          ),
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ),
         ],
+      ),
+    );
+  }
+
+  void _showAdditionalDocumentActions(ProjectDocument doc) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.onSurface.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Belge başlığı
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Column(
+                  children: [
+                    Text(
+                      doc.documentType,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      doc.partner,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.onSurface.withOpacity(0.6),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              
+              Divider(
+                height: 1,
+                color: AppColors.onSurface.withOpacity(0.1),
+              ),
+              
+              // Görüntüle
+              ListTile(
+                leading: Icon(
+                  Icons.open_in_new,
+                  color: AppColors.primary,
+                ),
+                title: const Text('Görüntüle'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openDocument(doc.documentURL, doc.documentType);
+                },
+              ),
+              
+              Divider(
+                height: 1,
+                color: AppColors.onSurface.withOpacity(0.1),
+              ),
+              
+              // Güncelle
+              if (StorageService.hasPermission('projects', 'update'))
+                ListTile(
+                  leading: Icon(
+                    Icons.edit,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text('Güncelle'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openEditDocumentPage(doc);
+                  },
+                ),
+              
+              if (StorageService.hasPermission('projects', 'update'))
+                Divider(
+                  height: 1,
+                  color: AppColors.onSurface.withOpacity(0.1),
+                ),
+              
+              // Sil
+              if (StorageService.hasPermission('projects', 'update'))
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
+                  title: const Text(
+                    'Sil',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteDocument(doc);
+                  },
+                ),
+              
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
       ),
     );
   }

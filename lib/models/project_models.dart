@@ -90,6 +90,7 @@ class ProjectDocument {
   final String createDate;
   final String? documentDesc;
   final bool isCompDocument;
+  final bool isAdditional;
 
   ProjectDocument({
     required this.documentID,
@@ -101,6 +102,7 @@ class ProjectDocument {
     required this.createDate,
     this.documentDesc,
     this.isCompDocument = false,
+    this.isAdditional = false,
   });
 
   factory ProjectDocument.fromJson(Map<String, dynamic> json) {
@@ -114,6 +116,7 @@ class ProjectDocument {
       createDate: json['createDate'] as String? ?? '',
       documentDesc: json['description'] as String? ?? json['documentDesc'] as String?,
       isCompDocument: _parseBoolean(json['isCompDocument']),
+      isAdditional: _parseBoolean(json['isAdditional']),
     );
   }
 
@@ -710,6 +713,7 @@ class AddProjectDocumentRequest {
   final int documentType;
   final String documentDesc;
   final String file;
+  final int isAdditional;
 
   AddProjectDocumentRequest({
     required this.userToken,
@@ -718,6 +722,7 @@ class AddProjectDocumentRequest {
     required this.documentType,
     required this.documentDesc,
     required this.file,
+    this.isAdditional = 0,
   });
 
   Map<String, dynamic> toJson() {
@@ -728,6 +733,7 @@ class AddProjectDocumentRequest {
       'documentType': documentType,
       'documentDesc': documentDesc,
       'file': file,
+      'isAdditional': isAdditional,
     };
   }
 }
