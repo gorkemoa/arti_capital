@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:arti_capital/views/panel_view.dart';
 
 class SplashView extends StatefulWidget {
-  const SplashView({super.key});
+  final Widget nextRoute;
+  
+  const SplashView({super.key, required this.nextRoute});
 
   @override
   State<SplashView> createState() => _SplashViewState();
@@ -16,7 +17,7 @@ class _SplashViewState extends State<SplashView> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => const PanelView(userName: '', userVersion: '', profilePhoto: ''),
+          builder: (_) => widget.nextRoute,
         ),
       );
     });

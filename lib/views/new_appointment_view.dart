@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/company_models.dart';
 import '../models/appointment_models.dart';
@@ -700,50 +701,107 @@ class _NewAppointmentViewState extends State<NewAppointmentView> {
     try {
       // Tarih seçilmiş mi kontrol et
       if (_selectedDateTime == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen önce tarih seçiniz')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lütfen önce tarih seçiniz')),
+          );
+        }
         return;
+      }
+
+      // Android için takvim izni kontrol et ve iste
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        final status = await Permission.calendarFullAccess.request();
+        if (!status.isGranted) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Takvim izni verilmedi. Lütfen ayarlardan takvim erişim iznini verin.'),
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+          return;
+        }
       }
 
       // Randevu başlığını oluştur
       String eventTitle;
       if (_selectedTitle?.isOther == true) {
         eventTitle = _customTitleController.text.trim();
+        if (eventTitle.isEmpty) {
+          eventTitle = 'Randevu';
+        }
       } else {
         eventTitle = _selectedTitle?.titleName ?? 'Randevu';
       }
       
+      // Konum bilgisi
+      String eventLocation = _locationController.text.trim().isNotEmpty 
+          ? _locationController.text.trim() 
+          : (_selectedCompany?.compName ?? '');
+      
       // Notları oluştur
       final notes = StringBuffer();
-      notes.writeln('Durum: ${_selectedStatus?.statusName?? ''}');
+      if (_selectedCompany != null) {
+        notes.writeln('Şirket: ${_selectedCompany!.compName}');
+      }
+      if (_selectedStatus != null) {
+        notes.writeln('Durum: ${_selectedStatus!.statusName}');
+      }
+      if (_selectedPriority != null) {
+        notes.writeln('Öncelik: ${_selectedPriority!.priorityName}');
+      }
       if (_descController.text.trim().isNotEmpty) {
         notes.writeln('Açıklama: ${_descController.text.trim()}');
       }
-      notes.write('Şirket: ${_selectedCompany?.compName}');
       
       // Takvim etkinliği oluştur
       final event = Event(
         title: eventTitle,
-        description: notes.toString(),
-        location: _selectedCompany?.compName ?? '',
+        description: notes.toString().trim(),
+        location: eventLocation,
         startDate: _selectedDateTime!,
         endDate: _selectedDateTime!.add(const Duration(hours: 1)), // 1 saat varsayılan süre
         allDay: false,
+        iosParams: const IOSParams(
+          reminder: Duration(minutes: 15),
+        ),
+        androidParams: AndroidParams(
+          emailInvites: [],
+        ),
       );
       
       // Takvime ekle
-      await Add2Calendar.addEvent2Cal(event);
+      final bool? result = await Add2Calendar.addEvent2Cal(event);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Randevu takviminize eklendi')),
-        );
+        if (result == true || result == null) {
+          // null dönerse de başarılı kabul et (bazı platformlarda null döner)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Randevu takviminize eklendi'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Takvime eklenemedi'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     } catch (e) {
+      debugPrint('Takvime ekleme hatası: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Takvime eklenirken hata oluştu: $e')),
+          SnackBar(
+            content: Text('Takvime eklenirken hata oluştu: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

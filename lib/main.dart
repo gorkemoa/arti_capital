@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/cupertino.dart';
 import 'theme/app_theme.dart';
+import 'theme/splash_view.dart';
 import 'views/login_view.dart';
 import 'views/profile_view.dart';
 import 'views/profile_edit_view.dart';
@@ -107,7 +108,9 @@ class MyApp extends StatelessWidget {
           Locale('tr', 'TR'),
           Locale('en', 'US'),
         ],
-        home: _ShareIntentGate(initial: _getInitialRoute(authService)),
+        home: _ShareIntentGate(
+          initial: SplashView(nextRoute: _getInitialRoute(authService)),
+        ),
         routes: {
           '/login': (context) => const LoginView(),
           '/2fa': (context) => const TwoFactorView(),
