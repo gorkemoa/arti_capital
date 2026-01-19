@@ -23,6 +23,15 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = "upload"
+            keyPassword = "office701"
+            storeFile = file("upload.keystore")
+            storePassword = "office701"
+        }
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.office701.articapital"
@@ -32,7 +41,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         
         // Android version management - Update these values here
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0.0"
         
         multiDexEnabled = true
@@ -40,9 +49,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

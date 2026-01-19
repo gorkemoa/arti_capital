@@ -54,37 +54,49 @@ class ShareActivity : AppCompatActivity() {
     private var allServices: List<ServiceItem> = emptyList()
     private var filteredServices: List<ServiceItem> = emptyList()
     private var companyToCompIDMap: Map<String, Int> = emptyMap()
-    private var currentDocuments: List<String> = emptyList()
+    private var currentDocuments: List<ServiceDocument> = emptyList()
     private lateinit var ddDocType: MaterialAutoCompleteTextView
     private lateinit var ddProject: MaterialAutoCompleteTextView
+    private lateinit var ddCompany: MaterialAutoCompleteTextView
     private var existingDocumentID: Int? = null
     private var existingDocumentTypeID: Int? = null
     private var selectedServiceID: Int? = null
     private var selectedAppID: Int = 0
     private var selectedCompID: Int = 0
+    private var selectedCompanyName: String = ""
+    private var userToken: String = ""
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val prefs = getSharedPreferences(prefsName, Context.MODE_PRIVATE)
 
+        // Token'ı al
+        userToken = prefs.getString("UserToken", "") ?: ""
+        
+        if (userToken.isEmpty()) {
+            // Token yoksa hata göster ve kapat
+            showErrorAndFinish("Lütfen önce Arti Capital uygulamasından giriş yapın.")
+            return
+        }
+
         val companies = (prefs.getString("Companies", "") ?: "")
             .split("|")
             .filter { it.isNotBlank() }
+        
+        // CompaniesWithIDs'den firma-ID eşleştirmesini al
+        val companiesWithIDsString = prefs.getString("CompaniesWithIDs", "") ?: ""
+        companyToCompIDMap = parseCompaniesWithIDs(companiesWithIDsString)
+        
         val userRank = prefs.getString("UserRank", "") ?: ""
         val isAdmin = userRank == "50"
-        val accountNameDefault = if (isAdmin) {
-            prefs.getString("LoggedInUserName", companies.firstOrNull() ?: "") ?: ""
-        } else {
-            companies.firstOrNull() ?: (prefs.getString("LoggedInUserName", "") ?: "")
-        }
 
         // BottomSheetDialog ile ayrıntılı seçim
         val sheet = BottomSheetDialog(this)
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_share_bottom_sheet, null)
         sheet.setContentView(view)
 
-        val ddCompany = view.findViewById<MaterialAutoCompleteTextView>(R.id.ddCompany)
+        ddCompany = view.findViewById<MaterialAutoCompleteTextView>(R.id.ddCompany)
         ddProject = view.findViewById<MaterialAutoCompleteTextView>(R.id.ddProject)
         ddDocType = view.findViewById<MaterialAutoCompleteTextView>(R.id.ddDocType)
         val etNote = view.findViewById<TextInputEditText>(R.id.etNote)
@@ -101,66 +113,130 @@ class ShareActivity : AppCompatActivity() {
             btnProject.visibility = View.GONE
         }
 
-        // Company adapter
-        val companyList = if (companies.isEmpty()) listOf(accountNameDefault) else companies
+        // Company adapter - İlk seçim yapılmamış olarak başla
+        val companyList = if (companies.isEmpty()) listOf("Seçiniz") else companies
         ddCompany.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, companyList))
-        ddCompany.setText(accountNameDefault, false)
+        ddCompany.setText("Seçiniz", false)
+        selectedCompanyName = ""
 
-        // Loading göster, servisleri yükle
-        loadingView?.visibility = View.VISIBLE
+        // Projeler ve belgeler başlangıçta devre dışı
         ddProject.isEnabled = false
         ddDocType.isEnabled = false
-        
-        scope.launch {
-            try {
-                val servicesData = fetchAllServices()
-                allServices = servicesData.first
-                companyToCompIDMap = servicesData.second
+        ddProject.setText("Firma seçiniz", false)
+        ddDocType.setText("Seçiniz", false)
+
+        // Firma seçimi değiştiğinde projeleri API'den yükle
+        ddCompany.setOnItemClickListener { _, _, position, _ ->
+            val selectedCompany = companyList[position]
+            if (selectedCompany != "Seçiniz") {
+                selectedCompanyName = selectedCompany
+                selectedCompID = companyToCompIDMap[selectedCompany] ?: 0
                 
-                withContext(Dispatchers.Main) {
-                    // İlk olarak seçili firmaya göre projeleri filtrele
-                    val selectedCompany = ddCompany.text.toString()
-                    filterProjectsByCompany(selectedCompany, btnProject, btnUpdate)
+                if (selectedCompID > 0) {
+                    // Firma seçildi, projeleri yükle
+                    loadingView?.visibility = View.VISIBLE
+                    ddProject.isEnabled = false
+                    ddDocType.isEnabled = false
                     
-                    ddProject.isEnabled = true
-                    loadingView?.visibility = View.GONE
+                    scope.launch {
+                        try {
+                            fetchProjectsForCompany(selectedCompID)
+                            
+                            withContext(Dispatchers.Main) {
+                                loadingView?.visibility = View.GONE
+                                ddProject.isEnabled = true
+                                
+                                // Projeleri listele
+                                val projectNames = filteredServices.map { it.serviceName }
+                                ddProject.setAdapter(ArrayAdapter(this@ShareActivity, android.R.layout.simple_list_item_1, projectNames))
+                                
+                                if (projectNames.isNotEmpty()) {
+                                    // İlk projeyi seç ve belge türlerini yükle
+                                    val firstService = filteredServices.first()
+                                    ddProject.setText(projectNames.first(), false)
+                                    selectedServiceID = firstService.serviceID
+                                    selectedAppID = firstService.appID
+                                    selectedCompID = firstService.compID
+                                    
+                                    // Proje detayını çek
+                                    fetchProjectDetail(selectedAppID, btnProject, btnUpdate)
+                                } else {
+                                    ddProject.setText("Proje bulunamadı", false)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                loadingView?.visibility = View.GONE
+                                ddProject.isEnabled = true
+                                ddProject.setText("Yükleme hatası", false)
+                            }
+                        }
+                    }
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    loadingView?.visibility = View.GONE
-                    ddProject.isEnabled = true
-                    // Fallback: boş liste
-                    ddProject.setAdapter(ArrayAdapter(this@ShareActivity, android.R.layout.simple_list_item_1, emptyList<String>()))
-                }
+            } else {
+                // "Seçiniz" seçildi, her şeyi sıfırla
+                selectedCompanyName = ""
+                selectedCompID = 0
+                filteredServices = emptyList()
+                ddProject.isEnabled = false
+                ddDocType.isEnabled = false
+                ddProject.setText("Firma seçiniz", false)
+                ddDocType.setText("Seçiniz", false)
             }
         }
 
-        // Firma seçimi değiştiğinde projeleri filtrele
-        ddCompany.setOnItemClickListener { _, _, _, _ ->
-            val selectedCompany = ddCompany.text.toString()
-            filterProjectsByCompany(selectedCompany, btnProject, btnUpdate)
-        }
-
-        // Proje seçilince belge türlerini güncelle
+        // Proje seçilince proje detayını çek ve belge türlerini güncelle
         ddProject.setOnItemClickListener { _, _, position, _ ->
             if (position < filteredServices.size) {
                 val selectedService = filteredServices[position]
                 selectedServiceID = selectedService.serviceID
                 selectedAppID = selectedService.appID
                 selectedCompID = selectedService.compID
-                updateDocumentTypes(selectedService)
+                
+                // Proje detayını çek
+                loadingView?.visibility = View.VISIBLE
+                scope.launch {
+                    try {
+                        fetchProjectDetail(selectedAppID, btnProject, btnUpdate)
+                        withContext(Dispatchers.Main) {
+                            loadingView?.visibility = View.GONE
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            loadingView?.visibility = View.GONE
+                        }
+                    }
+                }
             }
         }
 
-        // Belge türü seçilince mevcut belgeyi kontrol et
+        // Belge türü seçilince buton durumunu güncelle
         ddDocType.setOnItemClickListener { _, _, position, _ ->
-            if (selectedAppID > 0 && position < currentDocuments.size) {
-                checkExistingDocument(selectedAppID, selectedCompID, position, btnProject, btnUpdate)
+            if (position < currentDocuments.size) {
+                val selectedDoc = currentDocuments[position]
+                
+                // isAdded durumuna göre buton metni güncelle
+                if (selectedDoc.isAdded) {
+                    btnProject.visibility = View.GONE
+                    btnUpdate.visibility = View.VISIBLE
+                    btnUpdate.text = "Belgeyi Güncelle"
+                    
+                    // Mevcut belgenin documentID'sini bul
+                    if (selectedAppID > 0) {
+                        checkExistingDocument(selectedAppID, selectedCompID, position, btnProject, btnUpdate)
+                    }
+                } else {
+                    btnProject.visibility = View.VISIBLE
+                    btnUpdate.visibility = View.GONE
+                    btnProject.text = "Belgeyi Yükle"
+                    existingDocumentID = null
+                    existingDocumentTypeID = null
+                }
             }
         }
 
         btnProject.setOnClickListener {
-            val account = (ddCompany.text?.toString()?.takeIf { it.isNotBlank() } ?: accountNameDefault)
+            val account = selectedCompanyName
             val folder = (ddProject.text?.toString()?.takeIf { it.isNotBlank() } ?: "")
             val docType = (ddDocType.text?.toString()?.takeIf { it.isNotBlank() } ?: "")
             val note = etNote.text?.toString()?.trim().orEmpty()
@@ -168,7 +244,7 @@ class ShareActivity : AppCompatActivity() {
             sheet.dismiss()
         }
         btnUpdate.setOnClickListener {
-            val account = (ddCompany.text?.toString()?.takeIf { it.isNotBlank() } ?: accountNameDefault)
+            val account = selectedCompanyName
             val folder = (ddProject.text?.toString()?.takeIf { it.isNotBlank() } ?: "")
             val docType = (ddDocType.text?.toString()?.takeIf { it.isNotBlank() } ?: "")
             val note = etNote.text?.toString()?.trim().orEmpty()
@@ -176,7 +252,7 @@ class ShareActivity : AppCompatActivity() {
             sheet.dismiss()
         }
         btnMessage.setOnClickListener {
-            val account = (ddCompany.text?.toString()?.takeIf { it.isNotBlank() } ?: accountNameDefault)
+            val account = selectedCompanyName
             val folder = (ddProject.text?.toString()?.takeIf { it.isNotBlank() } ?: "")
             val docType = (ddDocType.text?.toString()?.takeIf { it.isNotBlank() } ?: "")
             val note = etNote.text?.toString()?.trim().orEmpty()
@@ -189,6 +265,178 @@ class ShareActivity : AppCompatActivity() {
             finish()
         }
         sheet.show()
+    }
+
+    private fun parseCompaniesWithIDs(jsonString: String): Map<String, Int> {
+        if (jsonString.isEmpty()) return emptyMap()
+        
+        return try {
+            val jsonArray = JSONArray(jsonString)
+            val map = mutableMapOf<String, Int>()
+            
+            for (i in 0 until jsonArray.length()) {
+                val jsonObject = jsonArray.getJSONObject(i)
+                val compName = jsonObject.optString("compName", "")
+                val compID = jsonObject.optInt("compID", 0)
+                
+                if (compName.isNotBlank() && compID > 0) {
+                    map[compName] = compID
+                }
+            }
+            
+            map
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun showErrorAndFinish(message: String) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Hata")
+            .setMessage(message)
+            .setPositiveButton("Tamam") { _, _ ->
+                setResult(Activity.RESULT_CANCELED)
+                finish()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private suspend fun fetchProjectsForCompany(compID: Int) = withContext(Dispatchers.IO) {
+        val url = "https://api.office701.com/arti-capital/service/user/account/projects/all?userToken=$userToken&compID=$compID"
+        val credentials = Credentials.basic("Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM", "vRParTCAqTjtmkI17I1EVpPH57Edl0")
+        
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", credentials)
+            .header("Accept", "application/json")
+            .get()
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw Exception("Projects API Error: ${response.code}")
+        }
+
+        val body = response.body?.string() ?: throw Exception("Empty projects response")
+        val json = JSONObject(body)
+        
+        // API hata kontrolü
+        val success = json.optBoolean("success", false)
+        if (!success) {
+            val message = json.optString("message", "Bilinmeyen hata")
+            throw Exception(message)
+        }
+        
+        val dataObj = json.optJSONObject("data") ?: throw Exception("No data object")
+        val projectsArray = dataObj.optJSONArray("projects") ?: JSONArray()
+
+        val services = mutableListOf<ServiceItem>()
+        
+        for (i in 0 until projectsArray.length()) {
+            val projectObj = projectsArray.getJSONObject(i)
+            val appID = projectObj.optInt("appID", 0)
+            val projectCompID = projectObj.optInt("compID", 0)
+            val appTitle = projectObj.optString("appTitle", "").trim()
+            val appCode = projectObj.optString("appCode", "").trim()
+            val compName = projectObj.optString("compName", "").trim()
+            
+            if (appTitle.isBlank() || appID == 0) continue
+            
+            // Servis listesine ekle (belgeler proje detayından gelecek)
+            services.add(ServiceItem(
+                serviceID = 0, // ServiceID artık kullanılmıyor
+                serviceName = appTitle,
+                documents = emptyList(), // Başlangıçta boş, proje detayından gelecek
+                appID = appID,
+                compID = projectCompID
+            ))
+        }
+        
+        filteredServices = services
+    }
+
+    private suspend fun fetchProjectDetail(appID: Int, btnProject: Button, btnUpdate: Button) = withContext(Dispatchers.IO) {
+        val url = "https://api.office701.com/arti-capital/service/user/account/projects/$appID?userToken=$userToken"
+        val credentials = Credentials.basic("Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM", "vRParTCAqTjtmkI17I1EVpPH57Edl0")
+        
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", credentials)
+            .header("Accept", "application/json")
+            .get()
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw Exception("Project detail API Error: ${response.code}")
+        }
+
+        val body = response.body?.string() ?: throw Exception("Empty response")
+        val json = JSONObject(body)
+        
+        // API hata kontrolü
+        val success = json.optBoolean("success", false)
+        if (!success) {
+            val message = json.optString("message", "Bilinmeyen hata")
+            throw Exception(message)
+        }
+        
+        val dataObj = json.optJSONObject("data") ?: throw Exception("No data object")
+        val projectObj = dataObj.optJSONObject("project") ?: throw Exception("No project object")
+        
+        // CompID ve CompAdrID'yi güncelle
+        selectedCompID = projectObj.optInt("compID", 0)
+        val compAdrID = projectObj.optInt("compAdrID", 0)
+        
+        // RequiredDocuments'ı al
+        val requiredDocsArray = projectObj.optJSONArray("requiredDocuments") ?: JSONArray()
+        val documents = mutableListOf<ServiceDocument>()
+        
+        for (i in 0 until requiredDocsArray.length()) {
+            val docObj = requiredDocsArray.getJSONObject(i)
+            val documentID = docObj.optInt("documentID", 0)
+            val documentName = docObj.optString("documentName", "")
+            val isRequired = docObj.optBoolean("isRequired", false)
+            val isAdded = docObj.optBoolean("isAdded", false)
+            
+            if (documentName.isNotBlank()) {
+                documents.add(ServiceDocument(documentID, documentName, isAdded))
+            }
+        }
+        
+        withContext(Dispatchers.Main) {
+            currentDocuments = documents
+            
+            // Belge türü dropdown'ını güncelle
+            val docNames = documents.map { it.documentName }
+            ddDocType.setAdapter(ArrayAdapter(this@ShareActivity, android.R.layout.simple_list_item_1, docNames))
+            
+            if (documents.isNotEmpty()) {
+                val firstDoc = documents.first()
+                ddDocType.setText(firstDoc.documentName, false)
+                ddDocType.isEnabled = true
+                
+                // İlk belge için buton durumunu ayarla
+                if (firstDoc.isAdded) {
+                    btnProject.visibility = View.GONE
+                    btnUpdate.visibility = View.VISIBLE
+                    btnUpdate.text = "Belgeyi Güncelle"
+                    
+                    // Mevcut belge ID'sini bul
+                    checkExistingDocument(appID, selectedCompID, 0, btnProject, btnUpdate)
+                } else {
+                    btnProject.visibility = View.VISIBLE
+                    btnUpdate.visibility = View.GONE
+                    btnProject.text = "Belgeyi Yükle"
+                    existingDocumentID = null
+                    existingDocumentTypeID = null
+                }
+            } else {
+                ddDocType.setText("Belge bulunamadı", false)
+                ddDocType.isEnabled = false
+            }
+        }
     }
 
     private fun filterProjectsByCompany(companyName: String, btnProject: Button, btnUpdate: Button) {
@@ -226,15 +474,16 @@ class ShareActivity : AppCompatActivity() {
     }
 
     private fun updateDocumentTypes(service: ServiceItem) {
-        currentDocuments = service.documents.map { it.documentName }
+        currentDocuments = service.documents
         
-        ddDocType.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, currentDocuments))
-        if (currentDocuments.isNotEmpty()) {
-            ddDocType.setText(currentDocuments.first(), false)
+        val documentNames = currentDocuments.map { it.documentName }
+        ddDocType.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_1, documentNames))
+        if (documentNames.isNotEmpty()) {
+            ddDocType.setText(documentNames.first(), false)
         } else {
             ddDocType.setText("", false)
         }
-        ddDocType.isEnabled = currentDocuments.isNotEmpty()
+        ddDocType.isEnabled = documentNames.isNotEmpty()
         
         // Belge türü değişince mevcut belgeyi kontrol et
         existingDocumentID = null
@@ -242,10 +491,9 @@ class ShareActivity : AppCompatActivity() {
     }
 
     private fun checkExistingDocument(appID: Int, compID: Int, documentPosition: Int, btnProject: Button, btnUpdate: Button) {
-        val service = filteredServices.find { it.appID == appID } ?: return
-        if (documentPosition >= service.documents.size) return
+        if (documentPosition >= currentDocuments.size) return
         
-        val document = service.documents[documentPosition]
+        val document = currentDocuments[documentPosition]
         val documentTypeID = document.documentID
         
         // isAdded flag'ine göre direkt karar ver
@@ -268,6 +516,7 @@ class ShareActivity : AppCompatActivity() {
                             existingDocumentTypeID = null
                             btnProject.visibility = View.VISIBLE
                             btnUpdate.visibility = View.GONE
+                            btnProject.text = "Belgeyi Yükle"
                         }
                     }
                 } catch (e: Exception) {
@@ -276,6 +525,7 @@ class ShareActivity : AppCompatActivity() {
                         existingDocumentTypeID = null
                         btnProject.visibility = View.VISIBLE
                         btnUpdate.visibility = View.GONE
+                        btnProject.text = "Belgeyi Yükle"
                     }
                 }
             }
@@ -285,6 +535,7 @@ class ShareActivity : AppCompatActivity() {
             existingDocumentTypeID = null
             btnProject.visibility = View.VISIBLE
             btnUpdate.visibility = View.GONE
+            btnProject.text = "Belgeyi Yükle"
         }
     }
 
@@ -334,99 +585,14 @@ class ShareActivity : AppCompatActivity() {
         }
     }
 
-    @Deprecated("No longer needed - use fetchProjectDocuments")
+    @Deprecated("No longer needed")
     private suspend fun checkDocumentExists(serviceID: Int, documentID: Int): Boolean = withContext(Dispatchers.IO) {
         false
     }
 
+    @Deprecated("No longer used - projects loaded per company with user token")
     private suspend fun fetchAllServices(): Pair<List<ServiceItem>, Map<String, Int>> = withContext(Dispatchers.IO) {
-        // Önce projeleri getir
-        val projectsUrl = "https://api.office701.com/arti-capital/service/application/project/apps"
-        val credentials = Credentials.basic("Tr1VAhW2ICWHJN2nlvp9K5ycGoyMJM", "vRParTCAqTjtmkI17I1EVpPH57Edl0")
-        
-        val projectsRequest = Request.Builder()
-            .url(projectsUrl)
-            .header("Authorization", credentials)
-            .header("Accept", "application/json")
-            .get()
-            .build()
-
-        val projectsResponse = client.newCall(projectsRequest).execute()
-        if (!projectsResponse.isSuccessful) {
-            throw Exception("Projects API Error: ${projectsResponse.code}")
-        }
-
-        val projectsBody = projectsResponse.body?.string() ?: throw Exception("Empty projects response")
-        val projectsJson = JSONObject(projectsBody)
-        val projectsDataObj = projectsJson.optJSONObject("data") ?: throw Exception("No projects data object")
-        val projectsArray = projectsDataObj.optJSONArray("applications") ?: JSONArray()
-
-        // Projeleri ve required documents bilgilerini al
-        val services = mutableListOf<ServiceItem>()
-        val companyMap = mutableMapOf<String, Int>()
-        
-        for (i in 0 until projectsArray.length()) {
-            val projectObj = projectsArray.getJSONObject(i)
-            val appID = projectObj.optInt("appID", 0)
-            val compID = projectObj.optInt("compID", 0)
-            val appTitle = projectObj.optString("appTitle", "")
-            val serviceID = projectObj.optInt("serviceID", 0)
-            val compName = projectObj.optString("compName", "")
-            
-            // Firma-CompID eşleştirmesini kaydet
-            if (compName.isNotBlank() && compID > 0) {
-                companyMap[compName] = compID
-            }
-            
-            if (appTitle.isBlank() || appID == 0) continue
-            
-            // Her proje için detayını çek ve requiredDocuments'ı al
-            try {
-                val detailUrl = "https://api.office701.com/arti-capital/service/application/project/app/$appID"
-                val detailRequest = Request.Builder()
-                    .url(detailUrl)
-                    .header("Authorization", credentials)
-                    .header("Accept", "application/json")
-                    .get()
-                    .build()
-
-                val detailResponse = client.newCall(detailRequest).execute()
-                if (detailResponse.isSuccessful) {
-                    val detailBody = detailResponse.body?.string()
-                    val detailJson = JSONObject(detailBody ?: "")
-                    val detailDataObj = detailJson.optJSONObject("data")
-                    val projectDetailObj = detailDataObj?.optJSONObject("project")
-                    val requiredDocsArray = projectDetailObj?.optJSONArray("requiredDocuments") ?: JSONArray()
-                    
-                    // RequiredDocuments'tan TÜM belge türlerini al (isAdded true/false fark etmez)
-                    val documents = mutableListOf<ServiceDocument>()
-                    for (j in 0 until requiredDocsArray.length()) {
-                        val docObj = requiredDocsArray.getJSONObject(j)
-                        val documentID = docObj.optInt("documentID", 0)
-                        val documentName = docObj.optString("documentName", "")
-                        val isAdded = docObj.optBoolean("isAdded", false)
-                        
-                        if (documentName.isNotBlank()) {
-                            documents.add(ServiceDocument(documentID, documentName, isAdded))
-                        }
-                    }
-                    
-                    // Belge varsa servise ekle (boş olsa bile ekle - belki sonradan belge eklenebilir)
-                    services.add(ServiceItem(
-                        serviceID = serviceID,
-                        serviceName = appTitle,
-                        documents = documents,
-                        appID = appID,
-                        compID = compID
-                    ))
-                }
-            } catch (e: Exception) {
-                // Bu proje için hata varsa atla
-                continue
-            }
-        }
-        
-        Pair(services, companyMap)
+        Pair(emptyList(), emptyMap())
     }
 
     override fun onDestroy() {
